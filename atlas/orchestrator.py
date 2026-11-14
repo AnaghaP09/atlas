@@ -32,6 +32,7 @@ from atlas.services.allocation import Flags, allocate
 from atlas.services.disposition import apply_injection_disposition
 from atlas.services.forecast import OpenItem, forecast
 from atlas.verified import DanglingReference, build_verified
+from atlas.sqlite_util import connect as safe_connect
 
 QUEUE_TO_EVENT = {
     "security_blocked": "security_gate.blocked",
@@ -50,7 +51,7 @@ class RunStore:
     """Verification generations per run; exactly one is authoritative."""
 
     def __init__(self, path: str | Path = ":memory:") -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.executescript(
             "CREATE TABLE IF NOT EXISTS runs (run_id TEXT PRIMARY KEY, context TEXT, trigger TEXT, started_by TEXT, raw TEXT);"
             "CREATE TABLE IF NOT EXISTS generations (run_id TEXT, generation INTEGER, artefact TEXT, authoritative INTEGER,"
@@ -191,6 +192,7 @@ class Orchestrator:
     # --------------------------------------------------------------------- run
 
     def run(self, run_id: str, ctx: RunContext, trigger: Mapping[str, Any], started_by: StartedBy) -> dict[str, Any]:
+        self._note_usage_start(run_id)
         sb = {"kind": str(started_by.kind), "role": str(started_by.role) if started_by.role else None,
               "watcher_id": started_by.watcher_id}
         if ctx.project_id:
@@ -328,13 +330,26 @@ class Orchestrator:
             return self._finish(run_id, ctx, trigger, sb, out, raw=raw)
         return self._finish(run_id, ctx, trigger, sb, verified, raw=raw)
 
+    def _note_usage_start(self, run_id: str) -> None:
+        """Remember the boundary's counters when a run starts, so the run can report its own share."""
+        stats = getattr(self.d.outbound, "stats", None)
+        if not hasattr(self, "_usage_at_start"):
+            self._usage_at_start = {}
+        if stats is not None:
+            self._usage_at_start[run_id] = (int(stats.input_tokens), int(stats.output_tokens), float(stats.cost_usd),
+                                            int(sum(stats.redactions.values())), int(stats.egress_attempts))
+
     def _finish(self, run_id: str, ctx: RunContext, trigger: Mapping[str, Any], sb: Mapping[str, Any],
                 out: dict[str, Any], raw: Mapping[str, Any]) -> dict[str, Any]:
         stats = getattr(self.d.outbound, "stats", None)
         if stats is not None:
-            out["redactions_applied"] = int(sum(stats.redactions.values()))
-            out["egress_attempts"] = int(stats.egress_attempts)
-            out["cost"].update(input_tokens=stats.input_tokens, output_tokens=stats.output_tokens, usd=round(stats.cost_usd, 6))
+            # The boundary counts for the whole process; a run reports only what it added.
+            base = getattr(self, "_usage_at_start", {}).pop(run_id, (0, 0, 0.0, 0, 0))
+            out["redactions_applied"] = max(int(sum(stats.redactions.values())) - base[3], 0)
+            out["egress_attempts"] = max(int(stats.egress_attempts) - base[4], 0)
+            out["cost"].update(input_tokens=max(stats.input_tokens - base[0], 0),
+                               output_tokens=max(stats.output_tokens - base[1], 0),
+                               usd=round(max(stats.cost_usd - base[2], 0.0), 6))
         if ctx.project_id:
             out["project_id"] = ctx.project_id
         self.runs.save_run(run_id, ctx, trigger, sb, raw)
