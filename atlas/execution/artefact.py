@@ -41,8 +41,16 @@ def source_from_diff(diff_text: str, scopes: Sequence[str] = ("public",)) -> lis
     return out
 
 
+def public_principal(project_id: str | None) -> Principal:
+    """The public reader of one project's publication. Items tagged with that project stay; items of
+    any other project are withheld, as are restricted items."""
+    if not project_id:
+        return PUBLIC
+    return Principal(role=None, scopes=PUBLIC.scopes, project_id=project_id)
+
+
 def _project(projection: Projection, changes: Sequence[SourceChange], message: str, title: str, body: str,
-             scopes: Mapping[str, Sequence[str]]) -> dict[str, Any]:
+             scopes: Mapping[str, Sequence[str]], project_id: str | None = None) -> dict[str, Any]:
     raw = {
         "files": [
             {"path": c.path, "old_path": c.old_path, "required_scopes": list(c.required_scopes),
@@ -53,15 +61,17 @@ def _project(projection: Projection, changes: Sequence[SourceChange], message: s
         "title": {"text": title, "required_scopes": list(scopes.get("title", ["public"]))},
         "body": {"text": body, "required_scopes": list(scopes.get("body", ["public"]))},
     }
-    return projection.project(raw, PUBLIC)
+    return projection.project(raw, public_principal(project_id))
 
 
 def build(projection: Projection, base_tree: Mapping[str, str], changes: Sequence[SourceChange], *,
           commit_message: str, title: str, body: str,
-          field_scopes: Mapping[str, Sequence[str]] | None = None) -> dict[str, Any]:
-    """Project, scan, apply and hash. Raises when a required field becomes empty."""
+          field_scopes: Mapping[str, Sequence[str]] | None = None, project_id: str | None = None) -> dict[str, Any]:
+    """Project, scan, apply and hash. Raises when a required field becomes empty.
+
+    ``project_id`` is the task's project: the public principal is bound to it."""
     scopes = field_scopes or {}
-    projected = _project(projection, changes, commit_message, title, body, scopes)
+    projected = _project(projection, changes, commit_message, title, body, scopes, project_id)
     withheld: list[dict[str, Any]] = []
     kept_files: list[diffs.FileDiff] = []
     by_path = {c.path: c for c in changes}
@@ -111,12 +121,12 @@ def build(projection: Projection, base_tree: Mapping[str, str], changes: Sequenc
 
 def verify_outgoing(projection: Projection, frozen: Mapping[str, Any], base_tree: Mapping[str, str],
                     changes: Sequence[SourceChange], *, commit_message: str, title: str, body: str,
-                    field_scopes: Mapping[str, Sequence[str]] | None = None) -> list[str]:
+                    field_scopes: Mapping[str, Sequence[str]] | None = None, project_id: str | None = None) -> list[str]:
     """Rebuild the outgoing commit and re-run the projection; any difference is a mismatch."""
     problems: list[str] = []
     try:
         rebuilt = build(projection, base_tree, changes, commit_message=commit_message, title=title, body=body,
-                        field_scopes=field_scopes)
+                        field_scopes=field_scopes, project_id=project_id)
     except ArtefactError as exc:
         return [f"artefact can no longer be built: {exc}"]
     if rebuilt["diff_sha256"] != frozen.get("diff_sha256"):

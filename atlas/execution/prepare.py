@@ -96,7 +96,7 @@ class Preparer:
             ]
         message, title, body = self.describe(task)
         frozen = artefacts.build(self.projection, base, changes, commit_message=message, title=title, body=body,
-                                 field_scopes=field_scopes)
+                                 field_scopes=field_scopes, project_id=task.project_id or None)
         frozen["source"] = [{"path": c.path, "old_path": c.old_path, "hunks": [dict(h) for h in c.hunks],
                              "required_scopes": list(c.required_scopes)} for c in changes]
         frozen["field_scopes"] = {k: list(v) for k, v in (field_scopes or {}).items()}

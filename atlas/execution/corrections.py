@@ -76,6 +76,22 @@ class CorrectionService:
         with self._locks_guard:
             return self._locks.setdefault(publication_id, threading.Lock())
 
+    def publication_project(self, publication_id: str) -> str:
+        """The stored project of a publication: the project of the task that published it."""
+        try:
+            repo, number = PullRequestBodies.parse(publication_id)
+        except Exception:  # noqa: BLE001 - not a pull-request publication
+            return ""
+        row = self.db.one("SELECT project_id FROM tasks WHERE lower(destination_repo) = lower(?) AND pr_number = ?",
+                          (repo, number))
+        return (row["project_id"] or "") if row else ""
+
+    @staticmethod
+    def _check_project(stored: str, caller_project: str | None) -> None:
+        """A caller acting in another project is told the object does not exist."""
+        if caller_project is not None and stored and caller_project != stored and caller_project != "*":
+            raise CorrectionError("unknown incident")
+
     def _incident(self, incident_id: str) -> dict[str, Any]:
         inc = self.db.one("SELECT * FROM incidents WHERE incident_id = ?", (incident_id,))
         if inc is None:
@@ -84,16 +100,19 @@ class CorrectionService:
             raise CorrectionError("corrections are only for an open published-error incident")
         return dict(inc)
 
-    def preauthorisation_read(self, incident_id: str, *, role: str) -> dict[str, str]:
+    def preauthorisation_read(self, incident_id: str, *, role: str, project_id: str | None = None) -> dict[str, str]:
         """Read the recorded publication's current body to obtain the expected hash. No write."""
         if role != "audit":
             raise CorrectionError("only the audit role may read for a correction")
         inc = self._incident(incident_id)
+        self._check_project(self.publication_project(inc["publication_id"]), project_id)
         body = self.bodies.read(inc["publication_id"])
         return {"publication_id": inc["publication_id"], "body": body, "body_sha256": sha256(body)}
 
     def authorise(self, incident_id: str, *, replacement_text: str, expected_body_sha256: str, role: str,
-                  now: datetime, idempotency_key: str | None = None) -> str:
+                  now: datetime, idempotency_key: str | None = None, project_id: str | None = None) -> str:
+        """Authorise one correction. The authorisation stores the publication's project; a caller
+        acting in another project is refused before anything is written."""
         if role != "audit":
             raise CorrectionError("only the audit role may authorise a correction")
         if not replacement_text.strip():
@@ -102,6 +121,10 @@ class CorrectionService:
             if check.status != "passed":
                 raise CorrectionError(f"replacement text failed {check.name}")
         inc = self._incident(incident_id)
+        stored_project = self.publication_project(inc["publication_id"])
+        self._check_project(stored_project, project_id)
+        if idempotency_key is not None and stored_project:
+            idempotency_key = f"{stored_project}::{idempotency_key}"
         request = {"op": "correction_authorise", "incident_id": incident_id, "text": sha256(replacement_text),
                    "expected": expected_body_sha256}
         with self.db.transaction() as conn:
@@ -111,21 +134,23 @@ class CorrectionService:
             auth_id = new_id("cauth")
             conn.execute(
                 "INSERT INTO correction_authorisations (authorisation_id, incident_id, publication_id, offending_item_id,"
-                " replacement_text, replacement_sha256, expected_body_sha256, created_at, expires_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?)",
+                " replacement_text, replacement_sha256, expected_body_sha256, created_at, expires_at, project_id)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (auth_id, incident_id, inc["publication_id"], inc["offending_item_id"], replacement_text,
-                 sha256(replacement_text), expected_body_sha256, iso(now), iso(now + AUTHORISATION_LIFETIME)),
+                 sha256(replacement_text), expected_body_sha256, iso(now), iso(now + AUTHORISATION_LIFETIME),
+                 stored_project),
             )
             self.db.remember(conn, idempotency_key, request, {"authorisation_id": auth_id})
         return auth_id
 
-    def list(self, incident_id: str) -> list[dict[str, Any]]:
+    def list(self, incident_id: str, project_id: str | None = None) -> list[dict[str, Any]]:
         return [
             {"correction_id": r["correction_id"], "state": r["state"], "reason": r["reason"],
-             "publication_id": r["publication_id"]}
+             "publication_id": r["publication_id"], "project_id": r["project_id"] or None}
             for r in self.db.query(
                 "SELECT c.* FROM corrections c JOIN correction_authorisations a USING (authorisation_id)"
                 " WHERE a.incident_id = ? ORDER BY c.at", (incident_id,))
+            if project_id in (None, "*") or not r["project_id"] or r["project_id"] == project_id
         ]
 
     def _set(self, correction_id: str, state: str, reason: str | None, now: datetime, body_version: int | None = None) -> None:
@@ -154,11 +179,13 @@ class CorrectionService:
                                      "correction_id": correction_id, "incident_id": auth["incident_id"]})
         return {"correction_id": correction_id, "state": "done", "verified_record_id": record_id, "body_version": version}
 
-    def execute(self, authorisation_id: str, *, now: datetime) -> dict[str, Any]:
+    def execute(self, authorisation_id: str, *, now: datetime, project_id: str | None = None) -> dict[str, Any]:
         auth_row = self.db.one("SELECT * FROM correction_authorisations WHERE authorisation_id = ?", (authorisation_id,))
         if auth_row is None:
             raise CorrectionError("unknown correction authorisation")
         auth = dict(auth_row)
+        if project_id is not None and auth.get("project_id") and project_id not in (auth["project_id"], "*"):
+            raise CorrectionError("unknown correction authorisation")
         with self._lock(auth["publication_id"]):
             existing = self.db.one("SELECT * FROM corrections WHERE authorisation_id = ?", (authorisation_id,))
             if existing is not None:
@@ -182,8 +209,9 @@ class CorrectionService:
                                       "authorise a combined correction from the current body")
             correction_id = new_id("corr")
             with self.db.transaction() as conn:
-                conn.execute("INSERT INTO corrections (correction_id, authorisation_id, publication_id, state, at)"
-                             " VALUES (?,?,?,?,?)", (correction_id, authorisation_id, auth["publication_id"], "intent", iso(now)))
+                conn.execute("INSERT INTO corrections (correction_id, authorisation_id, publication_id, state, at, project_id)"
+                             " VALUES (?,?,?,?,?,?)", (correction_id, authorisation_id, auth["publication_id"], "intent",
+                                                     iso(now), auth.get("project_id") or ""))
             try:
                 self.bodies.replace(auth["publication_id"], auth["replacement_text"])
             except Exception as exc:  # noqa: BLE001 - uncertain outcome: hold, never re-send
