@@ -6,8 +6,8 @@ from dataclasses import replace
 from typing import Any, Mapping
 
 from atlas.connectors import ReplayConnector
-from atlas.connectors.github import GitHubReader
-from atlas.connectors.normalize import commit_view, issue_as_of, pull_request_as_of, to_record
+from atlas.connectors.github import GitHubError, GitHubReader
+from atlas.connectors.normalize import commit_view, issue_as_of, issue_from_rest, pull_request_as_of, to_record
 from atlas.contracts import Record, RunContext
 from atlas.store import AUTHORITATIVE_WRITERS, EvidenceStore
 
@@ -37,7 +37,17 @@ class IssuesConnector(ReplayConnector):
         # Changed, unknown, or a newer version seen earlier was never stored: enrich and persist
         # it now. The validator is committed only after the version is stored, so a failure here
         # leaves the refresh pending and the stored record ages normally.
-        raw = self.reader.issue(number)
+        try:
+            raw = self.reader.issue(number)
+        except GitHubError as exc:
+            # The detailed history needs credentials. Without them, keep the live view current from
+            # the REST representation, marked as having no edit history.
+            if not exc.auth_or_limit or not isinstance(check.body, dict):
+                raise
+            stored = self.store_rest_issue(check.body, ctx)
+            if stored:
+                self.reader.commit_validator(check.url)
+            return stored
         if raw is None:
             return []
         fetched = self.clock()
@@ -46,6 +56,22 @@ class IssuesConnector(ReplayConnector):
         record_id = self.store.put(record, writer, **extra)
         confirmed = self.store.reconfirm(record_id, writer, fetched, method="fetch")
         self.reader.commit_validator(check.url)
+        return [replace(record, record_id=record_id, confirmed_through=confirmed)]
+
+    def store_rest_issue(self, rest: Mapping[str, Any], ctx: RunContext) -> list[Record]:
+        """Store one issue from its REST representation in the live store (no edit history).
+
+        Live polling only: the record is never complete history, so as-of snapshots and the
+        evaluation never use it.
+        """
+        fetched = self.clock()
+        asof = issue_from_rest(dict(rest), fetched)
+        if asof is None:
+            return []
+        writer = AUTHORITATIVE_WRITERS[self.source]
+        record, extra = to_record(self.source, asof, cutoff=fetched, fetched_at=fetched, history_complete_through=None, live=True)
+        record_id = self.store.put(record, writer, **extra)
+        confirmed = self.store.reconfirm(record_id, writer, fetched, method="fetch")
         return [replace(record, record_id=record_id, confirmed_through=confirmed)]
 
 

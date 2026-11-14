@@ -23,6 +23,36 @@ MAX_TOOL_CALLS = 60
 MAX_DURATION = timedelta(minutes=15)
 LOG_CAP_LINES = 50_000
 LOG_EXCERPT_LINES = 200
+# Tool results are bounded before Scout sees them, so one large record (a long issue thread, a
+# commit with a big diff) can never fill the model's context or run up cost.
+RESULT_MAX_RECORDS = 20
+RESULT_MAX_CONTENT_CHARS = 4_000
+RESULT_MAX_TOTAL_CHARS = 24_000
+# The whole conversation is bounded too: past this size the run ends as partial.
+CONVERSATION_MAX_CHARS = 400_000
+
+
+def bound_result(data: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    """Cut a tool result to the record, per-record and total size limits; say what was cut."""
+    notes: list[str] = []
+    if len(data) > RESULT_MAX_RECORDS:
+        notes.append(f"{len(data) - RESULT_MAX_RECORDS} more records not shown; narrow the query")
+        data = data[:RESULT_MAX_RECORDS]
+    out: list[dict[str, Any]] = []
+    total = 0
+    for item in data:
+        item = dict(item)
+        content = item.get("content")
+        if isinstance(content, str) and len(content) > RESULT_MAX_CONTENT_CHARS:
+            item["content"] = content[:RESULT_MAX_CONTENT_CHARS] + "\n[content cut: ask for a narrower part]"
+            notes.append(f"content of {item.get('record_id', 'a record')} cut to {RESULT_MAX_CONTENT_CHARS} characters")
+        size = len(json.dumps(item, default=str))
+        if out and total + size > RESULT_MAX_TOTAL_CHARS:
+            notes.append(f"{len(data) - len(out)} records not shown to keep the result small; narrow the query")
+            break
+        out.append(item)
+        total += size
+    return out, notes
 
 _LOG_SIGNAL = re.compile(r"(?i)(fail|error|panic|timeout|timed out|fatal|assert|exception|refused|killed|oom)")
 
@@ -277,8 +307,15 @@ class Investigator:
                 read.append(r.record_id)
                 if r.flags:
                     flagged.append(r.record_id)
-            data = [r.as_data() for r in results]
+            data, notes = bound_result([r.as_data() for r in results])
+            body = json.dumps(data, default=str)
+            if notes:
+                body += "\n<result_notes>" + "; ".join(notes) + "</result_notes>"
             messages.append({
                 "role": "user",
-                "content": f"<tool_result tool=\"{name}\">\n" + json.dumps(data, default=str) + "\n</tool_result>",
+                "content": f"<tool_result tool=\"{name}\">\n" + body + "\n</tool_result>",
             })
+            if sum(len(str(m.get("content", ""))) for m in messages) > CONVERSATION_MAX_CHARS:
+                self.budget.exhausted = "context"
+                return InvestigationResult("partial", None, self.budget.steps, self.budget.tool_calls,
+                                           "context", read, flagged, refused)

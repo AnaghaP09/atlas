@@ -14,7 +14,14 @@ _OP = re.compile(r"query\s+([A-Za-z_][A-Za-z0-9_]*)")
 
 
 class GitHubError(RuntimeError):
-    pass
+    def __init__(self, message: str, status: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+
+    @property
+    def auth_or_limit(self) -> bool:
+        """True when the request was refused for missing credentials or a rate limit."""
+        return self.status in (401, 403, 429)
 
 
 @dataclass(frozen=True)
@@ -37,6 +44,18 @@ class GitHubReader:
         self.connector = connector
         self.validators: dict[str, dict[str, Any]] = {}
         self.pending_validators: dict[str, dict[str, Any]] = {}
+        self.rate_remaining: int | None = None
+        self.rate_reset: int | None = None
+
+    def _note_rate(self, headers: Any) -> None:
+        h = {str(k).lower(): v for k, v in (headers or {}).items()}
+        try:
+            if "x-ratelimit-remaining" in h:
+                self.rate_remaining = int(h["x-ratelimit-remaining"])
+            if "x-ratelimit-reset" in h:
+                self.rate_reset = int(h["x-ratelimit-reset"])
+        except (TypeError, ValueError):
+            pass
 
     # ------------------------------------------------------------------ transport helpers
 
@@ -44,9 +63,11 @@ class GitHubReader:
         name = _OP.search(document).group(1)
         body = {"query": document, "variables": variables, "operationName": name}
         resp = self.gateway.request(self.connector, "POST", f"{API}/graphql", self.ctx, body)
+        self._note_rate(resp.headers)
         payload = resp.body if isinstance(resp.body, dict) else {}
         if resp.status != 200 or payload.get("errors"):
-            raise GitHubError(f"GraphQL {name} failed with status {resp.status}: {str(payload.get('errors'))[:300]}")
+            raise GitHubError(f"GraphQL {name} failed with status {resp.status}: {str(payload.get('errors'))[:300]}",
+                              status=resp.status)
         return payload["data"]
 
     def rest(self, path: str, params: dict[str, Any] | None = None) -> Any:
@@ -78,6 +99,7 @@ class GitHubReader:
             if known.get("last_modified"):
                 conditional["If-Modified-Since"] = known["last_modified"]
         resp = self.gateway.request(self.connector, "GET", url, self.ctx, conditional=conditional or None)
+        self._note_rate(resp.headers)
         if resp.status == 304:
             if not known:
                 raise GitHubError(f"GET {path} returned 304 without a cached body")
@@ -85,7 +107,7 @@ class GitHubReader:
         if resp.status == 404:
             return RestResult(None, False, url)
         if resp.status != 200:
-            raise GitHubError(f"GET {path} failed with status {resp.status}")
+            raise GitHubError(f"GET {path} failed with status {resp.status}", status=resp.status)
         headers = {k.lower(): v for k, v in (resp.headers or {}).items()}
         if headers.get("etag") or headers.get("last-modified"):
             self.pending_validators[url] = {"etag": headers.get("etag"), "last_modified": headers.get("last-modified"), "body": resp.body}

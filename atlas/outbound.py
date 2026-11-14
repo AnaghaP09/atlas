@@ -80,7 +80,8 @@ _KEY_VALUE_SECRET = re.compile(
     r"(\"[^\"]*\"|'[^']*'|[^\s,;]+)"
 )
 _EMAIL = re.compile(r"\b[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}\b")
-_HANDLE = re.compile(r"(?<![\w/@.])@[A-Za-z0-9](?:[A-Za-z0-9\-]{0,38})\b")
+# A handle such as @someone. The "@sha256:" in a container image digest is not a handle.
+_HANDLE = re.compile(r"(?<![\w/@.])@(?!(?:sha1|sha224|sha256|sha384|sha512):)[A-Za-z0-9](?:[A-Za-z0-9\-]{0,38})\b")
 _IPV4 = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
 _HOSTNAME = re.compile(
     r"\b(?:[A-Za-z0-9](?:[A-Za-z0-9\-]{0,61}[A-Za-z0-9])?\.)+"
@@ -101,6 +102,41 @@ def _entropy(s: str) -> float:
     counts = Counter(s)
     n = len(s)
     return -sum(c / n * math.log2(c / n) for c in counts.values())
+
+
+# A GitHub diff anchor: a file hash followed by L or R and a line number.
+_DIFF_ANCHOR = re.compile(r"^[0-9a-f]{40,64}[LR]\d+$")
+_PIECE_SPLIT = re.compile(r"[+_\-=.]+")
+_WORD_RUN = re.compile(r"[A-Z]?[a-z]{2,}|[A-Z]{2,}(?![a-z])")
+
+
+def _wordlike(piece: str) -> bool:
+    """True when a piece reads as words, e.g. ``DuringSchedulingIgnored`` or ``KUBERNETES``.
+
+    Random tokens switch case and digits every one or two characters, so few of their letters
+    fall in word-like runs.
+    """
+    letters = sum(ch.isalpha() for ch in piece)
+    if letters == 0:
+        return False
+    covered = sum(len(m.group(0)) for m in _WORD_RUN.finditer(piece))
+    return covered / letters >= 0.8
+
+
+def _random_piece(span: str) -> bool:
+    """True when a long span contains a piece that looks like a random secret.
+
+    Ordinary identifiers in logs and code (URL-encoded test names, Go function names, package
+    paths, environment variable names, diff anchors) are joined from short or word-like pieces
+    and are not treated as possible secrets.
+    """
+    for piece in _PIECE_SPLIT.split(span):
+        if len(piece) < 16 or _HEX_ID.match(piece) or _DIFF_ANCHOR.match(piece) or _wordlike(piece):
+            continue
+        if (_entropy(piece) >= 3.5 and re.search(r"\d", piece) and re.search(r"[A-Z]", piece)
+                and re.search(r"[a-z]", piece)):
+            return True
+    return False
 
 
 @dataclass
@@ -174,11 +210,16 @@ class Redactor:
             if _entropy(s) >= 4.0:
                 result.add("high_entropy")
                 return "[REDACTED:high_entropy]"
-            if _entropy(s) >= 3.5 and re.search(r"\d", s) and re.search(r"[A-Z]", s) and re.search(r"[a-z]", s):
+            if (_entropy(s) >= 3.5 and re.search(r"\d", s) and re.search(r"[A-Z]", s) and re.search(r"[a-z]", s)
+                    and _random_piece(s)):
                 result.unclassified.append(s[:6] + "...")
             return s
 
         t = _CANDIDATE_SECRET.sub(candidate, t)
+        # Earlier replacements can expose a new "@name" (for example "...]@name" once the text
+        # before it was replaced). A final pass keeps redaction and the residual scan in step.
+        t, n = _HANDLE.subn("[REDACTED:handle]", t)
+        result.add("handle", n)
         result.text = t
         return result
 
