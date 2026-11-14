@@ -18,6 +18,7 @@ import {
 } from "../components/common";
 import { Icon, ScoutEmblem, SentinelEmblem } from "../components/icons";
 import { Related } from "../components/related";
+import { DatasetName } from "../components/dataset";
 import type { Notification, QueueEntry, TaskView } from "../api/types";
 import { IdDetails } from "../components/common";
 import { Link } from "../lib/router";
@@ -36,7 +37,7 @@ export function RunList() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Run</th><th>Status</th><th>Started by</th><th>Snapshot</th><th className="num">Reports</th></tr>
+              <tr><th>Run</th><th>Status</th><th>Started by</th><th>Data as of</th><th className="num">Reports</th></tr>
             </thead>
             <tbody>
               {paged.slice.map((r) => (
@@ -44,7 +45,7 @@ export function RunList() {
                   <td className="mono"><Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link></td>
                   <td><StatusPill status={r.run_status} /></td>
                   <td>{describeStarter(r)}</td>
-                  <td className="mono">{r.snapshot_id}</td>
+                  <td><DatasetName id={r.snapshot_id} /></td>
                   <td className="num">{r.reports.length}</td>
                 </tr>
               ))}
@@ -205,7 +206,7 @@ export function RunDetail({ runId }: { runId: string }) {
           <dl className="facts">
             <dt>Status</dt><dd>{r.run_status}{r.hold_reason ? ` (held: ${r.hold_reason})` : ""}</dd>
             <dt>Started by</dt><dd>{describeStarter(r)}</dd>
-            <dt>Data set</dt><dd className="mono">{r.snapshot_id}</dd>
+            <dt>Data as of</dt><dd><DatasetName id={r.snapshot_id} /></dd>
             <dt>Version</dt>
             <dd>
               {r.authoritative_generation ? `generation ${r.authoritative_generation}` : "not verified yet"}

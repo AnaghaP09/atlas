@@ -3,6 +3,8 @@ import type { Envelope } from "../api/types";
 import { useApi } from "../app/context";
 import { Button, Empty, ErrorView, Loading, Pagination, Section, Segmented, Tabs, usePaged } from "../components/common";
 import type { SnapshotItem } from "./Home";
+import { DatasetPicker, kindOf, visibleDatasets } from "../components/dataset";
+import { useRouter } from "../lib/router";
 
 // ---------- Data ----------
 
@@ -258,7 +260,7 @@ interface Box {
 
 type LinkMode = "key" | "all" | "none";
 
-function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdge[]; limitation?: string }) {
+function GraphCanvas({ nodes, edges, limitation, initialFocus }: { nodes: GNode[]; edges: GEdge[]; limitation?: string; initialFocus?: string | null }) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [progress, setProgress] = useState(0);
@@ -300,7 +302,7 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
     [fanIn],
   );
 
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialFocus ?? null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [links, setLinks] = useState<LinkMode>("key");
   const [showTest, setShowTest] = useState(false);
@@ -576,7 +578,7 @@ function IssueTable({ nodes }: { nodes: GNode[] }) {
 
 type View = "graph" | "components" | "issues";
 
-function GraphPicture({ snapshotId }: { snapshotId: string }) {
+function GraphPicture({ snapshotId, focus }: { snapshotId: string; focus: string | null }) {
   const g = useApi<RawGraph>(`/api/graph/${encodeURIComponent(snapshotId)}`);
   const [view, setView] = useState<View>("graph");
   const data = useMemo(() => (g.data ? normalise(g.data) : null), [g.data]);
@@ -586,7 +588,7 @@ function GraphPicture({ snapshotId }: { snapshotId: string }) {
   const comps = data.nodes.filter((n) => n.kind === "component").length;
   const issues = data.nodes.filter((n) => n.kind === "issue").length;
   if (comps === 0)
-    return <Empty>This snapshot has no component graph. Pick a release close snapshot, for example release-close-v1.9.0.</Empty>;
+    return <Empty>No component graph for this point in time. Pick a release.</Empty>;
   return (
     <>
       <Tabs<View>
@@ -599,7 +601,7 @@ function GraphPicture({ snapshotId }: { snapshotId: string }) {
           { value: "issues", label: "Open issues", count: issues },
         ]}
       />
-      {view === "graph" ? <GraphCanvas nodes={data.nodes} edges={data.edges} limitation={g.data?.limitation} /> : null}
+      {view === "graph" ? <GraphCanvas nodes={data.nodes} edges={data.edges} limitation={g.data?.limitation} initialFocus={focus} /> : null}
       {view === "components" ? <ComponentTable nodes={data.nodes} edges={data.edges} /> : null}
       {view === "issues" ? <IssueTable nodes={data.nodes} /> : null}
     </>
@@ -609,8 +611,9 @@ function GraphPicture({ snapshotId }: { snapshotId: string }) {
 export function Graph() {
   const snaps = useApi<{ snapshots: SnapshotItem[]; data_mode?: string }>("/api/snapshots");
   const list = snaps.data?.snapshots ?? [];
-  const firstRelease = list.filter((s) => s.kind === "releases").map((s) => s.snapshot_id).sort().pop() ?? "";
-  const [chosen, setChosen] = useState<string | null>(null);
+  const { search } = useRouter();
+  const firstRelease = visibleDatasets(list).filter((s) => kindOf(s) === "release").map((s) => s.snapshot_id).sort().pop() ?? "";
+  const [chosen, setChosen] = useState<string | null>(search.get("snapshot"));
   const selected = chosen ?? firstRelease;
   return (
     <Section
@@ -618,20 +621,12 @@ export function Graph() {
       icon="graph"
       mode={snaps.data?.data_mode}
       end={
-        <label className="top-field">
-          Snapshot
-          <select value={selected} onChange={(e) => setChosen(e.target.value)} aria-label="Snapshot">
-            <option value="">Choose a snapshot</option>
-            {list.map((s) => (
-              <option key={s.snapshot_id} value={s.snapshot_id}>{s.snapshot_id}</option>
-            ))}
-          </select>
-        </label>
+        <span className="top-field"><DatasetPicker value={selected} onChange={setChosen} list={list} /></span>
       }
     >
       {snaps.isLoading ? <Loading what="snapshots" /> : <ErrorView error={snaps.error} />}
-      {snaps.data && list.length === 0 ? <Empty>No snapshots yet. Freeze one from live data on Run now.</Empty> : null}
-      {selected ? <GraphPicture key={selected} snapshotId={selected} /> : null}
+      {snaps.data && list.length === 0 ? <Empty>No data sets yet.</Empty> : null}
+      {selected ? <GraphPicture key={selected} snapshotId={selected} focus={search.get("focus")} /> : null}
     </Section>
   );
 }

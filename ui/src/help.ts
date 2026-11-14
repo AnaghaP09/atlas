@@ -26,6 +26,7 @@ export const HELP_SLUG: Record<string, string> = {
   evaluation: "quality-checks",
   demo: "guided-demo",
   data_labels: "glossary",
+  data_as_of: "data-as-of",
 };
 
 /** Guide pages that must exist in the docs for every help link to show. */

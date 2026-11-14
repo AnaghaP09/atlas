@@ -3,6 +3,7 @@ import { useApi } from "../app/context";
 import { DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Time } from "../components/common";
 import { Link } from "../lib/router";
 import { useCurrentProject, type ActivityItem } from "./Dashboard";
+import { DATASET_GROUPS, kindOf, visibleDatasets } from "../components/dataset";
 
 export interface SnapshotItem {
   snapshot_id: string;
@@ -13,50 +14,51 @@ export interface SnapshotItem {
   alias_variant?: string | null;
   records?: number;
   data_mode?: string;
-}
-
-const GROUPS: { kind: string; title: string; help: string }[] = [
-  { kind: "releases", title: "Releases", help: "" },
-  { kind: "cases", title: "Test cases", help: "" },
-  { kind: "releases-aliased", title: "Releases, names hidden", help: "" },
-  { kind: "cases-aliased", title: "Test cases, names hidden", help: "" },
-];
-
-export function groupSnapshots(snaps: SnapshotItem[]) {
-  const known = new Set(GROUPS.map((g) => g.kind));
-  const groups = GROUPS.map((g) => ({ ...g, items: snaps.filter((s) => s.kind === g.kind) })).filter((g) => g.items.length);
-  const other = snaps.filter((s) => !s.kind || !known.has(s.kind));
-  if (other.length) groups.push({ kind: "other", title: "Frozen from live data", help: "", items: other });
-  return groups;
+  title?: string;
+  display_kind?: "release" | "case" | "live" | string;
+  is_test_copy?: boolean;
+  as_of?: string | null;
+  as_of_label?: string;
+  open_issues?: number | null;
+  linked_issues?: number | null;
 }
 
 function DataAvailable() {
   const snaps = useApi<{ snapshots: SnapshotItem[] } & Envelope>("/api/snapshots");
-  if (snaps.isLoading) return <Loading what="snapshots" />;
+  if (snaps.isLoading) return <Loading what="data sets" />;
   if (snaps.error) return <ErrorView error={snaps.error} />;
-  const list = snaps.data?.snapshots ?? [];
-  if (list.length === 0)
-    return <Empty action={{ to: "/run-now", label: "Open Run now" }}>No data sets yet.</Empty>;
+  const list = visibleDatasets(snaps.data?.snapshots ?? []);
+  if (list.length === 0) return <Empty action={{ to: "/run-now", label: "Open Run now" }}>No data sets yet.</Empty>;
   return (
     <>
-      {groupSnapshots(list).map((g) => (
-        <div className="data-group" key={g.kind}>
-          <h3>
-            {g.title} <span className="pill pill-neutral num">{g.items.length}</span>
-          </h3>
-          {g.items.map((s) => (
-            <div className="snap-row" key={s.snapshot_id}>
-              <span className="snap-id">{s.snapshot_id}</span>
-              <span className="muted num">{typeof s.records === "number" ? `${s.records.toLocaleString()} records` : ""}</span>
-              {g.kind === "releases" ? (
-                <Link to={`/run-now?snapshot=${encodeURIComponent(s.snapshot_id)}`} className="btn btn-sm btn-secondary">Release close</Link>
-              ) : (
-                <DataModeBadge mode={s.data_mode ?? "REAL"} />
-              )}
-            </div>
-          ))}
-        </div>
-      ))}
+      {DATASET_GROUPS.map((g) => {
+        const items = list.filter((s) => kindOf(s) === g.kind);
+        if (!items.length) return null;
+        return (
+          <div className="data-group" key={g.kind}>
+            <h3>
+              {g.title} <span className="pill pill-neutral num">{items.length}</span>
+            </h3>
+            {items.map((s) => (
+              <div className="snap-row" key={s.snapshot_id}>
+                <span>
+                  <strong>{s.title ?? "Data set"}</strong>
+                  <span className="muted"> · as of {s.as_of_label ?? "—"}</span>
+                </span>
+                <span className="muted num">
+                  {g.kind === "release" && typeof s.open_issues === "number" ? `${s.open_issues} open issues` : null}
+                  {g.kind === "case" && typeof s.linked_issues === "number" ? `${s.linked_issues} linked issues` : null}
+                </span>
+                {g.kind === "release" ? (
+                  <Link to={`/run-now?snapshot=${encodeURIComponent(s.snapshot_id)}`} className="btn btn-sm btn-secondary">Release close</Link>
+                ) : (
+                  <DataModeBadge mode={s.data_mode ?? "REAL"} />
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -95,13 +97,14 @@ export function Home() {
   const runList = runs.data?.runs ?? [];
   const tripped = (containment.data?.switches ?? []).filter((s) => s.state !== "ok").length;
   const unread = (notes.data?.notifications ?? []).filter((n) => !n.acknowledged).length;
-  const releaseSnaps = (snaps.data?.snapshots ?? []).filter((s) => s.kind === "releases");
-  const records = (snaps.data?.snapshots ?? []).reduce((n, s) => n + (s.records ?? 0), 0);
+  const visible = visibleDatasets(snaps.data?.snapshots ?? []);
+  const releaseSnaps = visible.filter((s) => kindOf(s) === "release");
+  const latest = releaseSnaps.slice().sort((a, b) => String(b.as_of ?? "").localeCompare(String(a.as_of ?? "")))[0];
 
   return (
     <>
       <div className="kpis">
-        <KpiTile icon="database" label="Data sets" value={snaps.data ? snaps.data.snapshots.length : "—"} hint={snaps.data ? `${records.toLocaleString()} records · ${releaseSnaps.length} releases` : undefined} />
+        <KpiTile icon="database" label="Open issues at latest release" value={latest && typeof latest.open_issues === "number" ? latest.open_issues : "—"} hint={latest ? `${latest.title} · ${latest.as_of_label}` : undefined} />
         <KpiTile icon="list" tone="teal" label="Runs" value={runs.data ? runList.length : "—"} hint={runs.data ? `${runList.filter((r) => r.run_status === "complete").length} done` : undefined} />
         <KpiTile icon="hand" tone={queue.data && queue.data.entries.length ? "warn" : "good"} label="Needs a person" value={queue.data ? queue.data.entries.length : "—"} hint="waiting for a decision" />
         <KpiTile icon="power" tone={tripped ? "critical" : "good"} label="Kill switches tripped" value={containment.data ? tripped : "—"} hint={containment.error ? "not visible to your role" : `of ${containment.data?.switches.length ?? 0} switches`} />

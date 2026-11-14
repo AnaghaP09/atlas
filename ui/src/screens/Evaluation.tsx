@@ -3,6 +3,8 @@ import type { Evaluation as EvaluationView, Gate } from "../api/types";
 import { useApi } from "../app/context";
 import { DataModeBadge, Empty, ErrorView, Loading, Section, Time } from "../components/common";
 import { PROXY_NOTE } from "./Reports";
+import type { SnapshotItem } from "./Home";
+import { datasetLine } from "../components/dataset";
 
 const pct = (v?: number) => (typeof v === "number" ? `${Math.round(v * 100)}%` : "—");
 
@@ -54,6 +56,23 @@ export function GateRow({ gate }: { gate: Gate }) {
   );
 }
 
+function TestCopies() {
+  const snaps = useApi<{ snapshots: SnapshotItem[] }>("/api/snapshots");
+  const copies = (snaps.data?.snapshots ?? []).filter((s) => s.is_test_copy || (s.kind ?? "").endsWith("-aliased"));
+  if (!copies.length) return null;
+  return (
+    <Section title="Test copies" icon="database" end={<span className="pill pill-neutral" title="Names disguised for testing">Names disguised</span>}>
+      <ul className="list">
+        {copies.map((s) => (
+          <li key={s.snapshot_id}>
+            <span className="grow">{datasetLine(s)}</span>
+          </li>
+        ))}
+      </ul>
+    </Section>
+  );
+}
+
 export function Evaluation() {
   const data = useApi<EvaluationView>("/api/evaluations/latest");
   const none = data.error instanceof ApiError && data.error.status === 404;
@@ -83,6 +102,7 @@ export function Evaluation() {
           </>
         ) : null}
       </Section>
+      <TestCopies />
     </>
   );
 }

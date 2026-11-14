@@ -5,6 +5,7 @@ import { ActionResult, Empty, ErrorView, Loading } from "../components/common";
 import { Icon } from "../components/icons";
 import { Link, useRouter } from "../lib/router";
 import type { SnapshotItem } from "./Home";
+import { DatasetPicker } from "../components/dataset";
 
 /** "release-close-v1.9.0" -> "v1.9.0", so a chosen snapshot also fills in its release. */
 export function releaseOf(snapshotId: string): string {
@@ -46,19 +47,8 @@ function TriggerForm({ trigger, snapshots, preset }: { trigger: ManualTrigger; s
       </div>
       {trigger.parameters.map((p) =>
         p.name === "snapshot_id" && snapshots.length ? (
-          <label key={p.name}>
-            Snapshot{p.required ? " (required)" : ""}
-            <select name={p.name} value={values[p.name] ?? ""} onChange={(e) => set(p.name, e.target.value)}>
-              <option value="">Choose a snapshot</option>
-              {snapshots.map((s) => (
-                <option key={s.snapshot_id} value={s.snapshot_id}>
-                  {s.snapshot_id}
-                  {typeof s.records === "number" ? ` (${s.records.toLocaleString()} records)` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : (
+          <DatasetPicker key={p.name} value={values[p.name] ?? ""} onChange={(v) => set(p.name, v)} list={snapshots} />
+        ) : p.name === "release_id" && hasSnapshot ? null : (
           <label key={p.name}>
             {p.name.replace(/_/g, " ")}
             {p.required ? " (required)" : ""}
