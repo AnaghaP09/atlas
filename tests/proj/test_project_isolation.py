@@ -268,3 +268,19 @@ def test_stream_events_of_other_projects_never_reach_a_reader(services):
     feed.record_activity("argo-cd", {"kind": "issue", "title": "theirs"})
     _, events = services.hub.read(PROJECT_STREAM, principal_for("pm", project_id="kubevirt"))
     assert events == []
+
+
+def test_task_store_restart_keeps_each_projects_tasks(tmp_path):
+    from atlas.execution.db import OpsDB
+    from atlas.tasks import TaskStore
+
+    env = make_env(db_path=tmp_path / "ops.sqlite")
+    common = dict(run_id="run-1", generation=1, action="DELEGATE_TO_CODING_AGENT", task_class="c", task_text="t",
+                  scope=["a.go"], destination_repo="owner/sandbox", destination_node_id="n", base_ref="main",
+                  base_commit="b", snapshot_id="s", policy_version="p", scanner=env.scanner, gate=env.gate, now=env.now)
+    k = env.tasks.create(**common, project_id="kubevirt", idempotency_key="key-1")
+    a = env.tasks.create(**common, project_id="argo-cd", idempotency_key="key-1")
+    env.tasks.db.close()
+    reopened = TaskStore(OpsDB(tmp_path / "ops.sqlite"))
+    assert [t.task_id for t in reopened.for_project("kubevirt")] == [k.task_id]
+    assert [t.task_id for t in reopened.for_project("argo-cd")] == [a.task_id]
