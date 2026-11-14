@@ -123,7 +123,7 @@ To run the tests, install `requirements-dev.txt` in the same way. Then run `pyth
 
 ## About this project
 
-Swetha, Bhuneshwari and Anagha built ATLAS as a team capstone project.
+ATLAS was built by a small team as a capstone project.
 
 ## Licence
 
