@@ -46,6 +46,47 @@ def private_paths(data_dir: Path) -> dict[str, Path]:
     return {"local": local, "projects": local / "projects.toml", "users": local / "users.toml"}
 
 
+def _section_header(project: str) -> str:
+    key = project if re.fullmatch(r"[A-Za-z0-9_-]+", project) and "-" not in project else f'"{project}"'
+    return f"[projects.{key}.export]"
+
+
+def grant_publish_target(projects_file: Path, project: str, target: str) -> bool:
+    """Give ``project`` an export grant to publish to ``target`` when it has none yet.
+
+    Only an empty ``publish_targets`` list in that project's export section is filled; a list the
+    owner already edited is left as it is. Returns True when the file changed."""
+    if not target or "<" in target or "/" not in target:
+        return False
+    text = projects_file.read_text(encoding="utf-8")
+    data = tomllib.loads(text)
+    current = (((data.get("projects") or {}).get(project) or {}).get("export") or {}).get("publish_targets")
+    if current:
+        return False
+    header = _section_header(project)
+    lines = text.splitlines()
+    out, in_section, done = [], False, False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("["):
+            if in_section and not done:
+                out.append(f'publish_targets = ["{target}"]')
+                done = True
+            in_section = stripped == header
+        if in_section and not done and re.fullmatch(r"publish_targets\s*=\s*\[\s*\]", stripped):
+            out.append(f'publish_targets = ["{target}"]')
+            done = True
+            continue
+        out.append(line)
+    if not done:
+        if not in_section:
+            out += ["", header]
+        out.append(f'publish_targets = ["{target}"]')
+    projects_file.write_text("\n".join(out) + "\n", encoding="utf-8")
+    tomllib.loads(projects_file.read_text(encoding="utf-8"))  # still valid TOML
+    return True
+
+
 def project_ids(projects_file: Path) -> list[str]:
     data = tomllib.loads(projects_file.read_text(encoding="utf-8"))
     return sorted((data.get("projects") or {}).keys())
@@ -99,6 +140,9 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, system: str | None = N
     if not projects:
         print("No projects are defined. Add at least one project, then run setup again.", file=out)
         return 2
+    target = (env.get("ATLAS_PUBLISH_TARGET") or "").strip()
+    if grant_publish_target(paths["projects"], projects[0], target):
+        print(f"- Let project '{projects[0]}' publish to {target} (from ATLAS_PUBLISH_TARGET).", file=out)
 
     updates = {"ATLAS_IDENTITY": "local", "ATLAS_ORG_SLUG": org, "ATLAS_DEFAULT_PROJECT": projects[0]}
     set_env_values(env_path, {k: v for k, v in updates.items() if k != "ATLAS_ORG_SLUG"}, overwrite=False)

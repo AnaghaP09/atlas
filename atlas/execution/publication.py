@@ -42,7 +42,8 @@ class PublicationStopped(RuntimeError):
 class Publisher:
     def __init__(self, db: OpsDB, tasks: TaskStore, approvals: ApprovalService, eligibility: Eligibility,
                  api: PublicationAPI, projection: Projection, base_tree: Callable[[Any], dict[str, str]],
-                 containment: ContainmentStore) -> None:
+                 containment: ContainmentStore,
+                 publish_grant: Callable[[str | None, str], bool] | None = None) -> None:
         self.db = db
         self.tasks = tasks
         self.approvals = approvals
@@ -51,6 +52,8 @@ class Publisher:
         self.projection = projection
         self.base_tree = base_tree
         self.containment = containment
+        # The project's export grant (publish_targets in the projects file), checked before every step.
+        self.publish_grant = publish_grant
 
     # -- journal -------------------------------------------------------------------------------
 
@@ -80,7 +83,7 @@ class Publisher:
         return artefacts.verify_outgoing(
             self.projection, frozen, self.base_tree(task), changes,
             commit_message=frozen.get("commit_message", ""), title=frozen.get("title", ""), body=frozen.get("body", ""),
-            field_scopes=frozen.get("field_scopes") or None,
+            field_scopes=frozen.get("field_scopes") or None, project_id=task.project_id or None,
         )
 
     def _gate(self, task_id: str, now: datetime) -> None:
@@ -89,6 +92,8 @@ class Publisher:
             raise PublicationRefused(["publication to an upstream project repository is never allowed"])
         if task.support_status == "withdrawn":
             raise PublicationRefused(["support for the task was withdrawn"])
+        if self.publish_grant is not None and not self.publish_grant(task.project_id or None, task.destination_repo):
+            raise PublicationRefused([f"the project has no export grant to publish to {task.destination_repo}"])
         mismatch = self.outgoing_problems(task)
         if mismatch:
             self.approvals.void_task(task_id, "artefact changed after Approval B", now)
