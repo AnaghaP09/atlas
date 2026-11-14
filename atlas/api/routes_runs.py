@@ -12,6 +12,7 @@ from atlas.api.identity import principal_of, require_role
 from atlas.api.ports import NotWired, Refused
 from atlas.api.support import ApiError, check_project, envelope, idempotent, services_of
 from atlas.contracts import StartedBy, StartedByKind
+from atlas.projects import ANY_PROJECT
 from atlas.reports import REPORT_TYPES, render
 from atlas.scheduler import manual_admission
 
@@ -26,11 +27,16 @@ REPORTS_FOR = {
 
 # ------------------------------------------------------------------ helpers
 
-def _project(s: Any, body: dict[str, Any]) -> str:
-    project_id = body.get("project_id") or s.default_project_id
-    if not project_id:
-        raise ApiError(400, "project_required", "name the project (project_id) or set a default project in the configuration")
-    return str(project_id)
+def _project(principal: Any, s: Any = None, body: dict[str, Any] | None = None) -> str:
+    """The project a request acts in comes from the caller's identity (the ``project_id`` query or
+    path parameter checked against membership), never from the request body. Only a demo caller in
+    an installation with no projects configured may name one in the body."""
+    if principal.project_id == ANY_PROJECT:
+        return str((body or {}).get("project_id") or (s.default_project_id if s is not None else "") or "")
+    if not principal.project_id:
+        raise ApiError(400, "project_required",
+                       "name the project (?project_id=...) or set a default project in the configuration")
+    return str(principal.project_id)
 
 
 def _availability(request: Request, principal: Any, trigger: cat.ManualTrigger) -> tuple[bool, str | None]:
@@ -58,11 +64,12 @@ def _admit(request: Request, principal: Any, trigger_id: str, trigger: dict[str,
            body: dict[str, Any]):
     s = services_of(request)
     _require_available(request, principal, trigger_id)
-    _snapshot(request, principal, snapshot_id)
+    snap = _snapshot(request, principal, snapshot_id)
+    project_id = str(snap.get("project_id") or "") if principal.project_id == ANY_PROJECT else _project(principal)
 
     def effect(key: str) -> tuple[int, dict[str, Any]]:
         sb = StartedBy(kind=StartedByKind.PERSON, role=principal.role)
-        adm = manual_admission(s.admissions, key, trigger, snapshot_id, sb)
+        adm = manual_admission(s.admissions, key, trigger, snapshot_id, sb, project_id=project_id)
         s.audit.record(principal.role.value, f"trigger.{trigger_id}", adm.run_id, body)
         s.run_in_background(s.dispatcher.dispatch_pending)
         return 202, envelope(request, principal, {"run_id": adm.run_id, "status": "admitted",
@@ -86,7 +93,7 @@ def run_view(request: Request, run_id: str) -> dict[str, Any] | None:
     view: dict[str, Any] = {
         "run_id": run_id, "admission_status": adm.status, "hold_reason": adm.hold_reason,
         "trigger": adm.trigger, "started_by": adm.started_by, "snapshot_id": adm.snapshot_id,
-        "project_id": (snap or {}).get("project_id"),
+        "project_id": adm.project_id or (snap or {}).get("project_id"),
         "authoritative_generation": gen,
         "superseded_generations": list(range(1, gen)) if gen else [],
         "run_status": (artefact or {}).get("run_status") or ("failed" if run_id in s.run_errors else "pending"),
@@ -195,7 +202,8 @@ def _schedule_view(s: Any, watcher_id: str) -> dict[str, Any]:
     w = s.scheduler.watchers[watcher_id]
     state = "enabled" if st["enabled"] and not st.get("paused_reason") else ("paused" if st["enabled"] or st.get("paused_reason") else "disabled")
     return {"schedule_id": watcher_id, "kind": w.kind, "state": state, "reason": st.get("paused_reason"),
-            "last_run": st.get("last_run"), "last_event_id": st.get("last_event"), "next_run": None}
+            "last_run": st.get("last_run"), "last_event_id": st.get("last_event"), "next_run": None,
+            "project_id": getattr(w, "project_id", "") or None}
 
 
 @router.get("/schedules")
@@ -212,6 +220,8 @@ def schedule_action(request: Request, schedule_id: str, action: str, body: dict[
     s = services_of(request)
     if schedule_id not in s.scheduler.watchers:
         raise ApiError(404, "not_found", "schedule not found")
+    check_project(request, principal, {"project_id": getattr(s.scheduler.watchers[schedule_id], "project_id", "")},
+                  "schedule")
     if action not in {"enable", "pause", "run-once"}:
         raise ApiError(404, "not_found", "unknown schedule action")
 
@@ -244,7 +254,7 @@ def ingest(request: Request, body: dict[str, Any] = Body(...)):
         raise ApiError(403, "offline", "live ingestion is not possible in Offline mode")
 
     def effect(key: str) -> tuple[int, dict[str, Any]]:
-        out = dict(s.snapshots.ingest(list(body.get("sources", [])), _project(s, body)))
+        out = dict(s.snapshots.ingest(list(body.get("sources", [])), _project(principal, s, body)))
         s.audit.record(principal.role.value, "ingest", out.get("ingest_id", ""), body)
         return 202, envelope(request, principal, out)
 
@@ -258,7 +268,7 @@ def freeze(request: Request, body: dict[str, Any] = Body(...)):
     s = services_of(request)
 
     def effect(key: str) -> tuple[int, dict[str, Any]]:
-        out = dict(s.snapshots.freeze(_project(s, body)))
+        out = dict(s.snapshots.freeze(_project(principal, s, body)))
         s.audit.record(principal.role.value, "snapshot.freeze", out.get("snapshot_id", ""), body)
         return 201, envelope(request, principal, out)
 
@@ -268,7 +278,8 @@ def freeze(request: Request, body: dict[str, Any] = Body(...)):
 @router.get("/snapshots")
 def snapshots(request: Request, release: str | None = Query(None)) -> dict[str, Any]:
     principal = principal_of(request)
-    items = [dict(x) for x in services_of(request).snapshots.list(release=release)]
+    pid = None if principal.project_id == ANY_PROJECT else principal.project_id
+    items = [dict(x) for x in services_of(request).snapshots.list(release=release, project_id=pid)]
     return envelope(request, principal, {"snapshots": items})
 
 
@@ -294,7 +305,8 @@ def runs(request: Request) -> dict[str, Any]:
     s = services_of(request)
     from atlas.scheduler import ADMITTED, DISPATCHED, DISPATCHING, HELD
 
-    items = [run_view(request, a.run_id) for a in s.admissions.by_status(ADMITTED, HELD, DISPATCHING, DISPATCHED)]
+    items = [run_view(request, a.run_id) for a in s.admissions.by_status(ADMITTED, HELD, DISPATCHING, DISPATCHED)
+             if principal.project_id == ANY_PROJECT or (a.project_id or None) in (None, principal.project_id)]
     return envelope(request, principal, {"runs": [i for i in items if i is not None]})
 
 

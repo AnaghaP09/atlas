@@ -51,11 +51,15 @@ class HumanQueue:
             "reason TEXT, evidence TEXT, required_scopes TEXT, status TEXT, created TEXT, "
             "UNIQUE(trig, subject_id, run_id))"
         )
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(queue)").fetchall()}
+        if "project_id" not in cols:
+            self._db.execute("ALTER TABLE queue ADD COLUMN project_id TEXT NOT NULL DEFAULT ''")
         self._lock = threading.Lock()
         self.clock = clock
 
     def add(self, trigger: str, subject_id: str, run_id: str | None, reason: str,
-            evidence: Sequence[Mapping[str, Any]] = (), required_scopes: Sequence[str] = ("internal",)) -> tuple[str, bool]:
+            evidence: Sequence[Mapping[str, Any]] = (), required_scopes: Sequence[str] = ("internal",),
+            project_id: str = "") -> tuple[str, bool]:
         """Add an entry; returns (id, created). A repeat of the same trigger, subject and run is ignored."""
         if trigger not in TRIGGERS:
             raise ValueError(f"unknown queue trigger {trigger}")
@@ -67,18 +71,21 @@ class HumanQueue:
                 return row[0], False
             entry_id = f"q-{uuid.uuid4().hex[:10]}"
             self._db.execute(
-                "INSERT INTO queue VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO queue (id, trig, subject_id, run_id, reason, evidence, required_scopes, status, created,"
+                " project_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (entry_id, trigger, subject_id, run_id, reason, json.dumps(list(evidence), default=str),
-                 json.dumps(sorted(set(required_scopes))), "open", self.clock().isoformat()),
+                 json.dumps(sorted(set(required_scopes))), "open", self.clock().isoformat(), project_id),
             )
             return entry_id, True
 
     def entries(self) -> list[dict[str, Any]]:
         rows = self._db.execute("SELECT * FROM queue ORDER BY created").fetchall()
-        keys = ("id", "trigger", "subject_id", "run_id", "reason", "evidence", "required_scopes", "status", "created")
+        keys = ("id", "trigger", "subject_id", "run_id", "reason", "evidence", "required_scopes", "status", "created",
+                "project_id")
         out = []
         for r in rows:
             d = dict(zip(keys, r))
+            d["project_id"] = d.get("project_id") or None
             d["evidence"] = json.loads(d["evidence"])
             d["required_scopes"] = json.loads(d["required_scopes"])
             out.append(d)

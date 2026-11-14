@@ -95,7 +95,7 @@ def test_uncertain_outcome_is_never_rerun(client, services):
     key = str(uuid.uuid4())
     services.idempotency._db.execute(
         "INSERT INTO idempotency VALUES (?,?,?,?,?,?,?)",
-        (key, "em", "x", "pending", None, None, "2099-01-01T00:00:00+00:00"))
+        (f"kubevirt::{key}", "kubevirt:em", "x", "pending", None, None, "2099-01-01T00:00:00+00:00"))
     r = _investigate(client, key=key)
     assert r.status_code == 409
     assert services.orchestrator.started == []

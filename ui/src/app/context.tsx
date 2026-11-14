@@ -9,6 +9,8 @@ interface AppContextValue {
   identity: IdentityStore;
   client: ApiClient;
   serverId: string;
+  /** The fetch the client uses; live streams use the same one. */
+  fetchImpl?: typeof fetch;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -54,7 +56,7 @@ export function AppProvider({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContext.Provider value={{ identity, client, serverId }}>{children}</AppContext.Provider>
+      <AppContext.Provider value={{ identity, client, serverId, fetchImpl }}>{children}</AppContext.Provider>
     </QueryClientProvider>
   );
 }
@@ -135,15 +137,15 @@ export function useAction<P, R>(path: string) {
 
 /** Subscribes to a live stream for as long as the component is mounted and the identity holds. */
 export function useLiveStream(path: string | null, onEvent: (e: LiveEvent) => void, onReset: () => void) {
-  const { identity } = useApp();
+  const { identity, fetchImpl } = useApp();
   const { epoch } = useIdentity();
   const [status, setStatus] = useState<"live" | "reconnecting" | "closed">("closed");
   useEffect(() => {
     if (!path) return;
-    return openStream({ identity, path, handlers: { onEvent, onReset, onStatus: setStatus } });
+    return openStream({ identity, path, fetchImpl, handlers: { onEvent, onReset, onStatus: setStatus } });
     // The handlers are read through refs by callers; reopening on every render is not wanted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path, identity, epoch]);
+  }, [path, identity, epoch, fetchImpl]);
   return status;
 }
 

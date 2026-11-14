@@ -66,7 +66,8 @@ export const headerIdentity: IdentityProvider = {
     if (principal) h["X-Atlas-Role"] = principal.role;
     return h;
   },
-  scopeQuery: () => ({}),
+  // A selected project is sent on every request, so the server checks the caller in that project.
+  scopeQuery: (projectId): Record<string, string> => (projectId ? { project_id: projectId } : {}),
   onUnauthorised: () => undefined,
 };
 

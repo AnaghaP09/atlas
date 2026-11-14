@@ -16,12 +16,14 @@ from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Callable, Mapping, Sequence
 
+from atlas.projects import ANY_PROJECT
 from atlas.contracts import EVENT_NAMES, Principal
 
 WIRE_FIELDS = ("event", "event_id", "emitted_at", "run_id", "authoritative_generation", "report_version",
                "correction_version", "data")
 RUN_STREAM = "runs"
 NOTIFICATION_STREAM = "notifications"
+PROJECT_STREAM = "projects"
 
 
 def to_wire(producer_event: Mapping[str, Any]) -> dict[str, Any]:
@@ -66,18 +68,21 @@ class StreamHub:
     # --------------------------------------------------------------- publishing
 
     def publish(self, stream: str, wire: Mapping[str, Any], required_scopes: Sequence[str],
-                roles: Sequence[str] | None = None) -> None:
+                roles: Sequence[str] | None = None, project_id: str | None = None) -> None:
+        """Buffer one event. An event that names a project reaches only readers acting in it."""
         if wire["event"] not in EVENT_NAMES or wire["event"] == "stream.reset":
             raise ValueError(f"event {wire['event']!r} cannot be published by a producer")
         entry = {"stream": stream, "wire": {k: wire.get(k) for k in WIRE_FIELDS},
-                 "required_scopes": list(required_scopes), "roles": list(roles) if roles is not None else None}
+                 "required_scopes": list(required_scopes), "roles": list(roles) if roles is not None else None,
+                 "project_id": project_id or None}
         with self._lock:
             self._buf.append(entry)
             self.version += 1
 
     def on_run_event(self, producer_event: Mapping[str, Any]) -> None:
         """Subscriber for the agents layer's event producer."""
-        self.publish(RUN_STREAM, to_wire(producer_event), producer_event.get("required_scopes", ["internal"]))
+        self.publish(RUN_STREAM, to_wire(producer_event), producer_event.get("required_scopes", ["internal"]),
+                     project_id=producer_event.get("project_id") or None)
 
     def on_notification(self, record: Mapping[str, Any]) -> None:
         roles = list(record.get("roles", [])) + list(record.get("backup_roles", []))
@@ -94,12 +99,16 @@ class StreamHub:
                      "severity": record["severity"], "kind": record["kind"], "subject_id": record["subject_id"],
                      "content": content},
         }
-        self.publish(NOTIFICATION_STREAM, wire, record.get("required_scopes", ["internal"]), roles)
+        self.publish(NOTIFICATION_STREAM, wire, record.get("required_scopes", ["internal"]), roles,
+                     project_id=record.get("project_id") or None)
 
     # ---------------------------------------------------------------- reading
 
     def _visible(self, entry: Mapping[str, Any], principal: Principal) -> dict[str, Any] | None:
         if entry["roles"] is not None and (principal.role is None or principal.role.value not in entry["roles"]):
+            return None
+        owner = entry.get("project_id")
+        if owner and principal.project_id not in (owner, ANY_PROJECT):
             return None
         projected = self.projection.project(
             {"required_scopes": entry["required_scopes"], "wire": entry["wire"]}, principal)
@@ -111,10 +120,13 @@ class StreamHub:
         return wire
 
     def read(self, stream: str, principal: Principal, last_event_id: str | None = None,
-             run_id: str | None = None) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-        """Events after ``last_event_id`` for this reader, preceded by a reset when the id fell out."""
+             run_id: str | None = None, project_id: str | None = None) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
+        """Events after ``last_event_id`` for this reader, preceded by a reset when the id fell out.
+
+        ``project_id`` limits a project stream to that project's events."""
         with self._lock:
-            entries = [e for e in self._buf if e["stream"] == stream]
+            entries = [e for e in self._buf if e["stream"] == stream
+                       and (project_id is None or e.get("project_id") == project_id)]
         reset = None
         if last_event_id:
             ids = [e["wire"]["event_id"] for e in entries]

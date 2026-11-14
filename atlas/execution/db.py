@@ -175,7 +175,18 @@ class OpsDB:
         if self.path != ":memory:":
             self._conn.execute("PRAGMA journal_mode = WAL")
         self._conn.executescript(SCHEMA)
+        self._add_project_columns()
         self._depth = 0
+
+    # Tables whose rows belong to one project. The project is stored when the row is written and
+    # every read or change is checked against it; it is never taken from a request.
+    PROJECT_TABLES = ("tasks", "approvals", "scorecard_rows", "correction_authorisations", "corrections")
+
+    def _add_project_columns(self) -> None:
+        for table in self.PROJECT_TABLES:
+            cols = {r[1] for r in self._conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            if "project_id" not in cols:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN project_id TEXT NOT NULL DEFAULT ''")
 
     @property
     def lock(self) -> threading.RLock:

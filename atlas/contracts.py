@@ -176,6 +176,8 @@ EVENT_NAMES: tuple[str, ...] = (
     "notification.created",
     "containment.tripped",
     "containment.resumed",
+    "project.activity",
+    "project.dashboard_changed",
     "stream.reset",
 )
 """Live event names; must match ``schema/events.json`` exactly."""
@@ -197,6 +199,7 @@ class RunContext:
     cutoff: datetime
     alias_variant: str | None
     evidence_clock: datetime
+    project_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -206,6 +209,7 @@ class ValidationContext:
     destination_repo: str
     action_id: str
     published_commit: str
+    project_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -215,6 +219,7 @@ class SecurityContext:
     destination_repo: str
     action_id: str
     scanned_revision: str
+    project_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -226,10 +231,17 @@ class StartedBy:
 
 @dataclass(frozen=True)
 class Principal:
-    """Who is reading. ``role`` is None only for the public publication principal."""
+    """Who is reading, in which project.
+
+    ``role`` is the caller's role in ``project_id``; it is None only for the public publication
+    principal. ``user`` names the signed-in person (None for the demo role header and for the
+    public principal). Objects that carry a ``project_id`` are visible only inside that project.
+    """
 
     role: Role | None
     scopes: frozenset[str]
+    user: str | None = None
+    project_id: str | None = None
 
     @property
     def is_public(self) -> bool:

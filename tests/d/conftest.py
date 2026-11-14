@@ -9,6 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from atlas.api.app import create_app
+from atlas.api.identity import HeaderIdentity
 from atlas.api.services import build_core
 from atlas.orchestrator import RunStore
 from tests.d.fakes import FakeContainmentPort, FakeSnapshots, FakeTasks
@@ -69,7 +70,8 @@ class StubOrchestrator:
 
 @pytest.fixture
 def services():
-    s = build_core()
+    s = build_core(identity=HeaderIdentity(default_project="kubevirt"))
+    s.default_project_id = "kubevirt"
     s.snapshots = FakeSnapshots()
     s.tasks = FakeTasks()
     s.containment = FakeContainmentPort()

@@ -72,7 +72,8 @@ class RunStore:
         c = json.loads(row[1])
         ctx = RunContext(run_id=c["run_id"], snapshot_id=c["snapshot_id"], mode=RunMode(c["mode"]),
                          release_or_case=c["release_or_case"], cutoff=datetime.fromisoformat(c["cutoff"]),
-                         alias_variant=c["alias_variant"], evidence_clock=datetime.fromisoformat(c["evidence_clock"]))
+                         alias_variant=c["alias_variant"], evidence_clock=datetime.fromisoformat(c["evidence_clock"]),
+                         project_id=c.get("project_id") or "")
         return {"ctx": ctx, "trigger": json.loads(row[2]), "started_by": json.loads(row[3]), "raw": json.loads(row[4])}
 
     def authoritative(self, run_id: str) -> tuple[int, dict[str, Any]] | None:
@@ -151,6 +152,7 @@ class Orchestrator:
     def __init__(self, deps: Deps, runs: RunStore | None = None) -> None:
         self.d = deps
         self.runs = runs or RunStore()
+        self._run_project: dict[str, str] = {}
 
     # ------------------------------------------------------------------ helpers
 
@@ -169,7 +171,14 @@ class Orchestrator:
         self.d.events.emit(name, run_id=run_id, authoritative_generation=gen, agent=agent, payload=payload)
 
     def _notify(self, event_type: str, subject: str, text: str, scopes: Sequence[str] = ("internal",)) -> None:
-        self.d.notifier.emit(event_type, subject, [subject], frozenset(scopes), {"text": text, "required_scopes": list(scopes)})
+        """Notify about a run; the notification carries the run's project so only its members see it."""
+        content = {"text": text, "required_scopes": list(scopes)}
+        project_id = self._run_project.get(subject.split(":", 1)[0], "")
+        if project_id:
+            content["project_id"] = project_id
+            self.d.notifier.emit(event_type, subject, [subject], frozenset(scopes), content, project_id=project_id)
+        else:
+            self.d.notifier.emit(event_type, subject, [subject], frozenset(scopes), content)
 
     @staticmethod
     def _scopes_for(evidence_ids: Sequence[str], resolver: EvidenceResolver) -> list[str]:
@@ -184,6 +193,8 @@ class Orchestrator:
     def run(self, run_id: str, ctx: RunContext, trigger: Mapping[str, Any], started_by: StartedBy) -> dict[str, Any]:
         sb = {"kind": str(started_by.kind), "role": str(started_by.role) if started_by.role else None,
               "watcher_id": started_by.watcher_id}
+        if ctx.project_id:
+            self._run_project[run_id] = ctx.project_id
         validate_trigger(trigger, ctx)
         r = route(trigger, trigger.get("queued", []))
         if r.run_type == "refused" and r.policy is not None:
@@ -202,7 +213,7 @@ class Orchestrator:
                 sub = dict(trigger, trigger="failure", event_id=event_id)
                 results.append(self._investigate(f"{run_id}:{event_id}", ctx, sub, sb))
             if r.backlog > BACKLOG_ALERT:
-                self.d.queue.add("nightly_backlog", run_id, run_id, f"{r.backlog} failures carried forward")
+                self.d.queue.add("nightly_backlog", run_id, run_id, f"{r.backlog} failures carried forward", project_id=ctx.project_id)
                 self._notify("nightly.backlog_high", run_id, f"{r.backlog} failures carried forward to the next night")
             return {"run_id": run_id, "nightly": [x["run_id"] for x in results], "carried_forward": list(r.carried_forward),
                     "backlog": r.backlog}
@@ -221,7 +232,7 @@ class Orchestrator:
             inv = scout.run(task)
         except PayloadWithheld:
             out["run_status"] = "failed"
-            self.d.queue.add("payload_withheld", run_id, run_id, "a payload could not be made safe")
+            self.d.queue.add("payload_withheld", run_id, run_id, "a payload could not be made safe", project_id=ctx.project_id)
             self._notify("run.failed", run_id, "Scout stopped: a payload could not be made safe to send")
             return self._finish(run_id, ctx, trigger, sb, out, raw={"claims": []})
         out["cost"].update(steps=inv.steps, tool_calls=inv.tool_calls)
@@ -233,7 +244,7 @@ class Orchestrator:
         if inv.status == "partial":
             out["run_status"] = "partial"
             out["injection_detected"] = injection
-            self.d.queue.add("budget_exceeded", run_id, run_id, f"{inv.budget_exhausted} budget exhausted")
+            self.d.queue.add("budget_exceeded", run_id, run_id, f"{inv.budget_exhausted} budget exhausted", project_id=ctx.project_id)
             self._notify("run.partial", run_id, f"Scout stopped at the {inv.budget_exhausted} budget; the report is partial")
             return self._finish(run_id, ctx, trigger, sb, out, raw={"claims": []})
         res = inv.result or {}
@@ -324,13 +335,15 @@ class Orchestrator:
             out["redactions_applied"] = int(sum(stats.redactions.values()))
             out["egress_attempts"] = int(stats.egress_attempts)
             out["cost"].update(input_tokens=stats.input_tokens, output_tokens=stats.output_tokens, usd=round(stats.cost_usd, 6))
+        if ctx.project_id:
+            out["project_id"] = ctx.project_id
         self.runs.save_run(run_id, ctx, trigger, sb, raw)
         gen = self.runs.write_generation(run_id, out)
         out["authoritative_generation"] = gen
         for trig, reason in triggers_for_run(out):
             if trig in ("budget_exceeded",):
                 continue
-            _, created = self.d.queue.add(trig, run_id, run_id, reason)
+            _, created = self.d.queue.add(trig, run_id, run_id, reason, project_id=ctx.project_id)
             if created and trig in QUEUE_TO_EVENT and trig != "run_unverified":
                 self._notify(QUEUE_TO_EVENT[trig], run_id, reason)
         self._event("run.status_changed", run_id, gen, status=out.get("run_status"))
