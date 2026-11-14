@@ -30,10 +30,13 @@ class IssuesConnector(ReplayConnector):
         number = int(query["number"])
         writer = AUTHORITATIVE_WRITERS[self.source]
         current = self.store.current_live(self.source, f"issue/{number}")
-        _, unchanged = self.reader.rest_conditional(f"/issues/{number}")
-        if unchanged and current is not None:
+        check = self.reader.rest_conditional(f"/issues/{number}")
+        if check.unchanged and current is not None and not check.pending_refresh:
             confirmed = self.store.reconfirm(current.record_id, writer, self.clock(), method="not_modified")
             return [replace(current, confirmed_through=confirmed)]
+        # Changed, unknown, or a newer version seen earlier was never stored: enrich and persist
+        # it now. The validator is committed only after the version is stored, so a failure here
+        # leaves the refresh pending and the stored record ages normally.
         raw = self.reader.issue(number)
         if raw is None:
             return []
@@ -42,6 +45,7 @@ class IssuesConnector(ReplayConnector):
         record, extra = to_record(self.source, asof, cutoff=fetched, fetched_at=fetched, history_complete_through=None, live=True)
         record_id = self.store.put(record, writer, **extra)
         confirmed = self.store.reconfirm(record_id, writer, fetched, method="fetch")
+        self.reader.commit_validator(check.url)
         return [replace(record, record_id=record_id, confirmed_through=confirmed)]
 
 

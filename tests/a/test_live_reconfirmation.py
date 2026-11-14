@@ -116,10 +116,11 @@ def test_changed_content_is_a_new_version_confirmed_by_the_fetch(env):
 def test_bodyless_304_returns_cached_body_and_304_without_cache_is_an_error(env):
     _, fake, connector, _, _, _ = env
     reader = connector.reader
-    body, unchanged = reader.rest_conditional("/issues/42")
-    assert unchanged is False and body["number"] == 42
-    body2, unchanged2 = reader.rest_conditional("/issues/42")
-    assert unchanged2 is True and body2 == body
+    first = reader.rest_conditional("/issues/42")
+    assert first.unchanged is False and first.body["number"] == 42 and first.validator_pending
+    reader.commit_validator(first.url)
+    second = reader.rest_conditional("/issues/42")
+    assert second.unchanged is True and second.body == first.body and not second.pending_refresh
     fresh_reader = GitHubReader(Gateway(lambda m, u, h, b: Response(304, None), sources=EXAMPLE), LIVE_CTX, owner="kubevirt", name="kubevirt")
     with pytest.raises(GitHubError):
         fresh_reader.rest_conditional("/issues/42")
@@ -178,3 +179,60 @@ def test_superseded_version_cannot_be_reconfirmed(tmp_path):
     with pytest.raises(ValueError):
         db.reconfirm("issues:issue/1:r1", "connector.issues", T0)
     db.close()
+
+
+class FlakyEnrichment(GitHubFake):
+    """REST says V2 exists, but GraphQL enrichment fails until told to recover."""
+
+    def __init__(self):
+        super().__init__()
+        self.graphql_fails = False
+
+    def __call__(self, method, url, headers, body):
+        if url.endswith("/graphql") and self.graphql_fails:
+            return Response(502, {"message": "bad gateway"})
+        return super().__call__(method, url, headers, body)
+
+
+def test_failed_enrichment_keeps_refresh_pending_and_never_reconfirms_old_version(tmp_path):
+    clock = {"now": T0}
+    fake = FlakyEnrichment()
+    gateway = Gateway(fake, clock=lambda: clock["now"], sources=EXAMPLE)
+    reader = GitHubReader(gateway, LIVE_CTX, owner="kubevirt", name="kubevirt")
+    registry = SnapshotRegistry(tmp_path / "data")
+    store = registry.store()
+    connector = IssuesConnector(store, reader, clock=lambda: clock["now"])
+    live = ctx(LIVE_SNAPSHOT_ID, mode=RunMode.LIVE)
+    v1 = poll(connector, live)  # V1 stored, its validator committed
+
+    # The issue changes upstream: REST now returns V2 with a new validator; enrichment fails.
+    fake.etag = '"v2"'
+    ISSUE_GRAPHQL["data"]["repository"]["issue"]["body"] = "V2 body"
+    fake.graphql_fails = True
+    try:
+        clock["now"] = T0 + timedelta(minutes=10)
+        with pytest.raises(Exception):
+            poll(connector, live)
+        # Next poll: the server answers 304 for the V2 validator. V1 must NOT be re-confirmed;
+        # the V2 enrichment is retried (and fails again here).
+        clock["now"] = T0 + timedelta(minutes=20)
+        with pytest.raises(Exception):
+            poll(connector, live)
+        assert '"v2"' in fake.conditional_seen
+        assert store.get(live, "issues", "issue/42").record_id == v1.record_id
+        assert store.get(live, "issues", "issue/42").confirmed_through == T0
+        # V1 ages out normally while the refresh is pending.
+        clock["now"] = T0 + timedelta(minutes=70)
+        assert evaluate("issues", store.get(live, "issues", "issue/42").confirmed_through, clock["now"]).status is FreshnessStatus.STALE
+
+        # Enrichment recovers: V2 is stored and confirmed, and only then is its validator committed.
+        fake.graphql_fails = False
+        v2 = poll(connector, live)
+        assert v2.record_id != v1.record_id and v2.confirmed_through == clock["now"]
+        assert store.content(live, v2.record_id)["body"] == "V2 body"
+        clock["now"] = T0 + timedelta(minutes=80)
+        again = poll(connector, live)  # plain 304 now re-confirms V2
+        assert again.record_id == v2.record_id and again.confirmed_through == clock["now"]
+    finally:
+        ISSUE_GRAPHQL["data"]["repository"]["issue"]["body"] = "unchanged body"
+        registry.close()

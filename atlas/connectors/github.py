@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Any
 
 from atlas.connectors import github_queries as Q
@@ -16,6 +17,15 @@ class GitHubError(RuntimeError):
     pass
 
 
+@dataclass(frozen=True)
+class RestResult:
+    body: Any
+    unchanged: bool
+    url: str
+    pending_refresh: bool = False
+    validator_pending: bool = False
+
+
 class GitHubReader:
     """Paginated GitHub reads for one repository. Read-only by construction."""
 
@@ -26,6 +36,7 @@ class GitHubReader:
         self.name = name
         self.connector = connector
         self.validators: dict[str, dict[str, Any]] = {}
+        self.pending_validators: dict[str, dict[str, Any]] = {}
 
     # ------------------------------------------------------------------ transport helpers
 
@@ -39,40 +50,53 @@ class GitHubReader:
         return payload["data"]
 
     def rest(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        body, _ = self.rest_conditional(path, params)
-        return body
+        """Plain GET. Its validator is committed at once (nothing else depends on it)."""
+        result = self.rest_conditional(path, params)
+        if result.validator_pending:
+            self.commit_validator(result.url)
+        return result.body
 
-    def rest_conditional(self, path: str, params: dict[str, Any] | None = None) -> tuple[Any, bool]:
-        """GET with HTTP revalidation. Returns (body, unchanged).
+    def rest_conditional(self, path: str, params: dict[str, Any] | None = None) -> "RestResult":
+        """GET with HTTP revalidation.
 
-        A bodyless ``304 Not Modified`` means the cached body is still current: it is returned
-        from the validator cache with ``unchanged=True``. Any other non-200 status is an error
-        (404 returns None).
+        Validators are two-stage: a validator seen in a 200 response stays *pending* until the
+        caller has enriched and persisted that exact version and calls ``commit_validator``. A
+        bodyless ``304 Not Modified`` is ``unchanged``; when it answers a pending validator the
+        result says ``pending_refresh`` so the caller retries enrichment instead of re-confirming
+        what it already stored. A 304 with no known validator is an error; 404 returns no body.
         """
         query = ""
         if params:
             query = "?" + "&".join(f"{k}={v}" for k, v in params.items())
         url = f"{API}/repos/{self.owner}/{self.name}{path}{query}"
-        cached = self.validators.get(url)
+        pending = self.pending_validators.get(url)
+        known = pending or self.validators.get(url)
         conditional: dict[str, str] = {}
-        if cached:
-            if cached.get("etag"):
-                conditional["If-None-Match"] = cached["etag"]
-            if cached.get("last_modified"):
-                conditional["If-Modified-Since"] = cached["last_modified"]
+        if known:
+            if known.get("etag"):
+                conditional["If-None-Match"] = known["etag"]
+            if known.get("last_modified"):
+                conditional["If-Modified-Since"] = known["last_modified"]
         resp = self.gateway.request(self.connector, "GET", url, self.ctx, conditional=conditional or None)
         if resp.status == 304:
-            if not cached:
+            if not known:
                 raise GitHubError(f"GET {path} returned 304 without a cached body")
-            return cached["body"], True
+            return RestResult(known["body"], True, url, pending_refresh=pending is not None, validator_pending=pending is not None)
         if resp.status == 404:
-            return None, False
+            return RestResult(None, False, url)
         if resp.status != 200:
             raise GitHubError(f"GET {path} failed with status {resp.status}")
         headers = {k.lower(): v for k, v in (resp.headers or {}).items()}
         if headers.get("etag") or headers.get("last-modified"):
-            self.validators[url] = {"etag": headers.get("etag"), "last_modified": headers.get("last-modified"), "body": resp.body}
-        return resp.body, False
+            self.pending_validators[url] = {"etag": headers.get("etag"), "last_modified": headers.get("last-modified"), "body": resp.body}
+            return RestResult(resp.body, False, url, validator_pending=True)
+        return RestResult(resp.body, False, url)
+
+    def commit_validator(self, url: str) -> None:
+        """The version behind the pending validator has been enriched and persisted."""
+        pending = self.pending_validators.pop(url, None)
+        if pending is not None:
+            self.validators[url] = pending
 
     def _vars(self, **extra: Any) -> dict[str, Any]:
         return {"owner": self.owner, "name": self.name, **extra}
