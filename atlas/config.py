@@ -18,7 +18,6 @@ LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 MODEL_PROVIDERS = ("anthropic", "openai_compatible")
 SANDBOX_RUNNERS = ("local_docker", "remote", "none")
 IDENTITY_MODES = ("header", "local", "oidc")
-UPSTREAM_REPOSITORIES = {"kubevirt/kubevirt"}
 
 
 class ConfigError(ValueError):
@@ -122,6 +121,10 @@ class Settings:
     docker_bin: Path | None = None
     go_bin: Path | None = None
     openssl_bin: Path | None = None
+    # Upstream project repositories ATLAS reads from and must never publish to. They come only
+    # from configuration (ATLAS_UPSTREAM_REPOSITORIES and ATLAS_WATCH_REPOSITORY); the projects
+    # file adds its own repositories when it is loaded.
+    upstream_repositories: frozenset[str] = frozenset()
     warnings: tuple[str, ...] = field(default_factory=tuple)
 
     @property
@@ -234,7 +237,11 @@ def load_settings(
         watch_repository = ""
     if publish_target and watch_repository and publish_target.lower() == watch_repository.lower():
         errors.append("ATLAS_PUBLISH_TARGET must not be a watched project repository")
-    if publish_target and publish_target.lower() in UPSTREAM_REPOSITORIES:
+    upstream = {r.strip().lower() for r in get("ATLAS_UPSTREAM_REPOSITORIES").split(",")
+                if r.strip() and "<" not in r and ">" not in r}
+    if watch_repository:
+        upstream.add(watch_repository.lower())
+    if publish_target and publish_target.lower() in upstream:
         errors.append("ATLAS_PUBLISH_TARGET must not be an upstream project repository")
     if publish_target and publish_target.count("/") != 1:
         errors.append("ATLAS_PUBLISH_TARGET must be 'owner/repository'")
@@ -333,6 +340,7 @@ def load_settings(
         webhook_url=Secret(webhook_url),
         webhook_audience=webhook_audience,
         watch_repository=watch_repository,
+        upstream_repositories=frozenset(upstream),
         watch_releases=_bool(env.get("ATLAS_WATCH_RELEASES"), default=False),
         watch_failures=_bool(env.get("ATLAS_WATCH_FAILURES"), default=False),
         failure_poll_minutes=poll,

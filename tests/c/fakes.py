@@ -335,7 +335,8 @@ def make_env(*, sandbox=None, api=None, db_path=None, diff: str = FIX_DIFF) -> E
     trees = DirectoryTreeSource(TARGET)
     preparer = Preparer(tasks, eligibility, CodingAgent(outbound), sandbox, reviewer, projection, trees, containment)
     api = api or FakePublicationAPI()
-    publisher = Publisher(db, tasks, approvals, eligibility, api, projection, preparer.base_tree, containment)
+    publisher = Publisher(db, tasks, approvals, eligibility, api, projection, preparer.base_tree, containment,
+                          upstream_repositories={"example/upstream"})
     evidence = InMemoryEvidence()
     validation = ValidationService(tasks, evidence)
     corrections = CorrectionService(db, containment, PullRequestBodies(api), notifier)

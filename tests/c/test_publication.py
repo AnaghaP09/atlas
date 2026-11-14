@@ -150,7 +150,7 @@ def test_non_executing_sandbox_never_reaches_publication():
 def test_upstream_destination_refused():
     env = _env()
     task = env.to_approved_b()
-    env.db.query("UPDATE tasks SET destination_repo = 'kubevirt/kubevirt' WHERE task_id = ?", (task.task_id,))
+    env.db.query("UPDATE tasks SET destination_repo = 'example/upstream' WHERE task_id = ?", (task.task_id,))
     with pytest.raises(PublicationRefused, match="upstream"):
         env.publisher.publish(task.task_id, env.now)
 

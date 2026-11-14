@@ -26,7 +26,6 @@ from atlas.execution.ports import PublicationAPI
 from atlas.tasks import TaskStore
 
 STEPS = ("push", "pull_request", "description")
-UPSTREAM = {"kubevirt/kubevirt"}
 
 
 class PublicationRefused(RuntimeError):
@@ -43,7 +42,8 @@ class Publisher:
     def __init__(self, db: OpsDB, tasks: TaskStore, approvals: ApprovalService, eligibility: Eligibility,
                  api: PublicationAPI, projection: Projection, base_tree: Callable[[Any], dict[str, str]],
                  containment: ContainmentStore,
-                 publish_grant: Callable[[str | None, str], bool] | None = None) -> None:
+                 publish_grant: Callable[[str | None, str], bool] | None = None,
+                 upstream_repositories: frozenset[str] | set[str] = frozenset()) -> None:
         self.db = db
         self.tasks = tasks
         self.approvals = approvals
@@ -54,6 +54,8 @@ class Publisher:
         self.containment = containment
         # The project's export grant (publish_targets in the projects file), checked before every step.
         self.publish_grant = publish_grant
+        # Repositories ATLAS reads from (from configuration and the projects file); never written to.
+        self.upstream = {r.lower() for r in upstream_repositories}
 
     # -- journal -------------------------------------------------------------------------------
 
@@ -88,7 +90,7 @@ class Publisher:
 
     def _gate(self, task_id: str, now: datetime) -> None:
         task = self.tasks.get(task_id)
-        if task.destination_repo.lower() in UPSTREAM:
+        if task.destination_repo.lower() in self.upstream:
             raise PublicationRefused(["publication to an upstream project repository is never allowed"])
         if task.support_status == "withdrawn":
             raise PublicationRefused(["support for the task was withdrawn"])

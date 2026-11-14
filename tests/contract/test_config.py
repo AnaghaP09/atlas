@@ -54,7 +54,11 @@ def test_ui_origin_must_be_loopback() -> None:
 
 def test_upstream_publish_target_refused() -> None:
     with pytest.raises(ConfigError, match="upstream"):
-        load_settings(env_file=None, environ={"ATLAS_PUBLISH_TARGET": "kubevirt/kubevirt"})
+        load_settings(env_file=None, environ={"ATLAS_PUBLISH_TARGET": "example/upstream",
+                                              "ATLAS_UPSTREAM_REPOSITORIES": "example/upstream, other/project"})
+    # No repository is treated as upstream unless configuration names it.
+    s = load_settings(env_file=None, environ={"ATLAS_PUBLISH_TARGET": "example/upstream"})
+    assert s.upstream_repositories == frozenset()
 
 
 def test_scenarios_only_on_scenario_server() -> None:
