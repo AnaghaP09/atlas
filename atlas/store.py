@@ -542,3 +542,234 @@ def with_writer(record: Record, writer: str) -> Record:
 
 def is_live(ctx: RunContext) -> bool:
     return ctx.mode is RunMode.LIVE and ctx.snapshot_id == LIVE_SNAPSHOT_ID
+
+
+# ---------------------------------------------------------------------------
+# Action-scoped stores: task security evidence and post-publication validation evidence
+# ---------------------------------------------------------------------------
+
+_ACTION_SCHEMA = """
+CREATE TABLE IF NOT EXISTS scan_runs (
+    scan_run_id TEXT PRIMARY KEY,
+    destination TEXT NOT NULL, action_id TEXT NOT NULL, revision TEXT NOT NULL,
+    inventory TEXT NOT NULL, per_module TEXT NOT NULL, completion TEXT NOT NULL,
+    coverage_ok INTEGER NOT NULL, coverage_total INTEGER NOT NULL,
+    observed_at TEXT NOT NULL, confirmed_through TEXT NOT NULL, fresh_until TEXT NOT NULL,
+    finding_ids TEXT NOT NULL, seq INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS findings (
+    finding_id TEXT PRIMARY KEY, scan_run_id TEXT NOT NULL, content TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS ci_observations (
+    destination TEXT NOT NULL, action_id TEXT NOT NULL, published_commit TEXT NOT NULL,
+    job_id TEXT NOT NULL, run_attempt INTEGER NOT NULL, observation_version TEXT NOT NULL,
+    name TEXT, status TEXT, conclusion TEXT, started_at TEXT, completed_at TEXT, head_sha TEXT,
+    arrival INTEGER NOT NULL, observed_at TEXT NOT NULL,
+    PRIMARY KEY (destination, action_id, published_commit, job_id, run_attempt, observation_version)
+);
+CREATE TABLE IF NOT EXISTS validation_evidence (
+    evidence_id TEXT PRIMARY KEY,
+    destination TEXT NOT NULL, action_id TEXT NOT NULL, published_commit TEXT NOT NULL,
+    kind TEXT NOT NULL, content TEXT NOT NULL, writer TEXT NOT NULL, recorded_at TEXT NOT NULL, seq INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS poll_leases (key TEXT PRIMARY KEY, holder TEXT NOT NULL, taken_at TEXT NOT NULL);
+"""
+
+SECURITY_PARTITION_WRITER = "connector.security"
+SECURITY_PARTITION_READERS = frozenset({"security_gate"})
+TARGET_CI_WRITER = "connector.target_ci"
+VALIDATION_EVIDENCE_WRITER = "execution"
+VALIDATION_EVIDENCE_KINDS = frozenset({"check_result", "behavioural_check", "human_adjudication"})
+VALIDATION_READERS = frozenset({"execution", "scorecard", "reassessment"})
+
+STATUS_RANK = {"queued": 0, "waiting": 0, "pending": 0, "requested": 0, "in_progress": 1, "completed": 2}
+
+
+class ActionStore:
+    """Pre-publication task security evidence and post-publication validation evidence.
+
+    Never a snapshot: investigation tools take a RunContext and have no path here. Reads need a
+    SecurityContext or ValidationContext and a permitted reader; writes need the one authorised
+    writer for the partition.
+    """
+
+    def __init__(self, path: Path) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        self._conn = sqlite3.connect(str(path), check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        self._conn.executescript(_ACTION_SCHEMA)
+        self._conn.commit()
+        self._lock = threading.RLock()
+
+    def close(self) -> None:
+        self._conn.close()
+
+    def _seq(self, table: str) -> int:
+        return self._conn.execute(f"SELECT COALESCE(MAX(seq), 0) + 1 FROM {table}").fetchone()[0]
+
+    # ------------------------------------------------------------------ security partition
+
+    def write_scan_run(self, ctx: Any, writer: str, scan_run: Mapping[str, Any], findings: Sequence[Mapping[str, Any]]) -> str:
+        if writer != SECURITY_PARTITION_WRITER:
+            raise WriterRejected(f"{writer} may not write task security evidence")
+        if (ctx.destination_repo, ctx.action_id, ctx.scanned_revision) != (
+            scan_run["destination"], scan_run["action_id"], scan_run["revision"]
+        ):
+            raise WriterRejected("scan run does not belong to this task context")
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO scan_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    scan_run["scan_run_id"], scan_run["destination"], scan_run["action_id"], scan_run["revision"],
+                    json.dumps(scan_run["inventory"]), json.dumps(scan_run["per_module"]), scan_run["completion"],
+                    scan_run["coverage_ok"], scan_run["coverage_total"], to_iso(scan_run["observed_at"]),
+                    to_iso(scan_run["confirmed_through"]), to_iso(scan_run["fresh_until"]),
+                    json.dumps([f["finding_id"] for f in findings]), self._seq("scan_runs"),
+                ),
+            )
+            for f in findings:
+                self._conn.execute(
+                    "INSERT OR IGNORE INTO findings VALUES (?,?,?)",
+                    (f["finding_id"], scan_run["scan_run_id"], json.dumps(dict(f), sort_keys=True, default=str)),
+                )
+            self._conn.commit()
+        return scan_run["scan_run_id"]
+
+    def scan_runs(self, ctx: Any, reader: str) -> list[dict[str, Any]]:
+        if reader not in SECURITY_PARTITION_READERS:
+            raise PermissionError(f"{reader} may not read task security evidence")
+        rows = self._conn.execute(
+            "SELECT * FROM scan_runs WHERE destination=? AND action_id=? AND revision=? ORDER BY seq",
+            (ctx.destination_repo, ctx.action_id, ctx.scanned_revision),
+        ).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            for k in ("inventory", "per_module", "finding_ids"):
+                d[k] = json.loads(d[k])
+            for k in ("observed_at", "confirmed_through", "fresh_until"):
+                d[k] = from_iso(d[k])
+            d["findings"] = [
+                json.loads(f["content"])
+                for f in self._conn.execute("SELECT content FROM findings WHERE scan_run_id=?", (d["scan_run_id"],))
+            ]
+            out.append(d)
+        return out
+
+    # ------------------------------------------------------------------ validation partition
+
+    @staticmethod
+    def observation_version(status: str | None, conclusion: str | None, started_at: str | None, completed_at: str | None) -> str:
+        blob = json.dumps([status, conclusion, started_at, completed_at], separators=(",", ":"))
+        return hashlib.sha256(blob.encode()).hexdigest()
+
+    def write_ci_observation(self, ctx: Any, writer: str, obs: Mapping[str, Any], observed_at: datetime) -> bool:
+        """Store one poll observation. Returns False for a repeated identical observation."""
+        if writer != TARGET_CI_WRITER:
+            raise WriterRejected(f"{writer} may not write CI observations")
+        head = obs.get("head_sha")
+        if head and not (str(head).startswith(ctx.published_commit) or ctx.published_commit.startswith(str(head))):
+            raise WriterRejected("observation is for a different commit")
+        version = self.observation_version(obs.get("status"), obs.get("conclusion"), obs.get("started_at"), obs.get("completed_at"))
+        with self._lock:
+            arrival = self._conn.execute("SELECT COALESCE(MAX(arrival), 0) + 1 FROM ci_observations").fetchone()[0]
+            cur = self._conn.execute(
+                "INSERT OR IGNORE INTO ci_observations VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    ctx.destination_repo, ctx.action_id, ctx.published_commit, str(obs["job_id"]),
+                    int(obs.get("run_attempt") or 1), version, obs.get("name"), obs.get("status"),
+                    obs.get("conclusion"), obs.get("started_at"), obs.get("completed_at"), head, arrival,
+                    to_iso(observed_at),
+                ),
+            )
+            self._conn.commit()
+            return cur.rowcount == 1
+
+    def ci_observations(self, ctx: Any, reader: str) -> list[dict[str, Any]]:
+        if reader not in VALIDATION_READERS:
+            raise PermissionError(f"{reader} may not read validation evidence")
+        rows = self._conn.execute(
+            "SELECT * FROM ci_observations WHERE destination=? AND action_id=? AND published_commit=? ORDER BY arrival",
+            (ctx.destination_repo, ctx.action_id, ctx.published_commit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+    def effective_states(self, ctx: Any, reader: str) -> dict[tuple[str, int], dict[str, Any]]:
+        """Effective state per (job, attempt): highest status rank wins; completed is never replaced."""
+        best: dict[tuple[str, int], dict[str, Any]] = {}
+        for obs in self.ci_observations(ctx, reader):
+            key = (obs["job_id"], obs["run_attempt"])
+            current = best.get(key)
+            if current is None or _rank_key(obs) > _rank_key(current):
+                best[key] = obs
+        return best
+
+    def write_evidence(self, ctx: Any, writer: str, kind: str, content: Mapping[str, Any], recorded_at: datetime) -> str:
+        if writer != VALIDATION_EVIDENCE_WRITER:
+            raise WriterRejected(f"{writer} may not write validation evidence")
+        if kind not in VALIDATION_EVIDENCE_KINDS:
+            raise ValueError(f"unknown validation evidence kind {kind}")
+        if "state" in content or "lifecycle_state" in content:
+            raise ValueError("task lifecycle state belongs in the task store, not in validation evidence")
+        evidence_id = "ve-" + hashlib.sha256(
+            json.dumps([ctx.destination_repo, ctx.action_id, ctx.published_commit, kind, dict(content)], sort_keys=True, default=str).encode()
+        ).hexdigest()[:20]
+        with self._lock:
+            self._conn.execute(
+                "INSERT OR IGNORE INTO validation_evidence VALUES (?,?,?,?,?,?,?,?,?)",
+                (evidence_id, ctx.destination_repo, ctx.action_id, ctx.published_commit, kind,
+                 json.dumps(dict(content), sort_keys=True, default=str), writer, to_iso(recorded_at),
+                 self._seq("validation_evidence")),
+            )
+            self._conn.commit()
+        return evidence_id
+
+    def evidence(self, ctx: Any, reader: str, kind: str | None = None) -> list[dict[str, Any]]:
+        if reader not in VALIDATION_READERS:
+            raise PermissionError(f"{reader} may not read validation evidence")
+        sql = "SELECT * FROM validation_evidence WHERE destination=? AND action_id=? AND published_commit=?"
+        params: list[Any] = [ctx.destination_repo, ctx.action_id, ctx.published_commit]
+        if kind:
+            sql += " AND kind=?"
+            params.append(kind)
+        rows = self._conn.execute(sql + " ORDER BY seq", params).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            d["content"] = json.loads(d["content"])
+            out.append(d)
+        return out
+
+    def has_lifecycle_state(self) -> bool:
+        """True if any validation evidence carries task lifecycle state (it must not)."""
+        for row in self._conn.execute("SELECT content FROM validation_evidence"):
+            c = json.loads(row["content"])
+            if "state" in c or "lifecycle_state" in c:
+                return True
+        return False
+
+    # ------------------------------------------------------------------ polling leases
+
+    def acquire_poll(self, ctx: Any, holder: str) -> bool:
+        key = f"{ctx.destination_repo}|{ctx.action_id}|{ctx.published_commit}"
+        with self._lock:
+            try:
+                self._conn.execute("INSERT INTO poll_leases VALUES (?,?,?)", (key, holder, datetime.now(timezone.utc).isoformat()))
+                self._conn.commit()
+                return True
+            except sqlite3.IntegrityError:
+                return False
+
+    def release_poll(self, ctx: Any, holder: str) -> None:
+        key = f"{ctx.destination_repo}|{ctx.action_id}|{ctx.published_commit}"
+        with self._lock:
+            self._conn.execute("DELETE FROM poll_leases WHERE key=? AND holder=?", (key, holder))
+            self._conn.commit()
+
+
+def _rank_key(obs: Mapping[str, Any]) -> tuple[int, int, str, int]:
+    rank = STATUS_RANK.get((obs.get("status") or "").lower(), 0)
+    has_completed = 1 if obs.get("completed_at") else 0
+    when = obs.get("completed_at") or obs.get("started_at") or ""
+    # Among otherwise equal observations the earlier arrival wins.
+    return (rank, has_completed, when, -int(obs.get("arrival", 0)))

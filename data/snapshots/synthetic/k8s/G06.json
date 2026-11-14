@@ -1,0 +1,8 @@
+{
+  "description": "Synthetic cluster events for the s390x lane: the network plugin the new tests need is missing.",
+  "events": [
+    {"minutes_before": 40, "namespace": "kubevirt-test-default1", "kind": "Pod", "reason": "FailedCreatePodSandBox", "message": "network attachment definition not found: plugin type 'multus' is not installed on this cluster"},
+    {"minutes_before": 35, "namespace": "kubevirt-test-default1", "kind": "VirtualMachineInstance", "reason": "SyncFailed", "message": "secondary network interface could not be attached"},
+    {"minutes_before": 20, "namespace": "kube-system", "kind": "DaemonSet", "reason": "NotFound", "message": "daemonset kube-multus-ds not present on lane cluster s390x"}
+  ]
+}
