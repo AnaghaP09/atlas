@@ -16,6 +16,8 @@ from typing import Any, Iterable
 ROOT = Path(__file__).resolve().parents[2]
 LOCAL = ROOT / "data" / "local"
 MENTION = re.compile(r"(?<![\w/.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![\w-])")
+DATA_URI = re.compile(r"data:[A-Za-z0-9.+/-]+;base64,[A-Za-z0-9+/=]+")
+SSH_KEY = re.compile(r"(ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-nistp\d+) AAAA[A-Za-z0-9+/=]{20,}")
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 # Bots and organisation accounts are not people; keep them so the evidence stays readable.
 NON_PERSON = {
@@ -53,6 +55,9 @@ class People:
     def scrub_text(self, text: str | None) -> str | None:
         if text is None:
             return None
+        text = DATA_URI.sub("[embedded image removed]", text)
+        text = SSH_KEY.sub(lambda m: f"{m.group(1)} [public key removed]", text)
+        text = re.sub(r"AAAAB3NzaC1[A-Za-z0-9+/=]{20,}", "[public key removed]", text)
         text = EMAIL.sub("[email removed]", text)
 
         def mention(m: re.Match[str]) -> str:

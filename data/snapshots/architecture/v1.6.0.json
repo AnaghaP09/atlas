@@ -1,0 +1,6213 @@
+{
+ "components": {
+  "cmd/cniplugins": {
+   "files": 4,
+   "owner_team": "sig/network",
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "cmd/container-disk-v2alpha": {
+   "files": 0,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "cmd/dump": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/example-guest-agent": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/fake-cmd-server": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/fake-qemu-process": {
+   "files": 1,
+   "owner_team": "area/launcher",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/sidecars": {
+   "files": 13,
+   "owner_team": "sig/network",
+   "runtime_relationships": "unknown",
+   "test_files": 8
+  },
+  "cmd/synchronization-controller": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-api": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-chroot": {
+   "files": 5,
+   "owner_team": "area/handler",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-controller": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-exportproxy": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-exportserver": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-freezer": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "cmd/virt-handler": {
+   "files": 1,
+   "owner_team": "area/handler",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-launcher": {
+   "files": 1,
+   "owner_team": "area/launcher",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-launcher-monitor": {
+   "files": 1,
+   "owner_team": "area/launcher",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-operator": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-probe": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virt-tail": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "cmd/virtctl": {
+   "files": 1,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/apimachinery": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/certificates": {
+   "files": 5,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 4
+  },
+  "pkg/checkpoint": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/cloud-init": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/config": {
+   "files": 6,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 7
+  },
+  "pkg/container-disk": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/controller": {
+   "files": 8,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 5
+  },
+  "pkg/defaults": {
+   "files": 5,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/downwardmetrics": {
+   "files": 6,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 6
+  },
+  "pkg/dra": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/emptydisk": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/ephemeral-disk": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/ephemeral-disk-utils": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/executor": {
+   "files": 3,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 4
+  },
+  "pkg/handler-launcher-com": {
+   "files": 10,
+   "owner_team": "area/virt-handler",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/healthz": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/hooks": {
+   "files": 11,
+   "owner_team": "area/launcher",
+   "runtime_relationships": "unknown",
+   "test_files": 3
+  },
+  "pkg/host-disk": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/hotplug-disk": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/ignition": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/instancetype": {
+   "files": 57,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 46
+  },
+  "pkg/libdv": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/libvmi": {
+   "files": 18,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/liveupdate": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/monitoring": {
+   "files": 67,
+   "owner_team": "sig/observability",
+   "runtime_relationships": "unknown",
+   "test_files": 33
+  },
+  "pkg/network": {
+   "files": 80,
+   "owner_team": "sig/network",
+   "runtime_relationships": "unknown",
+   "test_files": 76
+  },
+  "pkg/os": {
+   "files": 4,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/pointer": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/rest": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/safepath": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/service": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/storage": {
+   "files": 30,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 29
+  },
+  "pkg/synchronization-controller": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 2
+  },
+  "pkg/synchronizer-com": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/testutils": {
+   "files": 5,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 1
+  },
+  "pkg/tpm": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/unsafepath": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/util": {
+   "files": 21,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 15
+  },
+  "pkg/virt-api": {
+   "files": 47,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 39
+  },
+  "pkg/virt-config": {
+   "files": 10,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 5
+  },
+  "pkg/virt-controller": {
+   "files": 45,
+   "owner_team": "area/controller",
+   "runtime_relationships": "unknown",
+   "test_files": 44
+  },
+  "pkg/virt-handler": {
+   "files": 80,
+   "owner_team": "area/virt-handler",
+   "runtime_relationships": "unknown",
+   "test_files": 51
+  },
+  "pkg/virt-launcher": {
+   "files": 60,
+   "owner_team": "area/launcher",
+   "runtime_relationships": "unknown",
+   "test_files": 59
+  },
+  "pkg/virt-operator": {
+   "files": 54,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 41
+  },
+  "pkg/virtctl": {
+   "files": 65,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 65
+  },
+  "pkg/virtiofs": {
+   "files": 1,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "pkg/vsock": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests": {
+   "files": 0,
+   "owner_team": "sig/test",
+   "runtime_relationships": "unknown",
+   "test_files": 41
+  },
+  "tests/clientcmd": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/compute": {
+   "files": 13,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/conformance": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/console": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/containerdisk": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/decorators": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/errorhandling": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/events": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/exec": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/flags": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/framework": {
+   "files": 14,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 7
+  },
+  "tests/guestlog": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/hotplug": {
+   "files": 7,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/infrastructure": {
+   "files": 13,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/instancetype": {
+   "files": 3,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/launchsecurity": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libconfigmap": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libdomain": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libinfra": {
+   "files": 5,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libinstancetype": {
+   "files": 4,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libkubevirt": {
+   "files": 4,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libmigration": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libmonitoring": {
+   "files": 2,
+   "owner_team": "sig/observability",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libnet": {
+   "files": 18,
+   "owner_team": "sig/network",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libnode": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libpod": {
+   "files": 7,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libregistry": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libreplicaset": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libsecret": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libssh": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libstorage": {
+   "files": 8,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libvmifact": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libvmops": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/libwait": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/migration": {
+   "files": 11,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/monitoring": {
+   "files": 4,
+   "owner_team": "sig/observability",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/network": {
+   "files": 21,
+   "owner_team": "sig/network",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/numa": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/operator": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/performance": {
+   "files": 4,
+   "owner_team": "sig/scale",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/realtime": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/reporter": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/storage": {
+   "files": 14,
+   "owner_team": "sig/storage",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/testsuite": {
+   "files": 6,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/usb": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/validatingadmissionpolicy": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/virtctl": {
+   "files": 10,
+   "owner_team": "sig/compute",
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/virtiofs": {
+   "files": 2,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  },
+  "tests/watcher": {
+   "files": 1,
+   "owner_team": null,
+   "runtime_relationships": "unknown",
+   "test_files": 0
+  }
+ },
+ "edges": [
+  {
+   "from": "cmd/cniplugins",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "cmd/dump",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/reporter"
+  },
+  {
+   "from": "cmd/example-guest-agent",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "cmd/example-guest-agent",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/vsock"
+  },
+  {
+   "from": "cmd/fake-cmd-server",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/fake-cmd-server",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "cmd/sidecars",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "cmd/sidecars",
+   "imports": 15,
+   "kind": "depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "cmd/sidecars",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "cmd/sidecars",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "cmd/sidecars",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/healthz"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/synchronization-controller"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "cmd/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "cmd/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-api"
+  },
+  {
+   "from": "cmd/virt-chroot",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "cmd/virt-chroot",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "cmd/virt-chroot",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "cmd/virt-exportproxy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "cmd/virt-exportproxy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "cmd/virt-exportproxy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "cmd/virt-exportproxy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "cmd/virt-exportserver",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "cmd/virt-exportserver",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "cmd/virt-freezer",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virt-freezer",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virt-freezer",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "cmd/virt-freezer",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/healthz"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "cmd/virt-handler",
+   "imports": 12,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/hotplug-disk"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ignition"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virt-launcher",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "cmd/virt-operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "cmd/virt-probe",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "cmd/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virtctl"
+  },
+  {
+   "from": "pkg/cloud-init",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/cloud-init",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/cloud-init",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/cloud-init",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/config",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/config",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/config",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/config",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/os"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/container-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/defaults",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/liveupdate"
+  },
+  {
+   "from": "pkg/defaults",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/defaults",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/defaults",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/defaults",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/defaults",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/downwardmetrics",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "pkg/downwardmetrics",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/downwardmetrics",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/downwardmetrics",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/dra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/emptydisk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/emptydisk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/emptydisk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/emptydisk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/ephemeral-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/ephemeral-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/ephemeral-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/ephemeral-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/ephemeral-disk",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/ephemeral-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/ephemeral-disk-utils",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/ephemeral-disk-utils",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/healthz",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/hooks",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "pkg/hooks",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/hooks",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/host-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/hotplug-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/hotplug-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/hotplug-disk",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/hotplug-disk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/ignition",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/ignition",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/ignition",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/defaults"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 23,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 17,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/instancetype",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/libdv",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/libvmi",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/liveupdate",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/liveupdate",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/liveupdate",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/monitoring",
+   "imports": 9,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 9,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 23,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/os"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/os"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/network",
+   "imports": 8,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/safepath",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/safepath",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 12,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 11,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 12,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/tpm"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-api"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/storage",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/synchronizer-com"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/synchronizer-com"
+  },
+  {
+   "from": "pkg/synchronization-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/testutils",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/testutils",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-api"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-api"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/util",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 9,
+   "kind": "test_depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/defaults"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/dra"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/healthz"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 19,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/liveupdate"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/liveupdate"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 13,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/rest"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 22,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 30,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 20,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 15,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/virt-api",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "pkg/virt-config",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/virt-config",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/virt-config",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-config",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-config",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 12,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 20,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 18,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/dra"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/dra"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/healthz"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/host-disk"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/libdv"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 13,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/liveupdate"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 13,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 13,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/rest"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 27,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 18,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/tpm"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 29,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 12,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 11,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virtiofs"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "pkg/virt-controller",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/checkpoint"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/checkpoint"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/dra"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 7,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/executor"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/host-disk"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/hotplug-disk"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/hotplug-disk"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 16,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 14,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 29,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 11,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 8,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virtiofs"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/vsock"
+  },
+  {
+   "from": "pkg/virt-handler",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/container-disk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/defaults"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/dra"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/emptydisk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/ephemeral-disk-utils"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 12,
+   "kind": "depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 9,
+   "kind": "test_depends_on",
+   "to": "pkg/handler-launcher-com"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/host-disk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/host-disk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/hotplug-disk"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/ignition"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/liveupdate"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/liveupdate"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 12,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/os"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/os"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/safepath"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/tpm"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/unsafepath"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 18,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virtiofs"
+  },
+  {
+   "from": "pkg/virt-launcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/service"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "pkg/virt-operator",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 8,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 9,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "pkg/virtctl",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "pkg/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "tests",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "tests",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/hooks"
+  },
+  {
+   "from": "tests",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/libdv"
+  },
+  {
+   "from": "tests",
+   "imports": 33,
+   "kind": "test_depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "tests",
+   "imports": 13,
+   "kind": "test_depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/testutils"
+  },
+  {
+   "from": "tests",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-api"
+  },
+  {
+   "from": "tests",
+   "imports": 11,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests",
+   "imports": 4,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "tests",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "tests",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "tests",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "tests/compute"
+  },
+  {
+   "from": "tests",
+   "imports": 21,
+   "kind": "test_depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests",
+   "imports": 8,
+   "kind": "test_depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests",
+   "imports": 40,
+   "kind": "test_depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/events"
+  },
+  {
+   "from": "tests",
+   "imports": 8,
+   "kind": "test_depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests",
+   "imports": 54,
+   "kind": "test_depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/guestlog"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/hotplug"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/infrastructure"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/instancetype"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/launchsecurity"
+  },
+  {
+   "from": "tests",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "tests/libconfigmap"
+  },
+  {
+   "from": "tests",
+   "imports": 10,
+   "kind": "test_depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/libinfra"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests",
+   "imports": 27,
+   "kind": "test_depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests",
+   "imports": 9,
+   "kind": "test_depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests",
+   "imports": 16,
+   "kind": "test_depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests",
+   "imports": 14,
+   "kind": "test_depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests",
+   "imports": 15,
+   "kind": "test_depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "tests/libregistry"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/libreplicaset"
+  },
+  {
+   "from": "tests",
+   "imports": 5,
+   "kind": "test_depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests",
+   "imports": 6,
+   "kind": "test_depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests",
+   "imports": 35,
+   "kind": "test_depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests",
+   "imports": 19,
+   "kind": "test_depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests",
+   "imports": 20,
+   "kind": "test_depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/migration"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/monitoring"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/network"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/numa"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/operator"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/performance"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/realtime"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/reporter"
+  },
+  {
+   "from": "tests",
+   "imports": 2,
+   "kind": "test_depends_on",
+   "to": "tests/storage"
+  },
+  {
+   "from": "tests",
+   "imports": 29,
+   "kind": "test_depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/usb"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/validatingadmissionpolicy"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/virtctl"
+  },
+  {
+   "from": "tests",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "tests/virtiofs"
+  },
+  {
+   "from": "tests",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "tests/watcher"
+  },
+  {
+   "from": "tests",
+   "imports": 3,
+   "kind": "test_depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "tests/clientcmd",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 16,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/compute",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/console",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/console",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/containerdisk",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/exec",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/framework",
+   "imports": 1,
+   "kind": "test_depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "tests/framework",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/framework",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/framework",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/guestlog",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 14,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/migration"
+  },
+  {
+   "from": "tests/hotplug",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/compute"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/events"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 15,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/libinfra"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libmonitoring"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libreplicaset"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/infrastructure",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/instancetype"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libdv"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/instancetype",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/launchsecurity",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libdomain",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/libdomain",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "tests/libdomain",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/libdomain",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libdomain",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/downwardmetrics"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/libinfra",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/libinstancetype",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/libinstancetype",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libinstancetype",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libkubevirt",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/libkubevirt",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libkubevirt",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libkubevirt",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/libkubevirt",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinfra"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libmonitoring"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/libmigration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/libmonitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "tests/libmonitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/clientcmd"
+  },
+  {
+   "from": "tests/libmonitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/libmonitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libmonitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libnet",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/clientcmd"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libnode",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/libpod",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/libpod",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/libpod",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libpod",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libregistry"
+  },
+  {
+   "from": "tests/libpod",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libregistry",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libreplicaset",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libssh",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/errorhandling"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/errorhandling"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/libstorage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libregistry"
+  },
+  {
+   "from": "tests/libvmifact",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/libvmifact",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/libvmifact",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/libvmops",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libvmops",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/libvmops",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libvmops",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/watcher"
+  },
+  {
+   "from": "tests/libwait",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/libwait",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/libwait",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/libwait",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/watcher"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/libdv"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/events"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 19,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libconfigmap"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libinfra"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libregistry"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/migration",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/watcher"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/monitoring"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libmonitoring"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/monitoring",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/network",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/cloud-init"
+  },
+  {
+   "from": "tests/network",
+   "imports": 26,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/network",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/network"
+  },
+  {
+   "from": "tests/network",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/network",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "tests/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/clientcmd"
+  },
+  {
+   "from": "tests/network",
+   "imports": 18,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/network",
+   "imports": 15,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/network",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/network",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/network",
+   "imports": 28,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/network",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/network",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/network",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests/network",
+   "imports": 41,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/network",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/network",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/network",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libregistry"
+  },
+  {
+   "from": "tests/network",
+   "imports": 19,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/network",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/network",
+   "imports": 15,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/network",
+   "imports": 19,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/numa",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/clientcmd"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libconfigmap"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinfra"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/operator",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/performance",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tools"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/realtime",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-handler"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/clientcmd"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/reporter",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/certificates"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/host-disk"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/libdv"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 13,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/storage"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/events"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 31,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libmigration"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libregistry"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 10,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 8,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/migration"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/storage",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/watcher"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/controller"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-controller"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnet"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/testsuite",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/util"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/virt-launcher"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libdomain"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/usb",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/validatingadmissionpolicy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/apimachinery"
+  },
+  {
+   "from": "tests/validatingadmissionpolicy",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-operator"
+  },
+  {
+   "from": "tests/validatingadmissionpolicy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/validatingadmissionpolicy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/validatingadmissionpolicy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/validatingadmissionpolicy",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libnode"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 6,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/pointer"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "pkg/virtctl"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/clientcmd"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 9,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/flags"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 11,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libconfigmap"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libinstancetype"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libssh"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 4,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/virtctl",
+   "imports": 7,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/config"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "pkg/libdv"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 3,
+   "kind": "depends_on",
+   "to": "pkg/libvmi"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "pkg/virt-config"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/console"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/containerdisk"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/decorators"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/exec"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 5,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libconfigmap"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libkubevirt"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libpod"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libsecret"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libstorage"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libvmifact"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/libvmops"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/libwait"
+  },
+  {
+   "from": "tests/virtiofs",
+   "imports": 2,
+   "kind": "depends_on",
+   "to": "tests/testsuite"
+  },
+  {
+   "from": "tests/watcher",
+   "imports": 1,
+   "kind": "depends_on",
+   "to": "tests/framework"
+  }
+ ],
+ "limitation": "Dependency edges are derived from Go import statements only. Runtime relationships such as RPC calls, Kubernetes API interactions and roll-outs are not visible this way and are unknown.",
+ "revision": "d53baa7f84687d156bd8a3a80d7ea2fbd8e0a993",
+ "tag": "v1.6.0"
+}
