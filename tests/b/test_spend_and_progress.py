@@ -32,4 +32,4 @@ def test_scout_progress_events_per_tool_step(run_context) -> None:
     orch, deps = build(run_context, s, records=recs(run_context))
     orch.run("run-p", run_context, TRIGGER, ONCALL)
     progress = [e for e in deps.events.since(None, principal_for("em")) if e["event"] == "run.progress" and e.get("agent") == "scout"]
-    assert progress and progress[0]["payload"]["tool"] == "get_issue"
+    assert progress and progress[0]["data"]["tool"] == "get_issue"

@@ -52,7 +52,7 @@ class EventProducer:
             "authoritative_generation": authoritative_generation,
             "report_version": report_version,
             "correction_version": correction_version,
-            "payload": dict(payload or {}),
+            "data": dict(payload or {}),
             "required_scopes": list(required_scopes),
         }
         if agent:

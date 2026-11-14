@@ -222,9 +222,9 @@ def schedule_action(request: Request, schedule_id: str, action: str, body: dict[
         elif action == "pause":
             s.scheduler.pause(schedule_id, (body or {}).get("reason", "paused by a person"))
         else:
-            # The audit record names the person who asked; the run itself keeps the watcher as its origin
-            # until the scheduler accepts an explicit origin for run-once.
-            r = s.scheduler.tick(only=schedule_id, run_once=True)
+            # A person asked for this run, so the run records the person (with the watcher id).
+            origin = StartedBy(kind=StartedByKind.PERSON, role=principal.role, watcher_id=schedule_id)
+            r = s.scheduler.tick(only=schedule_id, run_once=True, started_by=origin)
             result = {"admitted": r.admitted, "duplicates": r.duplicates, "held": r.held, "skipped": r.skipped}
             s.run_in_background(s.dispatcher.dispatch_pending)
         s.audit.record(principal.role.value, f"schedule.{action}", schedule_id, body or {})
