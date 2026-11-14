@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Health } from "./api/types";
 import { useApi, useApp, useIdentity } from "./app/context";
 import { DataModeBadge } from "./components/common";
+import { signOut } from "./identity/bootstrap";
 import { ROLES, ROLE_LABELS, type Role } from "./identity/identity";
 import { Link, matchPath, useRouter } from "./lib/router";
 import { Approvals } from "./screens/Approvals";
@@ -85,6 +86,34 @@ function RoleSwitcher() {
   );
 }
 
+/** Signed-in mode: who is signed in, the project switcher and sign-out. */
+export function SessionBar() {
+  const { identity } = useApp();
+  const { principal, projectId, switchProject } = useIdentity();
+  const session = identity.session;
+  if (identity.provider.mode !== "session" || !session) return null;
+  const projects = Object.keys(session.projects).sort();
+  return (
+    <span className="session-bar">
+      <span>{session.display_name}</span>
+      {principal ? <span className="muted"> · {ROLE_LABELS[principal.role]}</span> : null}{" "}
+      {projects.length > 1 ? (
+        <label>
+          <span className="muted">Project:</span>{" "}
+          <select aria-label="Project" value={projectId ?? ""} onChange={(e) => switchProject(e.target.value)}>
+            {projects.map((p) => (
+              <option key={p} value={p}>{p}</option>
+            ))}
+          </select>
+        </label>
+      ) : (
+        <span className="muted">Project: {projectId ?? "none"}</span>
+      )}{" "}
+      <button type="button" onClick={() => void signOut(identity)}>Sign out</button>
+    </span>
+  );
+}
+
 function StatusLine() {
   const health = useApi<Health>("/api/health");
   if (!health.data) return null;
@@ -107,6 +136,7 @@ export function App() {
         <span className="muted">Agents: Scout investigates, Sentinel checks every claim.</span>
         <StatusLine />
         <RoleSwitcher />
+        <SessionBar />
       </header>
       <nav className="side" aria-label="Main">
         <ul>
