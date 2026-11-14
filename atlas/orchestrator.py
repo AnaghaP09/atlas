@@ -288,12 +288,14 @@ class Orchestrator:
         self._event("run.progress", run_id, agent=SENTINEL, stage="verifying", claims=len(out["claims"]))
         try:
             result = Verifier(self.d.outbound, resolver.by_id).verify(out["claims"])
-        except VerifierFailed:
+        except VerifierFailed as exc:
             out["run_status"] = "unverified"
+            out["verifier_error"] = str(exc)[:300]
             for name in ("classification", "action"):
                 out[name] = {"value": None, "claim_ids": [], "required_scopes": out[name]["required_scopes"]}
             out.update(root_cause=None, findings=[], options=[], items=[], evidence_recommendation=None)
-            self._notify("verifier.missing", run_id, "Sentinel could not check the claims; nothing is verified")
+            reason = str(exc).split(": ", 1)[-1][:160]
+            self._notify("verifier.missing", run_id, f"Sentinel could not check the claims; nothing is verified ({reason})")
             return None
         out["claims"] = result.claims
         out["verifier"] = {"claims_checked": result.claims_checked, "claims_rejected": result.claims_rejected,
