@@ -1,11 +1,30 @@
 import type { ContainmentView, Health } from "../api/types";
 import { useAction, useApi, useInvalidateAll } from "../app/context";
-import { ActionResult, Button, DataModeBadge, ErrorView, KpiTile, Loading, Section, StatusPill } from "../components/common";
+import { ActionResult, ConfirmButton, ErrorView, KpiTile, Loading, Section } from "../components/common";
 import { Link } from "../lib/router";
+
+const COMPONENT: Record<string, string> = {
+  snapshots: "Data sets",
+  tasks: "Coding tasks",
+  containment: "Kill switches",
+  orchestrator: "Run engine",
+};
+
+const CONNECTION: Record<string, string> = {
+  ANTHROPIC_API_KEY: "Model access",
+  GITHUB_TOKEN: "GitHub read access",
+  ATLAS_PUBLISH_TOKEN: "Publishing to GitHub",
+  ATLAS_WEBHOOK_URL: "Chat delivery",
+  ATLAS_MODEL_API_KEY: "Self-hosted model",
+};
+
+function words(v: string): string {
+  return v.replace(/[_-]/g, " ").replace(/^./, (c) => c.toUpperCase());
+}
 
 /** For the audit role: health, mode, incidents and failed deliveries on one page. */
 export function SystemScreen() {
-  const health = useApi<Health>("/api/health");
+  const health = useApi<Health & { configuration?: Record<string, boolean> }>("/api/health");
   const mode = useApi<{ mode: string }>("/api/mode");
   const containment = useApi<ContainmentView>("/api/containment");
   const setMode = useAction<{ mode: string }, { mode: string }>("/api/mode");
@@ -16,6 +35,7 @@ export function SystemScreen() {
   const current = mode.data?.mode ?? h.mode;
   const tripped = (containment.data?.switches ?? []).filter((s) => s.state !== "ok");
   const next = current === "offline" ? "connected" : "offline";
+  const connections = Object.entries(h.configuration ?? {});
   return (
     <>
       <div className="kpis">
@@ -25,29 +45,51 @@ export function SystemScreen() {
         <KpiTile icon="clock" label="Held deliveries" value={h.notifier?.paused ?? 0} hint="waiting to send" />
       </div>
       <div className="grid">
-        <Section title="Mode" icon="pulse">
-          <Button variant={next === "offline" ? "danger" : "primary"} loading={setMode.state.status === "running"} onClick={() => void setMode.run({ mode: next }).then(refresh)}>
-            Switch to {next === "offline" ? "Offline" : "Connected"}
-          </Button>
+        <Section title="Mode" icon="pulse" end={<span className={`pill pill-${current === "offline" ? "warn" : "good"}`}>{current === "offline" ? "Offline" : "Connected"}</span>}>
+          <div className="actions-row">
+            <ConfirmButton
+              label={next === "offline" ? "Go offline" : "Go connected"}
+              title={next === "offline" ? "Switch ATLAS to offline?" : "Switch ATLAS to connected?"}
+              body={next === "offline" ? "New runs stop calling outside services until you switch back." : "Runs may call outside services again."}
+              confirmLabel={next === "offline" ? "Go offline" : "Go connected"}
+              size="md"
+              icon="power"
+              danger={next === "offline"}
+              variant={next === "offline" ? "secondary" : "primary"}
+              onConfirm={() => void setMode.run({ mode: next }).then(refresh)}
+            />
+          </div>
           <ActionResult state={setMode.state} retry={() => void setMode.retrySame()} done={(r) => `Mode is now ${r.mode}.`} />
         </Section>
-        <Section title="Components" icon="gauge">
+        <Section title="Parts" icon="gauge">
           <ul className="list">
             {Object.entries(h.components).map(([k, v]) => (
               <li key={k}>
-                <span className="grow">{k.replace(/_/g, " ")}</span>
-                {v === "not_connected" ? <DataModeBadge mode="STAGED" reason="not connected in this build yet" /> : <StatusPill status={v === "connected" ? "complete" : v} />}
+                <span className="grow">{COMPONENT[k] ?? words(k)}</span>
+                {v === "connected" ? <span className="pill pill-good">Working</span> : <span className="pill pill-neutral">{v === "not_connected" ? "Not in this demo" : words(v)}</span>}
               </li>
             ))}
           </ul>
         </Section>
+        {connections.length ? (
+          <Section title="Connections" icon="key">
+            <ul className="list">
+              {connections.map(([k, set]) => (
+                <li key={k}>
+                  <span className="grow">{CONNECTION[k] ?? words(k)}</span>
+                  <span className={`pill pill-${set ? "good" : "neutral"}`}>{set ? "Set up" : "Not set up"}</span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        ) : null}
         <Section title="Open incidents" icon="power" end={<Link to="/containment">Kill switches</Link>}>
           {tripped.length === 0 ? <p className="muted">None.</p> : null}
           <ul className="list">
             {tripped.map((s) => (
               <li key={s.switch_id}>
                 <span className="grow">{s.title ?? `Switch ${s.switch_id}`}</span>
-                <StatusPill status="held" />
+                <span className="pill pill-critical">Stopped</span>
               </li>
             ))}
           </ul>

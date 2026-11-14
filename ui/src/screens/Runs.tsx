@@ -2,7 +2,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import type { LiveEvent } from "../api/stream";
 import type { Claim, Envelope, ReportView, RunView } from "../api/types";
-import { useAction, useApi, useLiveStream } from "../app/context";
+import { useAction, useApi, useIdentity, useLiveStream } from "../app/context";
+import { CreateTask } from "./Tasks";
 import {
   ActionResult,
   AgentName,
@@ -22,12 +23,12 @@ import { DatasetName } from "../components/dataset";
 import type { Notification, QueueEntry, TaskView } from "../api/types";
 import { IdDetails } from "../components/common";
 import { Link } from "../lib/router";
-import { reportName, runTitle, starterName } from "../lib/labels";
+import { reportName, runTitle, stageName, starterName, toolName } from "../lib/labels";
 import { Time } from "../components/common";
 
 export function RunList() {
   const data = useApi<{ runs: RunView[] } & Envelope>("/api/runs");
-  const runs = data.data?.runs ?? [];
+  const runs = (data.data?.runs ?? []).slice().sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
   const paged = usePaged(runs, 15);
   return (
     <Section title="All runs" icon="list" mode={data.data?.data_mode}>
@@ -134,9 +135,9 @@ function ReportVerdicts({ reportId }: { reportId: string }) {
 function eventText(e: LiveEvent): string {
   const d = e.data;
   if (typeof d.text === "string") return d.text;
-  if (typeof d.tool === "string") return `Called ${d.tool}${typeof d.step === "number" ? ` (step ${d.step})` : ""}`;
-  if (typeof d.stage === "string") return `${d.stage}${typeof d.claims === "number" ? `: ${d.claims} claims` : ""}`;
-  if (typeof d.status === "string") return `Status: ${d.status}`;
+  if (typeof d.tool === "string") return toolName(d.tool);
+  if (typeof d.stage === "string") return `${stageName(d.stage)}${typeof d.claims === "number" ? ` · ${d.claims} claims` : ""}`;
+  if (typeof d.status === "string") return stageName(d.status);
   return e.event.replace(/[._]/g, " ");
 }
 
@@ -152,9 +153,12 @@ function Timeline({ events, finished }: { events: LiveEvent[]; finished: boolean
               {agent === "scout" ? <ScoutEmblem size={18} /> : agent === "sentinel" ? <SentinelEmblem size={18} /> : <Icon name="pulse" size={14} />}
             </span>
             <div className="tl-body">
-              <span className="tl-event">{e.event}</span>
-              {agent ? <> · <AgentName agent={agent} compact /></> : null}
               <p className="tl-text">{eventText(e)}</p>
+              <span className="tl-meta">
+                {agent ? <AgentName agent={agent} compact /> : null}
+                {typeof e.data.step === "number" ? <span className="muted num">Step {e.data.step}</span> : null}
+                <Time iso={e.emitted_at} short />
+              </span>
             </div>
           </li>
         );
@@ -186,6 +190,7 @@ export function RunDetail({ runId }: { runId: string }) {
   const tasks = useApi<{ tasks: TaskView[] }>("/api/tasks");
   const notes = useApi<{ notifications: Notification[] }>("/api/notifications");
   const queue = useApi<{ entries: QueueEntry[] }>("/api/queue");
+  const { principal } = useIdentity();
 
   if (run.isLoading) return <Loading what="the run" />;
   if (run.error) return <ErrorView error={run.error} />;
@@ -223,7 +228,7 @@ export function RunDetail({ runId }: { runId: string }) {
           </p>
           <IdDetails items={[["Run id", r.run_id], ["Data set", r.snapshot_id], ["Project", r.project_id ?? null]]} />
         </Section>
-        <Section title="Progress" icon="pulse" end={<span className="muted">{status === "live" ? "Live" : "Paused"}</span>}>
+        <Section title="Progress" icon="pulse" end={["complete", "partial", "unverified", "failed", "refused"].includes(r.run_status) ? null : <span className={`pill ${status === "live" ? "pill-good" : "pill-warn"}`}>{status === "live" ? "Live" : "Paused"}</span>}>
           <Timeline events={events} finished={["complete", "partial", "unverified", "failed", "refused"].includes(r.run_status)} />
         </Section>
       </div>
@@ -248,7 +253,12 @@ export function RunDetail({ runId }: { runId: string }) {
           <Button icon="shield" onClick={() => void reverify.run({})} loading={reverify.state.status === "running"}>
             Check the claims again
           </Button>
-          <ActionResult state={reverify.state} retry={() => void reverify.retrySame()} />
+          <ActionResult state={reverify.state} retry={() => void reverify.retrySame()} success="Check started" />
+          {principal?.role === "em" && r.kind === "failure" && r.reports.length > 0 && !(tasks.data?.tasks ?? []).some((t) => t.run_id === r.run_id) ? (
+            <div className="actions-row">
+              <CreateTask runId={r.run_id} />
+            </div>
+          ) : null}
         </Section>
       </div>
     </div>

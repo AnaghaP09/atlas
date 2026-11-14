@@ -4,6 +4,7 @@ import type { DataMode } from "../api/types";
 import type { ActionState } from "../app/context";
 import { Link } from "../lib/router";
 import { Icon, ScoutEmblem, SentinelEmblem, type IconName } from "./icons";
+import { toast } from "../lib/toast";
 
 const MODE_TEXT: Record<DataMode, string> = {
   REAL: "Real data",
@@ -271,7 +272,11 @@ export function ErrorView({ error }: { error: Error | null }) {
   );
 }
 
-export function ActionResult<R>({ state, retry, done }: { state: ActionState<R>; retry: () => void; done?: (r: R) => ReactNode }) {
+export function ActionResult<R>({ state, retry, done, success = "Done" }: { state: ActionState<R>; retry: () => void; done?: (r: R) => ReactNode; success?: string }) {
+  const finished = state.status === "done";
+  useEffect(() => {
+    if (finished && !done) toast(success);
+  }, [finished, done, success]);
   if (state.status === "running")
     return (
       <p className="state" role="status">
@@ -286,7 +291,8 @@ export function ActionResult<R>({ state, retry, done }: { state: ActionState<R>;
         again; the server will not do the work twice).
       </p>
     );
-  if (state.status === "done") return <div className="state state-done toast-inline" role="status">{done ? done(state.result) : "Done."}</div>;
+  if (state.status === "done")
+    return done ? <div className="state state-done toast-inline" role="status">{done(state.result)}</div> : <span className="sr-only" role="status">Done.</span>;
   return null;
 }
 
@@ -327,9 +333,9 @@ export function PageHead({ title, actions, role, help }: { title: string; action
         <h1>{title}</h1>
         {role ? <span className="pill pill-accent role-chip" data-testid="page-audience" title="Your role">{role}</span> : null}
         {help ? (
-          <a className="help-link" href={help} target="_blank" rel="noopener noreferrer" aria-label={`Help: ${title}`} title="Help">
+          <Link className="help-link" to={help} aria-label={`Help: ${title}`} title="Open the guide">
             ?
-          </a>
+          </Link>
         ) : null}
       </div>
       {actions ? <div className="actions">{actions}</div> : null}
@@ -370,6 +376,8 @@ const STATUS_TONE: Record<string, string> = {
   passed: "good",
   accepted: "good",
   running: "info",
+  pending: "info",
+  dispatching: "info",
   connected: "good",
   ok: "good",
   admitted: "info",
@@ -389,6 +397,8 @@ const STATUS_WORD: Record<string, string> = {
   passed: "Passed",
   accepted: "Accepted",
   running: "Running",
+  pending: "Running",
+  dispatching: "Running",
   admitted: "Queued",
   queued: "Queued",
   partial: "Partial",
@@ -421,7 +431,7 @@ export function relative(d: Date, now = new Date()): string {
   const s = Math.round((now.getTime() - d.getTime()) / 1000);
   const past = s >= 0;
   const a = Math.abs(s);
-  const v = a < 60 ? "just now" : a < 3600 ? `${Math.round(a / 60)} min` : a < 86400 ? `${Math.round(a / 3600)} h` : `${Math.round(a / 86400)} days`;
+  const v = a < 60 ? "just now" : a < 3600 ? `${Math.round(a / 60)} min` : a < 86400 ? `${Math.round(a / 3600)} h` : Math.round(a / 86400) === 1 ? "1 day" : `${Math.round(a / 86400)} days`;
   if (v === "just now") return v;
   return past ? `${v} ago` : `in ${v}`;
 }
@@ -478,6 +488,61 @@ export function CopyButton({ text }: { text: string }) {
     >
       {done ? "Copied" : "Copy"}
     </button>
+  );
+}
+
+/** A button that asks before it acts, in a small centred dialog. */
+export function ConfirmButton({
+  label,
+  title,
+  body,
+  confirmLabel,
+  onConfirm,
+  icon,
+  variant = "secondary",
+  size = "sm",
+  danger = false,
+  disabled = false,
+  hint,
+}: {
+  label: string;
+  title: string;
+  body?: ReactNode;
+  confirmLabel: string;
+  onConfirm: () => void;
+  icon?: IconName;
+  variant?: ButtonVariant;
+  size?: "sm" | "md" | "lg";
+  danger?: boolean;
+  disabled?: boolean;
+  hint?: string;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const heading = useId();
+  const open = () => {
+    const d = ref.current;
+    if (!d) return;
+    if (typeof d.showModal === "function") d.showModal();
+    else d.setAttribute("open", "");
+  };
+  const close = () => {
+    const d = ref.current;
+    if (!d) return;
+    if (typeof d.close === "function") d.close();
+    else d.removeAttribute("open");
+  };
+  return (
+    <>
+      <Button variant={variant} size={size} icon={icon} disabled={disabled} title={hint} onClick={open}>{label}</Button>
+      <dialog ref={ref} className="modal" aria-labelledby={heading}>
+        <h2 id={heading}>{title}</h2>
+        {body ? <div className="modal-body">{body}</div> : null}
+        <div className="modal-actions">
+          <Button variant="ghost" size="md" onClick={close}>Cancel</Button>
+          <Button variant={danger ? "danger" : "primary"} size="md" onClick={() => { close(); onConfirm(); }}>{confirmLabel}</Button>
+        </div>
+      </dialog>
+    </>
   );
 }
 

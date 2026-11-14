@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { DemoManifest, ManifestCall, ManifestRow } from "../api/types";
 import { useApi, useApp } from "../app/context";
-import { DataModeBadge, ErrorView, Loading, Section } from "../components/common";
+import { Button, DataModeBadge, ErrorView, Loading } from "../components/common";
+import { Icon } from "../components/icons";
 import { withScope } from "../api/stream";
 import { newKey } from "../lib/idempotency";
 import { useRouter } from "../lib/router";
@@ -32,12 +33,13 @@ interface StepResult {
   ok: boolean;
 }
 
-function RowCard({ row, thisServer, vars, setVars }: { row: ManifestRow; thisServer: string; vars: Record<string, string>; setVars: (v: Record<string, string>) => void }) {
+function RowCard({ row, index, thisServer, vars, setVars }: { row: ManifestRow; index: number; thisServer: string; vars: Record<string, string>; setVars: (v: Record<string, string>) => void }) {
   const { identity } = useApp();
   const [results, setResults] = useState<StepResult[]>([]);
   const [keys] = useState(() => row.calls.map(() => newKey()));
   const [running, setRunning] = useState(false);
   const onOtherServer = row.server !== thisServer;
+  const failed = results.some((r) => !r.ok);
   const peer = peerUrl(vars[`${row.server}_url`] ?? vars["peer_ui_url"], row.row_id);
 
   async function run() {
@@ -100,27 +102,41 @@ function RowCard({ row, thisServer, vars, setVars }: { row: ManifestRow; thisSer
   }
 
   return (
-    <article className="card" data-testid={`row-${row.row_id}`}>
-      <h3>
-        {row.title} <DataModeBadge mode={row.data_mode} />
-      </h3>
+    <article className="card demo-card" data-testid={`row-${row.row_id}`}>
+      <header className="demo-card-head">
+        <span className="demo-num num" aria-hidden="true">{index}</span>
+        <h3>{row.title}</h3>
+        <DataModeBadge mode={row.data_mode} />
+      </header>
       <p className="muted">{row.shows}</p>
-      {onOtherServer ? (
-        peer ? (
-          <a href={peer} rel="noopener noreferrer" referrerPolicy="no-referrer">Continue on the {row.server} server</a>
+      <div className="demo-card-foot">
+        {onOtherServer ? (
+          peer ? (
+            <a className="btn btn-secondary btn-sm" href={peer} rel="noopener noreferrer" referrerPolicy="no-referrer">Continue on the {row.server} server</a>
+          ) : (
+            <span className="blocked-note" title={`This step runs on the ${row.server} server. Open that server's address to continue.`}>
+              <Icon name="lock" size={12} /> Runs on the {row.server} server
+            </span>
+          )
         ) : (
-          <p className="state state-staged">This step runs on the {row.server} server. Open that server's address to continue.</p>
-        )
-      ) : (
-        <button onClick={() => void run()} disabled={running}>{running ? "Running…" : "Run this step"}</button>
-      )}
-      <ul>
-        {results.map((r, i) => (
-          <li key={i} className={r.ok ? "pass" : "fail"}>
-            {r.call}: {String(r.status)} {r.ok ? "as expected" : "not as expected"}
-          </li>
-        ))}
-      </ul>
+          <Button size="sm" icon="play" loading={running} onClick={() => void run()}>{running ? "Running…" : "Run this step"}</Button>
+        )}
+        {results.length ? (
+          <span className={`pill pill-${failed ? "critical" : "good"}`}>{failed ? "A step did not pass" : "Passed"}</span>
+        ) : null}
+      </div>
+      {results.length ? (
+        <details className="id-details" open={failed}>
+          <summary>Calls made</summary>
+          <ul className="demo-calls">
+            {results.map((r, i) => (
+              <li key={i} className={r.ok ? "pass" : "fail"}>
+                {r.call}: {String(r.status)} {r.ok ? "as expected" : "not as expected"}
+              </li>
+            ))}
+          </ul>
+        </details>
+      ) : null}
     </article>
   );
 }
@@ -138,14 +154,10 @@ export function GuidedDemo() {
   const start = focus ? Math.max(0, m.manifest.rows.findIndex((r) => r.row_id === focus)) : 0;
   const rows = m.manifest.rows.slice(start);
   return (
-    <Section title={m.manifest.title}>
-      <p>
-        Walk through the demo one step at a time. Each step names what it shows and whether it uses real, synthetic or staged
-        data. Steps for the other server open that server's own page.
-      </p>
-      {rows.map((row) => (
-        <RowCard key={row.row_id} row={row} thisServer={m.this_server} vars={v} setVars={setVars} />
+    <div className="cards demo-cards">
+      {rows.map((row, i) => (
+        <RowCard key={row.row_id} row={row} index={start + i + 1} thisServer={m.this_server} vars={v} setVars={setVars} />
       ))}
-    </Section>
+    </div>
   );
 }

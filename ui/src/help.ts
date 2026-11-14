@@ -1,6 +1,6 @@
 // Help pages live in the docs, not in the product. Each screen links to one guide page by slug.
 // The link shows only when the docs are present: the server must serve /docs/guide/pages.json listing
-// the available slugs (the guide pages themselves are /docs/guide/<slug>.html).
+// the available slugs. Pages are read inside ATLAS at /help/<slug>, from /docs/guide/<slug>.md.
 
 export const HELP_SLUG: Record<string, string> = {
   home: "home",
@@ -35,5 +35,5 @@ export const HELP_PAGES = [...new Set(Object.values(HELP_SLUG))].sort();
 export const HELP_INDEX = "/docs/guide/pages.json";
 
 export function helpUrl(slug: string): string {
-  return `/docs/guide/${slug}.html`;
+  return `/help/${slug}`;
 }
