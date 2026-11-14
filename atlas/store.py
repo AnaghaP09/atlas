@@ -102,6 +102,11 @@ CREATE TABLE IF NOT EXISTS rejected_writes (
     reason TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS confirmations (
+    record_id TEXT PRIMARY KEY,
+    confirmed_through TEXT NOT NULL,
+    method TEXT NOT NULL
+);
 """
 
 
@@ -158,9 +163,10 @@ def _revision_num(revision: int | str | None) -> int | None:
 class EvidenceDB:
     """One SQLite evidence file. Read-only files refuse every write."""
 
-    def __init__(self, path: Path, *, read_only: bool = False) -> None:
+    def __init__(self, path: Path, *, read_only: bool = False, live: bool = False) -> None:
         self.path = Path(path)
         self.read_only = read_only
+        self.live = live and not read_only
         self._lock = threading.RLock()
         if read_only:
             if not self.path.exists():
@@ -353,7 +359,7 @@ class EvidenceDB:
             content_version_id=row["content_version_id"],
             valid_from=from_iso(row["valid_from"]),
             observed_at=from_iso(row["observed_at"]),
-            confirmed_through=from_iso(row["confirmed_through"]),
+            confirmed_through=self._effective_confirmation(row["record_id"], row["confirmed_through"]),
             writer=row["writer"],
             provenance=Provenance(row["provenance"]),
             synthetic_ancestry=bool(row["synthetic_ancestry"]),
@@ -375,6 +381,44 @@ class EvidenceDB:
             other = row["record_b"] if row["record_a"] == record_id else row["record_a"]
             out.extend([row["node_id"], other])
         return tuple(out)
+
+    def _effective_confirmation(self, record_id: str, stored: str | None) -> datetime | None:
+        """The stored confirmation, advanced by later live re-confirmations of the same content."""
+        base = from_iso(stored)
+        row = self._conn.execute("SELECT confirmed_through FROM confirmations WHERE record_id=?", (record_id,)).fetchone()
+        if row is None:
+            return base
+        later = from_iso(row["confirmed_through"])
+        return later if base is None or later > base else base
+
+    def reconfirm(self, record_id: str, writer: str, confirmed_at: datetime, *, method: str = "fetch") -> datetime:
+        """Record that a successful live fetch (or a 304 revalidation) saw this record's state again.
+
+        Only the live store accepts confirmations, only from the source's authorised writer, and
+        only for the record that is current for its entity. Confirmations never move backwards.
+        Replayed deliveries and failed polls must not call this.
+        """
+        if not self.live:
+            raise ReadOnlyStore("confirmations are accepted only by the live store")
+        if method not in ("fetch", "not_modified"):
+            raise ValueError("confirmation method must be 'fetch' or 'not_modified'")
+        with self._tx() as conn:
+            row = conn.execute("SELECT source, status, confirmed_through FROM records WHERE record_id=?", (record_id,)).fetchone()
+            if row is None:
+                raise KeyError(f"unknown record {record_id}")
+            if AUTHORITATIVE_WRITERS.get(row["source"]) != writer:
+                raise WriterRejected(f"{writer} may not confirm source {row['source']}")
+            if row["status"] != "current":
+                raise ValueError("only the current version of an entity can be re-confirmed")
+            when = to_iso(confirmed_at)
+            existing = conn.execute("SELECT confirmed_through FROM confirmations WHERE record_id=?", (record_id,)).fetchone()
+            if existing is None or existing["confirmed_through"] < when:
+                conn.execute(
+                    "INSERT INTO confirmations (record_id, confirmed_through, method) VALUES (?,?,?) "
+                    "ON CONFLICT(record_id) DO UPDATE SET confirmed_through=excluded.confirmed_through, method=excluded.method",
+                    (record_id, when, method),
+                )
+        return self._effective_confirmation(record_id, row["confirmed_through"])
 
     def get(self, source: str, source_id: str) -> Record | None:
         row = self._conn.execute(
@@ -477,6 +521,13 @@ class EvidenceStore:
 
     def put(self, record: Record, writer: str, **kwargs: Any) -> str:
         return self._registry.live().put(record, writer, **kwargs)
+
+    def reconfirm(self, record_id: str, writer: str, confirmed_at: datetime, *, method: str = "fetch") -> datetime:
+        """Advance a live record's confirmation after a successful fetch or 304 revalidation."""
+        return self._registry.live().reconfirm(record_id, writer, confirmed_at, method=method)
+
+    def current_live(self, source: str, source_id: str) -> Record | None:
+        return self._registry.live().get(source, source_id)
 
     def _db(self, ctx: RunContext) -> EvidenceDB:
         return self._registry.open(ctx)

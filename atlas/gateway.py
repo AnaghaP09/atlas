@@ -49,6 +49,8 @@ GRAPHQL_OPERATIONS = frozenset(
 OSV_QUERY_KEYS = {"package", "version"}
 OSV_PACKAGE_KEYS = {"name", "ecosystem"}
 
+CONDITIONAL_HEADERS = frozenset({"If-None-Match", "If-Modified-Since"})
+
 POST_PUBLICATION_STATES = frozenset(
     {TaskState.PUBLISHED, TaskState.AWAITING_VALIDATION, TaskState.ACCEPTED, TaskState.FAILED}
 )
@@ -508,8 +510,24 @@ class Gateway:
 
     # ------------------------------------------------------------------ requests
 
-    def request(self, connector: str, method: str, url: str, ctx: RequestContext, body: Any = None) -> Response:
-        """A connector read. Refused requests raise GatewayRefused; transient errors retry once."""
+    def request(
+        self,
+        connector: str,
+        method: str,
+        url: str,
+        ctx: RequestContext,
+        body: Any = None,
+        *,
+        conditional: Mapping[str, str] | None = None,
+    ) -> Response:
+        """A connector read. Refused requests raise GatewayRefused; transient errors retry once.
+
+        ``conditional`` may carry only ``If-None-Match`` and ``If-Modified-Since`` (GET only); a
+        ``304 Not Modified`` reply is returned as is, with no body.
+        """
+        extra = dict(conditional or {})
+        if set(extra) - CONDITIONAL_HEADERS or (extra and method.upper() != "GET"):
+            raise GatewayRefused("only If-None-Match and If-Modified-Since are allowed, on GET requests")
         if ctx.purpose is EgressPurpose.CORRECTION_WRITE:
             raise GatewayRefused("correction writes go through write_correction")
         if self._mode() is Mode.OFFLINE:
@@ -523,6 +541,7 @@ class Gateway:
             raise GatewayRefused(reason)
         self._record(connector, ctx, method, url, True, "allowed")
         headers = self._headers(connector, ctx)
+        headers.update(extra)
         try:
             response = self._transport(method.upper(), url, headers, body)
         except (ConnectionError, TimeoutError):

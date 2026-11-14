@@ -21,7 +21,7 @@ from atlas.gateway import Gateway, GatewayRefused, RequestContext, Response, htt
 ROOT = Path(__file__).resolve().parents[2]
 DATA = ROOT / "data"
 RAW = DATA / "local" / "raw"
-MANIFEST = DATA / "evaluator" / "MANIFEST.json"
+MANIFEST = DATA / "local" / "export" / "evaluator" / "MANIFEST.json"
 
 PROW_VIEW = re.compile(r"https?://prow\.ci\.kubevirt\.io/+view/gs/kubevirt-prow/([A-Za-z0-9._~/-]+?)(?=[)\]\s>\"'`]|$)")
 

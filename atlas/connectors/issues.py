@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any, Mapping
 
 from atlas.connectors import ReplayConnector
@@ -20,16 +21,28 @@ class IssuesConnector(ReplayConnector):
         self.reader = reader
 
     def fetch_live(self, query: Mapping[str, Any], ctx: RunContext) -> list[Record]:
+        """Poll one issue. A 304 revalidation or a successful fetch re-confirms the live record.
+
+        A failed poll raises and confirms nothing, so the record ages normally.
+        """
         if self.reader is None:
             raise RuntimeError("issues connector has no live reader")
-        raw = self.reader.issue(int(query["number"]))
+        number = int(query["number"])
+        writer = AUTHORITATIVE_WRITERS[self.source]
+        current = self.store.current_live(self.source, f"issue/{number}")
+        _, unchanged = self.reader.rest_conditional(f"/issues/{number}")
+        if unchanged and current is not None:
+            confirmed = self.store.reconfirm(current.record_id, writer, self.clock(), method="not_modified")
+            return [replace(current, confirmed_through=confirmed)]
+        raw = self.reader.issue(number)
         if raw is None:
             return []
         fetched = self.clock()
         asof = issue_as_of(raw, fetched)
         record, extra = to_record(self.source, asof, cutoff=fetched, fetched_at=fetched, history_complete_through=None, live=True)
-        self.store.put(record, AUTHORITATIVE_WRITERS[self.source], **extra)
-        return [record]
+        record_id = self.store.put(record, writer, **extra)
+        confirmed = self.store.reconfirm(record_id, writer, fetched, method="fetch")
+        return [replace(record, record_id=record_id, confirmed_through=confirmed)]
 
 
 class GitConnector(ReplayConnector):

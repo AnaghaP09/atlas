@@ -3,7 +3,7 @@ import json
 import pytest
 
 from atlas.contracts import RunMode
-from atlas.snapshots import SnapshotError, SnapshotRegistry, UnsafePath, resolve_under
+from atlas.snapshots import SnapshotError, SnapshotRegistry, UnsafePath, normalized_sha256, resolve_under
 from atlas.store import LIVE_SNAPSHOT_ID, EvidenceDB, ReadOnlyStore, file_sha256
 from tests.a.helpers import T0, ctx, rec
 
@@ -51,8 +51,8 @@ def _write_export(root, snapshot_id, rows, kind="cases"):
     d = root / "snapshots" / kind / snapshot_id
     d.mkdir(parents=True)
     lines = [json.dumps(r, sort_keys=True) + "\n" for r in rows]
-    (d / "records.jsonl").write_text("".join(lines), encoding="utf-8")
-    sha = file_sha256(d / "records.jsonl")
+    (d / "records.jsonl").write_bytes("".join(lines).encode("utf-8"))
+    sha = normalized_sha256(d / "records.jsonl")
     (d / "snapshot.json").write_text(json.dumps({"snapshot_id": snapshot_id, "cutoff": T0.isoformat(), "records_sha256": sha}), encoding="utf-8")
     return d
 
@@ -134,3 +134,17 @@ def test_resolver_accepts_normal_path(tmp_path):
     (root / "cases" / "g01").mkdir(parents=True)
     (root / "cases" / "g01" / "log.txt").write_text("x")
     assert resolve_under(root, "file:cases/g01/log.txt").read_text() == "x"
+
+
+def test_export_hash_ignores_line_ending_conversion(tmp_path):
+    source = EvidenceDB(tmp_path / "src.sqlite")
+    source.put(rec(), "connector.issues", content={"title": "t"})
+    rows = source.export_rows()
+    source.close()
+    data = tmp_path / "data"
+    export = _write_export(data, "case-crlf", rows)
+    p = export / "records.jsonl"
+    p.write_bytes(p.read_bytes().replace(b"\n", b"\r\n"))
+    reg = SnapshotRegistry(data)
+    assert reg.store().get(ctx("case-crlf"), "issues", "issue/1") is not None
+    reg.close()

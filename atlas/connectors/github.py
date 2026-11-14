@@ -25,6 +25,7 @@ class GitHubReader:
         self.owner = owner
         self.name = name
         self.connector = connector
+        self.validators: dict[str, dict[str, Any]] = {}
 
     # ------------------------------------------------------------------ transport helpers
 
@@ -38,15 +39,40 @@ class GitHubReader:
         return payload["data"]
 
     def rest(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        body, _ = self.rest_conditional(path, params)
+        return body
+
+    def rest_conditional(self, path: str, params: dict[str, Any] | None = None) -> tuple[Any, bool]:
+        """GET with HTTP revalidation. Returns (body, unchanged).
+
+        A bodyless ``304 Not Modified`` means the cached body is still current: it is returned
+        from the validator cache with ``unchanged=True``. Any other non-200 status is an error
+        (404 returns None).
+        """
         query = ""
         if params:
             query = "?" + "&".join(f"{k}={v}" for k, v in params.items())
-        resp = self.gateway.request(self.connector, "GET", f"{API}/repos/{self.owner}/{self.name}{path}{query}", self.ctx)
+        url = f"{API}/repos/{self.owner}/{self.name}{path}{query}"
+        cached = self.validators.get(url)
+        conditional: dict[str, str] = {}
+        if cached:
+            if cached.get("etag"):
+                conditional["If-None-Match"] = cached["etag"]
+            if cached.get("last_modified"):
+                conditional["If-Modified-Since"] = cached["last_modified"]
+        resp = self.gateway.request(self.connector, "GET", url, self.ctx, conditional=conditional or None)
+        if resp.status == 304:
+            if not cached:
+                raise GitHubError(f"GET {path} returned 304 without a cached body")
+            return cached["body"], True
         if resp.status == 404:
-            return None
+            return None, False
         if resp.status != 200:
             raise GitHubError(f"GET {path} failed with status {resp.status}")
-        return resp.body
+        headers = {k.lower(): v for k, v in (resp.headers or {}).items()}
+        if headers.get("etag") or headers.get("last-modified"):
+            self.validators[url] = {"etag": headers.get("etag"), "last_modified": headers.get("last-modified"), "body": resp.body}
+        return resp.body, False
 
     def _vars(self, **extra: Any) -> dict[str, Any]:
         return {"owner": self.owner, "name": self.name, **extra}

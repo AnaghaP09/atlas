@@ -67,7 +67,7 @@ class SnapshotRegistry:
     def live(self) -> EvidenceDB:
         with self._lock:
             if self._live is None:
-                self._live = EvidenceDB(self.stores_dir / f"{LIVE_SNAPSHOT_ID}.sqlite")
+                self._live = EvidenceDB(self.stores_dir / f"{LIVE_SNAPSHOT_ID}.sqlite", live=True)
             return self._live
 
     def store(self) -> EvidenceStore:
@@ -123,7 +123,7 @@ class SnapshotRegistry:
         manifest = json.loads((export / "snapshot.json").read_text(encoding="utf-8"))
         target = self.stores_dir / "prepared" / f"{snapshot_id}.sqlite"
         records_path = export / "records.jsonl"
-        export_sha = file_sha256(records_path)
+        export_sha = normalized_sha256(records_path)
         if manifest.get("records_sha256") and manifest["records_sha256"] != export_sha:
             raise SnapshotError(f"snapshot export {snapshot_id} does not match its manifest")
         marker = target.with_suffix(".sha")
@@ -134,6 +134,8 @@ class SnapshotRegistry:
             target.unlink()
         db = EvidenceDB(target)
         rows = [json.loads(line) for line in records_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+        if not rows:
+            raise SnapshotError(f"snapshot export {snapshot_id} is empty")
         db.import_rows(rows)
         conflicts_path = export / "conflicts.jsonl"
         if conflicts_path.exists():
@@ -256,8 +258,9 @@ def _make_writable(path: Path) -> None:
     os.chmod(path, stat.S_IREAD | stat.S_IWRITE)
 
 
-def records_sha256(lines: list[str]) -> str:
-    return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
+def normalized_sha256(path: Path) -> str:
+    """SHA256 of a text export with line endings normalised to LF (stable across checkouts)."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def clear_prepared_cache(registry: SnapshotRegistry) -> None:
