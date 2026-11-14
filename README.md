@@ -65,6 +65,14 @@ ATLAS is domain-agnostic. Its reference ecosystem for the demo and the tests is 
 blocked each release, so forecast accuracy is measured against a stated proxy definition of a
 release blocker (see [data sources](docs/data-sources.md)), and every result says so.
 
+Two extensions are in progress:
+
+- **A second public project.** ATLAS is being extended to [Argo CD](https://github.com/argoproj/argo-cd)
+  to show that it is not tied to one code base. Argo CD appears in the live views only; the
+  evaluation gates are still measured on KubeVirt.
+- **Near-real-time dashboard.** The dashboard updates by polling GitHub at a fixed interval,
+  which is shown on screen, so what you see is as fresh as the last poll rather than instant.
+
 ## Quick start
 
 Requirements: Python 3.14, Node.js 24 and Docker (Docker runs the coding agent's sandbox).
@@ -94,4 +102,4 @@ ATLAS was built as a team capstone project by Swetha, Bhuneshwari and Anagha.
 
 ## Licence
 
-Not yet chosen.
+MIT (see LICENSE).
