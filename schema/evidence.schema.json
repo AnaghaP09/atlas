@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AnaghaP09/atlas/schema/evidence.schema.json",
+  "title": "Evidence record",
+  "description": "One version of one source record as held in the evidence store. Records are immutable; a newer revision is a new record.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "record_id", "source", "source_id", "revision", "content_version_id", "valid_from",
+    "observed_at", "confirmed_through", "writer", "provenance", "synthetic_ancestry",
+    "access_scopes", "lineage", "content_ref"
+  ],
+  "properties": {
+    "record_id": {"type": "string", "minLength": 1, "description": "Stable identity of this record version, used in citations."},
+    "source": {"enum": ["issues", "git", "ci", "security", "architecture", "kubernetes", "telemetry", "capacity", "target_ci", "derived"]},
+    "source_id": {"type": "string", "minLength": 1},
+    "revision": {"type": ["integer", "string", "null"], "description": "Monotonic revision where the source has one (build number, ticket version, scan run); null for immutable identities such as commits."},
+    "content_version_id": {"type": "string", "minLength": 1},
+    "valid_from": {"type": "string", "format": "date-time", "description": "When this content version became true at the source."},
+    "observed_at": {"type": "string", "format": "date-time", "description": "When the event or content change happened at the source."},
+    "confirmed_through": {"type": ["string", "null"], "format": "date-time", "description": "Time through which the current state was confirmed; freshness is measured from here. Null means freshness is unknown."},
+    "fetched_at": {"type": ["string", "null"], "format": "date-time", "description": "Acquisition time; never used for freshness."},
+    "writer": {"type": "string", "minLength": 1, "description": "The single component authorised to write this source."},
+    "provenance": {"enum": ["observed", "synthetic", "derived"]},
+    "synthetic_ancestry": {"type": "boolean"},
+    "access_scopes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "lineage": {"type": "array", "items": {"type": "string"}, "description": "record_ids this record was derived from."},
+    "conflicts": {"type": "array", "items": {"type": "string"}, "description": "record_ids that disagree with this one; attached on read."},
+    "superseded_by": {"type": ["string", "null"], "description": "Attached on read when a newer revision exists."},
+    "content_ref": {"type": "string", "minLength": 1, "description": "Reference to the stored content blob."}
+  }
+}

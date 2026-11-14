@@ -1,0 +1,5 @@
+-c requirements.txt
+pytest
+pip-audit
+pip-tools
+jsonschema

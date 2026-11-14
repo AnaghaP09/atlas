@@ -1,0 +1,161 @@
+{
+  "run_id": "run-0004",
+  "report_id": "rep-0004",
+  "report_type": "investigation",
+  "authoritative_generation": 1,
+  "report_version": 1,
+  "correction_version": 0,
+  "superseded_by": null,
+  "run_status": "partial",
+  "started_by": {
+    "kind": "watcher",
+    "role": null,
+    "watcher_id": "failure-watcher"
+  },
+  "data_mode": "REAL",
+  "classification": {
+    "value": "DEPENDENCY",
+    "claim_ids": [
+      "c1"
+    ],
+    "required_scopes": [
+      "public"
+    ]
+  },
+  "action": {
+    "value": null,
+    "claim_ids": [],
+    "required_scopes": [
+      "public"
+    ]
+  },
+  "confidence": 0.85,
+  "safety_disposition": "NONE",
+  "evidence_recommendation": null,
+  "root_cause": {
+    "text": "A dependency update in the test image introduced the failure.",
+    "claim_ids": [
+      "c1"
+    ],
+    "required_scopes": [
+      "public"
+    ]
+  },
+  "insufficient_evidence": [],
+  "items": [
+    {
+      "id": "item-1",
+      "component": "network",
+      "kind": "flaky_test",
+      "probability_range": "illustrative",
+      "cost_now": null,
+      "cost_deferred": null,
+      "evidence": [
+        "rec-log-1"
+      ],
+      "provenance": "observed",
+      "synthetic_ancestry": false,
+      "allocation": "coding_agent",
+      "skills": [
+        "networking"
+      ],
+      "review_load": 0.5,
+      "required_scopes": [
+        "public"
+      ],
+      "claim_ids": [
+        "c1"
+      ]
+    }
+  ],
+  "forecast": "unavailable",
+  "options": [],
+  "findings": [
+    {
+      "text": "The failures began right after the image change.",
+      "claim_ids": [
+        "c1"
+      ],
+      "required_scopes": [
+        "public"
+      ]
+    }
+  ],
+  "claims": [
+    {
+      "id": "c1",
+      "text": "Failures started with the image change.",
+      "kind": "root_cause",
+      "evidence_ids": [
+        "rec-log-1",
+        "rec-commit-1"
+      ],
+      "depends_on": [],
+      "required_scopes": [
+        "public"
+      ],
+      "verdict": "supported",
+      "verdict_reason": null
+    },
+    {
+      "id": "c2",
+      "text": "A version bump is a bounded change.",
+      "kind": "task_rationale",
+      "evidence_ids": [
+        "rec-commit-1"
+      ],
+      "depends_on": [
+        "c1"
+      ],
+      "required_scopes": [
+        "public"
+      ],
+      "verdict": "supported",
+      "verdict_reason": null
+    }
+  ],
+  "security_check": {
+    "state": "passed",
+    "findings": [],
+    "policy_version": "policy-1",
+    "exception_ref": null,
+    "signoff_required": false,
+    "valid_until": "2026-07-31T12:00:00Z",
+    "scan_run_ids": [
+      "scan-1"
+    ]
+  },
+  "verifier": {
+    "claims_checked": 2,
+    "claims_rejected": 0,
+    "contradictions": []
+  },
+  "restricted_items": 0,
+  "injection_detected": false,
+  "redactions_applied": 0,
+  "egress_attempts": 0,
+  "approvals": [],
+  "scorecard_delta": null,
+  "reasoning": [
+    {
+      "text": "Start date of the failures matches the image change merge.",
+      "claim_ids": [
+        "c1"
+      ],
+      "required_scopes": [
+        "public"
+      ]
+    }
+  ],
+  "cost": {
+    "input_tokens": 1000,
+    "output_tokens": 200,
+    "usd": 0.01,
+    "steps": 30,
+    "tool_calls": 9,
+    "seconds": 42.0
+  },
+  "required_scopes": [
+    "public"
+  ]
+}

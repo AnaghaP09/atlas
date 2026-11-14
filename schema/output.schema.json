@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AnaghaP09/atlas/schema/output.schema.json",
+  "title": "Run output",
+  "description": "The result of one run at one verification generation. Only the verified artefact (every field bound to a rejected, contradicted or missing claim removed) may be rendered, published or executed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "run_id", "report_id", "report_type", "authoritative_generation", "report_version",
+    "correction_version", "run_status", "started_by", "data_mode", "classification", "action",
+    "confidence", "safety_disposition", "evidence_recommendation", "items", "forecast",
+    "options", "findings", "claims", "security_check", "verifier", "restricted_items",
+    "injection_detected", "redactions_applied", "egress_attempts", "approvals", "reasoning",
+    "cost", "required_scopes"
+  ],
+  "$defs": {
+    "scopes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "claimIds": {"type": "array", "items": {"type": "string"}},
+    "classification": {"enum": ["DEPENDENCY", "CODE_DEFECT", "TEST_DEFECT", "ENVIRONMENT", "DUPLICATE", "CARRY_OVER_FORECAST", "UNKNOWN", "OUT_OF_SCOPE", null]},
+    "action": {"enum": ["DELEGATE_TO_CODING_AGENT", "ASSIGN_DEVELOPER", "ESCALATE_DECISION", "HAND_TO_INFRA_OWNER", "LINK_DUPLICATE", "PUBLISH_FORECAST", "REJECT", null]},
+    "boundText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "claim_ids", "required_scopes"],
+      "properties": {
+        "text": {"type": "string"},
+        "claim_ids": {"$ref": "#/$defs/claimIds"},
+        "required_scopes": {"$ref": "#/$defs/scopes"}
+      }
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "component", "kind", "probability_range", "evidence", "provenance", "synthetic_ancestry", "required_scopes", "claim_ids"],
+      "properties": {
+        "id": {"type": "string"},
+        "component": {"type": ["string", "null"]},
+        "kind": {"type": "string"},
+        "probability_range": {
+          "oneOf": [
+            {"type": "null"},
+            {"const": "illustrative"},
+            {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 2, "maxItems": 2}
+          ]
+        },
+        "cost_now": {"type": ["number", "string", "null"]},
+        "cost_deferred": {"type": ["number", "string", "null"]},
+        "evidence": {"type": "array", "items": {"type": "string"}},
+        "provenance": {"enum": ["observed", "synthetic", "derived"]},
+        "synthetic_ancestry": {"type": "boolean"},
+        "allocation": {"type": ["string", "null"]},
+        "skills": {"type": "array", "items": {"type": "string"}},
+        "review_load": {"type": ["number", "null"]},
+        "required_scopes": {"$ref": "#/$defs/scopes"},
+        "claim_ids": {"$ref": "#/$defs/claimIds"}
+      }
+    }
+  },
+  "properties": {
+    "run_id": {"type": "string"},
+    "report_id": {"type": "string"},
+    "report_type": {"enum": ["forecast", "allocation", "architecture", "investigation", "security_gate", "scorecard", "question"]},
+    "authoritative_generation": {"type": "integer", "minimum": 1},
+    "report_version": {"type": "integer", "minimum": 1},
+    "correction_version": {"type": "integer", "minimum": 0},
+    "superseded_by": {"type": ["string", "null"]},
+    "run_status": {"enum": ["complete", "partial", "unverified", "failed"]},
+    "started_by": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["schedule", "watcher", "person"]},
+        "role": {"enum": ["pm", "em", "architect", "security", "oncall", "audit", null]},
+        "watcher_id": {"type": ["string", "null"]}
+      }
+    },
+    "data_mode": {"enum": ["REAL", "SYNTHETIC", "STAGED", "UNEVALUATED"]},
+    "classification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "claim_ids", "required_scopes"],
+      "properties": {"value": {"$ref": "#/$defs/classification"}, "claim_ids": {"$ref": "#/$defs/claimIds"}, "required_scopes": {"$ref": "#/$defs/scopes"}}
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "claim_ids", "required_scopes"],
+      "properties": {"value": {"$ref": "#/$defs/action"}, "claim_ids": {"$ref": "#/$defs/claimIds"}, "required_scopes": {"$ref": "#/$defs/scopes"}}
+    },
+    "confidence": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+    "safety_disposition": {"enum": ["NONE", "HOLD_FOR_HUMAN", "REJECTED"]},
+    "evidence_recommendation": {"$ref": "#/$defs/action"},
+    "root_cause": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/boundText"}]},
+    "insufficient_evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["item", "missing", "record_ids", "required_scopes"],
+        "properties": {
+          "item": {"type": "string"},
+          "missing": {"type": "array", "items": {"type": "string"}},
+          "record_ids": {"type": "array", "items": {"type": "string"}},
+          "required_scopes": {"$ref": "#/$defs/scopes"}
+        }
+      }
+    },
+    "items": {"type": "array", "items": {"$ref": "#/$defs/item"}},
+    "forecast": {"oneOf": [{"const": "unavailable"}, {"type": "array", "items": {"$ref": "#/$defs/item"}}]},
+    "options": {"type": "array", "items": {"$ref": "#/$defs/boundText"}},
+    "findings": {"type": "array", "items": {"$ref": "#/$defs/boundText"}},
+    "claims": {"type": "array", "items": {"$ref": "claim.schema.json"}},
+    "security_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "findings", "policy_version", "exception_ref", "signoff_required", "valid_until"],
+      "properties": {
+        "state": {"enum": ["not_run", "passed", "blocked", "accepted_with_exception"]},
+        "findings": {"type": "array", "items": {"$ref": "#/$defs/boundText"}},
+        "policy_version": {"type": ["string", "null"]},
+        "exception_ref": {"type": ["string", "null"]},
+        "signoff_required": {"type": "boolean"},
+        "valid_until": {"type": ["string", "null"], "format": "date-time"},
+        "scan_run_ids": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claims_checked", "claims_rejected", "contradictions"],
+      "properties": {
+        "claims_checked": {"type": "integer", "minimum": 0},
+        "claims_rejected": {"type": "integer", "minimum": 0},
+        "contradictions": {"type": "array", "items": {"$ref": "#/$defs/boundText"}}
+      }
+    },
+    "restricted_items": {"type": "integer", "minimum": 0, "description": "Number of fields withheld from this reader."},
+    "injection_detected": {"type": "boolean"},
+    "redactions_applied": {"type": "integer", "minimum": 0},
+    "egress_attempts": {"type": "integer", "minimum": 0},
+    "approvals": {"type": ["array", "null"], "items": {"type": "string"}},
+    "scorecard_delta": {"type": ["object", "null"]},
+    "reasoning": {"type": "array", "items": {"$ref": "#/$defs/boundText"}},
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "usd", "steps", "tool_calls", "seconds"],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "usd": {"type": "number", "minimum": 0},
+        "steps": {"type": "integer", "minimum": 0},
+        "tool_calls": {"type": "integer", "minimum": 0},
+        "seconds": {"type": "number", "minimum": 0}
+      }
+    },
+    "required_scopes": {"$ref": "#/$defs/scopes"}
+  }
+}
