@@ -293,8 +293,41 @@ def snapshot(request: Request, snapshot_id: str) -> dict[str, Any]:
 def graph(request: Request, snapshot_id: str) -> dict[str, Any]:
     principal = principal_of(request)
     _snapshot(request, principal, snapshot_id)
-    g = dict(services_of(request).snapshots.graph(snapshot_id))
+    g = graph_view(services_of(request).snapshots.graph(snapshot_id))
     return envelope(request, principal, {"snapshot_id": snapshot_id, **g})
+
+
+def _short_label(node_id: str) -> str:
+    """A readable name for a node: the part after the kind prefix."""
+    return node_id.split(":", 1)[1] if ":" in node_id else node_id
+
+
+def graph_view(raw: Any) -> dict[str, Any]:
+    """One graph shape for every client.
+
+    Nodes carry ``kind`` and ``label`` (as well as the stored ``type``); edges carry ``source``
+    and ``target`` (as well as the stored ``from`` and ``to``), so drawing code never has to guess.
+    """
+    g = dict(raw or {})
+    nodes = []
+    for n in g.get("nodes", []) or []:
+        node = dict(n)
+        node.setdefault("kind", node.get("type", "node"))
+        node.setdefault("type", node["kind"])
+        node.setdefault("label", _short_label(str(node.get("id", ""))))
+        nodes.append(node)
+    edges = []
+    for e in g.get("edges", []) or []:
+        edge = dict(e)
+        edge.setdefault("source", edge.get("from"))
+        edge.setdefault("target", edge.get("to"))
+        edge.setdefault("from", edge["source"])
+        edge.setdefault("to", edge["target"])
+        edge.setdefault("kind", "link")
+        edges.append(edge)
+    g["nodes"] = nodes
+    g["edges"] = edges
+    return g
 
 
 # ------------------------------------------------------------------ runs and reports
