@@ -516,18 +516,23 @@ class EvidenceStore:
     context's snapshot id. Writes go only to the live store.
     """
 
-    def __init__(self, registry: "SnapshotRegistryLike") -> None:
+    def __init__(self, registry: "SnapshotRegistryLike", project_id: str = "") -> None:
         self._registry = registry
+        # Live writes go to this project's own live store.
+        self.project_id = project_id or ""
+
+    def _live(self) -> EvidenceDB:
+        return self._registry.live(self.project_id) if self.project_id else self._registry.live()
 
     def put(self, record: Record, writer: str, **kwargs: Any) -> str:
-        return self._registry.live().put(record, writer, **kwargs)
+        return self._live().put(record, writer, **kwargs)
 
     def reconfirm(self, record_id: str, writer: str, confirmed_at: datetime, *, method: str = "fetch") -> datetime:
         """Advance a live record's confirmation after a successful fetch or 304 revalidation."""
-        return self._registry.live().reconfirm(record_id, writer, confirmed_at, method=method)
+        return self._live().reconfirm(record_id, writer, confirmed_at, method=method)
 
     def current_live(self, source: str, source_id: str) -> Record | None:
-        return self._registry.live().get(source, source_id)
+        return self._live().get(source, source_id)
 
     def _db(self, ctx: RunContext) -> EvidenceDB:
         return self._registry.open(ctx)
@@ -555,7 +560,7 @@ class EvidenceStore:
 
 
 class SnapshotRegistryLike:  # pragma: no cover - structural type for documentation
-    def live(self) -> EvidenceDB: ...
+    def live(self, project_id: str = "") -> EvidenceDB: ...
 
     def open(self, ctx: RunContext) -> EvidenceDB: ...
 
@@ -602,6 +607,7 @@ def is_live(ctx: RunContext) -> bool:
 _ACTION_SCHEMA = """
 CREATE TABLE IF NOT EXISTS scan_runs (
     scan_run_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT '',
     destination TEXT NOT NULL, action_id TEXT NOT NULL, revision TEXT NOT NULL,
     inventory TEXT NOT NULL, per_module TEXT NOT NULL, completion TEXT NOT NULL,
     coverage_ok INTEGER NOT NULL, coverage_total INTEGER NOT NULL,
@@ -612,14 +618,16 @@ CREATE TABLE IF NOT EXISTS findings (
     finding_id TEXT PRIMARY KEY, scan_run_id TEXT NOT NULL, content TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS ci_observations (
+    project_id TEXT NOT NULL DEFAULT '',
     destination TEXT NOT NULL, action_id TEXT NOT NULL, published_commit TEXT NOT NULL,
     job_id TEXT NOT NULL, run_attempt INTEGER NOT NULL, observation_version TEXT NOT NULL,
     name TEXT, status TEXT, conclusion TEXT, started_at TEXT, completed_at TEXT, head_sha TEXT,
     arrival INTEGER NOT NULL, observed_at TEXT NOT NULL,
-    PRIMARY KEY (destination, action_id, published_commit, job_id, run_attempt, observation_version)
+    PRIMARY KEY (project_id, destination, action_id, published_commit, job_id, run_attempt, observation_version)
 );
 CREATE TABLE IF NOT EXISTS validation_evidence (
     evidence_id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT '',
     destination TEXT NOT NULL, action_id TEXT NOT NULL, published_commit TEXT NOT NULL,
     kind TEXT NOT NULL, content TEXT NOT NULL, writer TEXT NOT NULL, recorded_at TEXT NOT NULL, seq INTEGER NOT NULL
 );
@@ -632,6 +640,11 @@ TARGET_CI_WRITER = "connector.target_ci"
 VALIDATION_EVIDENCE_WRITER = "execution"
 VALIDATION_EVIDENCE_KINDS = frozenset({"check_result", "behavioural_check", "human_adjudication"})
 VALIDATION_READERS = frozenset({"execution", "scorecard", "reassessment"})
+
+def _project(ctx: Any) -> str:
+    """The project a context belongs to ('' for a single-project installation)."""
+    return str(getattr(ctx, "project_id", "") or "")
+
 
 STATUS_RANK = {"queued": 0, "waiting": 0, "pending": 0, "requested": 0, "in_progress": 1, "completed": 2}
 
@@ -648,9 +661,18 @@ class ActionStore:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(str(path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        self._migrate()
         self._conn.executescript(_ACTION_SCHEMA)
         self._conn.commit()
         self._lock = threading.RLock()
+
+    def _migrate(self) -> None:
+        """Add the project column to stores created before projects existed."""
+        for table in ("scan_runs", "ci_observations", "validation_evidence"):
+            cols = [r[1] for r in self._conn.execute(f"PRAGMA table_info({table})")]
+            if cols and "project_id" not in cols:
+                self._conn.execute(f"ALTER TABLE {table} ADD COLUMN project_id TEXT NOT NULL DEFAULT ''")
+        self._conn.commit()
 
     def close(self) -> None:
         self._conn.close()
@@ -669,13 +691,15 @@ class ActionStore:
             raise WriterRejected("scan run does not belong to this task context")
         with self._lock:
             self._conn.execute(
-                "INSERT OR IGNORE INTO scan_runs VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO scan_runs (scan_run_id, destination, action_id, revision, inventory, per_module,"
+                " completion, coverage_ok, coverage_total, observed_at, confirmed_through, fresh_until, finding_ids, seq,"
+                " project_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     scan_run["scan_run_id"], scan_run["destination"], scan_run["action_id"], scan_run["revision"],
                     json.dumps(scan_run["inventory"]), json.dumps(scan_run["per_module"]), scan_run["completion"],
                     scan_run["coverage_ok"], scan_run["coverage_total"], to_iso(scan_run["observed_at"]),
                     to_iso(scan_run["confirmed_through"]), to_iso(scan_run["fresh_until"]),
-                    json.dumps([f["finding_id"] for f in findings]), self._seq("scan_runs"),
+                    json.dumps([f["finding_id"] for f in findings]), self._seq("scan_runs"), _project(ctx),
                 ),
             )
             for f in findings:
@@ -690,12 +714,13 @@ class ActionStore:
         if reader not in SECURITY_PARTITION_READERS:
             raise PermissionError(f"{reader} may not read task security evidence")
         rows = self._conn.execute(
-            "SELECT * FROM scan_runs WHERE destination=? AND action_id=? AND revision=? ORDER BY seq",
-            (ctx.destination_repo, ctx.action_id, ctx.scanned_revision),
+            "SELECT * FROM scan_runs WHERE project_id=? AND destination=? AND action_id=? AND revision=? ORDER BY seq",
+            (_project(ctx), ctx.destination_repo, ctx.action_id, ctx.scanned_revision),
         ).fetchall()
         out = []
         for r in rows:
             d = dict(r)
+            d.pop("project_id", None)
             for k in ("inventory", "per_module", "finding_ids"):
                 d[k] = json.loads(d[k])
             for k in ("observed_at", "confirmed_through", "fresh_until"):
@@ -725,12 +750,14 @@ class ActionStore:
         with self._lock:
             arrival = self._conn.execute("SELECT COALESCE(MAX(arrival), 0) + 1 FROM ci_observations").fetchone()[0]
             cur = self._conn.execute(
-                "INSERT OR IGNORE INTO ci_observations VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO ci_observations (destination, action_id, published_commit, job_id, run_attempt,"
+                " observation_version, name, status, conclusion, started_at, completed_at, head_sha, arrival, observed_at,"
+                " project_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     ctx.destination_repo, ctx.action_id, ctx.published_commit, str(obs["job_id"]),
                     int(obs.get("run_attempt") or 1), version, obs.get("name"), obs.get("status"),
                     obs.get("conclusion"), obs.get("started_at"), obs.get("completed_at"), head, arrival,
-                    to_iso(observed_at),
+                    to_iso(observed_at), _project(ctx),
                 ),
             )
             self._conn.commit()
@@ -740,10 +767,16 @@ class ActionStore:
         if reader not in VALIDATION_READERS:
             raise PermissionError(f"{reader} may not read validation evidence")
         rows = self._conn.execute(
-            "SELECT * FROM ci_observations WHERE destination=? AND action_id=? AND published_commit=? ORDER BY arrival",
-            (ctx.destination_repo, ctx.action_id, ctx.published_commit),
+            "SELECT * FROM ci_observations WHERE project_id=? AND destination=? AND action_id=? AND published_commit=?"
+            " ORDER BY arrival",
+            (_project(ctx), ctx.destination_repo, ctx.action_id, ctx.published_commit),
         ).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            d = dict(r)
+            d.pop("project_id", None)
+            out.append(d)
+        return out
 
     def effective_states(self, ctx: Any, reader: str) -> dict[tuple[str, int], dict[str, Any]]:
         """Effective state per (job, attempt): highest status rank wins; completed is never replaced."""
@@ -763,14 +796,16 @@ class ActionStore:
         if "state" in content or "lifecycle_state" in content:
             raise ValueError("task lifecycle state belongs in the task store, not in validation evidence")
         evidence_id = "ve-" + hashlib.sha256(
-            json.dumps([ctx.destination_repo, ctx.action_id, ctx.published_commit, kind, dict(content)], sort_keys=True, default=str).encode()
+            json.dumps([_project(ctx), ctx.destination_repo, ctx.action_id, ctx.published_commit, kind, dict(content)],
+                       sort_keys=True, default=str).encode()
         ).hexdigest()[:20]
         with self._lock:
             self._conn.execute(
-                "INSERT OR IGNORE INTO validation_evidence VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO validation_evidence (evidence_id, destination, action_id, published_commit, kind,"
+                " content, writer, recorded_at, seq, project_id) VALUES (?,?,?,?,?,?,?,?,?,?)",
                 (evidence_id, ctx.destination_repo, ctx.action_id, ctx.published_commit, kind,
                  json.dumps(dict(content), sort_keys=True, default=str), writer, to_iso(recorded_at),
-                 self._seq("validation_evidence")),
+                 self._seq("validation_evidence"), _project(ctx)),
             )
             self._conn.commit()
         return evidence_id
@@ -778,8 +813,8 @@ class ActionStore:
     def evidence(self, ctx: Any, reader: str, kind: str | None = None) -> list[dict[str, Any]]:
         if reader not in VALIDATION_READERS:
             raise PermissionError(f"{reader} may not read validation evidence")
-        sql = "SELECT * FROM validation_evidence WHERE destination=? AND action_id=? AND published_commit=?"
-        params: list[Any] = [ctx.destination_repo, ctx.action_id, ctx.published_commit]
+        sql = "SELECT * FROM validation_evidence WHERE project_id=? AND destination=? AND action_id=? AND published_commit=?"
+        params: list[Any] = [_project(ctx), ctx.destination_repo, ctx.action_id, ctx.published_commit]
         if kind:
             sql += " AND kind=?"
             params.append(kind)
@@ -787,6 +822,7 @@ class ActionStore:
         out = []
         for r in rows:
             d = dict(r)
+            d.pop("project_id", None)
             d["content"] = json.loads(d["content"])
             out.append(d)
         return out
@@ -802,7 +838,7 @@ class ActionStore:
     # ------------------------------------------------------------------ polling leases
 
     def acquire_poll(self, ctx: Any, holder: str) -> bool:
-        key = f"{ctx.destination_repo}|{ctx.action_id}|{ctx.published_commit}"
+        key = f"{_project(ctx)}|{ctx.destination_repo}|{ctx.action_id}|{ctx.published_commit}"
         with self._lock:
             try:
                 self._conn.execute("INSERT INTO poll_leases VALUES (?,?,?)", (key, holder, datetime.now(timezone.utc).isoformat()))
@@ -812,7 +848,7 @@ class ActionStore:
                 return False
 
     def release_poll(self, ctx: Any, holder: str) -> None:
-        key = f"{ctx.destination_repo}|{ctx.action_id}|{ctx.published_commit}"
+        key = f"{_project(ctx)}|{ctx.destination_repo}|{ctx.action_id}|{ctx.published_commit}"
         with self._lock:
             self._conn.execute("DELETE FROM poll_leases WHERE key=? AND holder=?", (key, holder))
             self._conn.commit()
