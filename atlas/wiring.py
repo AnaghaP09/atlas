@@ -767,7 +767,8 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     ops = OpsDB(db_path("ops"))
     spend = SpendMeter(float(settings.spend_ceiling_usd),
                        notify=lambda event, amount: _safe_emit(notifier, event, "spend",
-                                                               f"model spend has reached {amount:.2f} USD"))
+                                                               f"model spend has reached {amount:.2f} USD"),
+                       path=(data_dir / f"{environment}-spend.json") if data_dir is not None else None)
     containment = ContainmentStore(ops, deployed_revision=lambda: env.get("ATLAS_DEPLOYED_REVISION", "local"))
     if provider is None:
         try:

@@ -19,6 +19,20 @@ function write(key: string, value: string) {
   }
 }
 
+/** Demo identity only: the role and project picked in the switchers, kept across a reload. */
+export function storedDemoRole(): string | null {
+  return read("atlas.demo.role");
+}
+
+export function storedDemoProject(): string | null {
+  return read("atlas.demo.project");
+}
+
+export function rememberDemoIdentity(role: string | null | undefined, projectId: string | null | undefined) {
+  if (role) write("atlas.demo.role", role);
+  if (projectId) write("atlas.demo.project", projectId);
+}
+
 export function systemTheme(): Theme {
   try {
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";

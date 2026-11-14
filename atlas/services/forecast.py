@@ -34,6 +34,28 @@ def score(item: OpenItem, at: datetime) -> float:
     return round(s, 3)
 
 
+HARDWARE_HINT = re.compile(r"(?i)(?<![a-z0-9])(s390x|arm64|aarch64|ppc64le|gpu|sr-?iov|usb passthrough)(?![a-z0-9])")
+
+
+def propose_owner(item: OpenItem) -> tuple[str, str]:
+    """Propose who should take a carried-over item. A rule over labels, shown as a proposal only.
+
+    Returns ``(owner, reason)`` where owner is ``decision_maker``, ``developer`` or ``coding_agent``.
+    People decide the real assignment; this never names a person.
+    """
+    labels = {l.lower() for l in item.labels}
+    text = f"{item.title} {' '.join(sorted(labels))}"
+    if any(l.startswith("release-blocker") for l in labels) or "priority/critical-urgent" in labels:
+        return "decision_maker", "urgent or release-blocking"
+    if HARDWARE_HINT.search(text):
+        return "developer", "needs special hardware"
+    if item.fan_in >= 5 or item.component is None:
+        return "developer", "touches several components"
+    if "kind/flake" in labels:
+        return "coding_agent", "single-component flaky test"
+    return "developer", "code change in one component"
+
+
 def forecast(items: Sequence[OpenItem], at: datetime, top: int = 10, threshold: float = 2.0) -> dict[str, Any]:
     """Rank open items; return forecast items and the claims that bind them to their evidence."""
     candidates = [i for i in items if not is_tracker(i)]
@@ -64,6 +86,9 @@ def forecast(items: Sequence[OpenItem], at: datetime, top: int = 10, threshold: 
             "synthetic_ancestry": False,
             "required_scopes": sorted(i.required_scopes),
             "claim_ids": [cid],
+            "allocation": propose_owner(i)[0],
+            "allocation_reason": propose_owner(i)[1],
+            "allocation_basis": "proposal",
         })
         if i.requirement_bound:
             at_risk.append(i.issue_id)

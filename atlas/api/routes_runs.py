@@ -80,6 +80,39 @@ def _admit(request: Request, principal: Any, trigger_id: str, trigger: dict[str,
     return idempotent(request, principal, body, effect)
 
 
+RUN_KIND_LABEL = {"release_close": "Release close", "failure": "Investigation", "question": "Question",
+                  "nightly": "Nightly sweep", "reverify": "Re-check"}
+
+
+def _run_label(s: Any, adm: Any, snap: Any) -> dict[str, Any]:
+    """Plain words for a run: what kind it is, what it is about and when it started."""
+    trigger = adm.trigger or {}
+    kind = str(trigger.get("trigger") or "run")
+    dataset = None
+    if snap:
+        projects = getattr(s, "projects", None)
+        cfg = projects.get(snap.get("project_id")) if projects is not None and hasattr(projects, "get") and snap.get("project_id") else None
+        name = getattr(cfg, "name", None) or (str(snap.get("project_id")).replace("-", " ").title() if snap.get("project_id") else None)
+        try:
+            dataset = describe(s.snapshots, snap, name).get("title")
+        except Exception:  # a label must never break a run view
+            dataset = None
+    if kind == "release_close":
+        subject = dataset or (f"release {trigger.get('release_id')}" if trigger.get("release_id") else "")
+    elif kind == "failure":
+        subject = f"issue #{trigger.get('event_id')}" if str(trigger.get("event_id") or "").isdigit() else str(trigger.get("event_id") or "")
+    elif kind == "question":
+        q = " ".join(str(trigger.get("question") or "").split())
+        subject = q if len(q) <= 70 else q[:69].rstrip() + "…"
+    elif kind == "nightly":
+        subject = f"{len(trigger.get('queued') or [])} queued"
+    else:
+        subject = ""
+    label = RUN_KIND_LABEL.get(kind, kind.replace("_", " ").capitalize())
+    return {"kind": kind, "kind_label": label, "subject": subject, "title": f"{label} · {subject}" if subject else label,
+            "dataset_title": dataset, "started_at": getattr(adm, "admitted_at", None)}
+
+
 def run_view(request: Request, run_id: str) -> dict[str, Any] | None:
     s = services_of(request)
     adm = s.admissions.get(run_id)
@@ -102,6 +135,7 @@ def run_view(request: Request, run_id: str) -> dict[str, Any] | None:
         "cost": (artefact or {}).get("cost"),
         "reports": [],
     }
+    view.update(_run_label(s, adm, snap))
     if artefact:
         rtype = artefact.get("report_type", "investigation")
         for t in REPORTS_FOR.get(rtype, (rtype,)):
@@ -409,7 +443,7 @@ def report(request: Request, report_id: str, generation: int | None = Query(None
     return body
 
 
-@router.get("/evidence/{record_id}")
+@router.get("/evidence/{record_id:path}")
 def evidence(request: Request, record_id: str, run_id: str = Query(...),
              content_version_id: str | None = Query(None)) -> dict[str, Any]:
     principal = principal_of(request)

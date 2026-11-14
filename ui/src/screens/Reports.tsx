@@ -50,7 +50,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const isForecast = r.report_type.includes("forecast") || "forecast" in r.report;
   const proxy = typeof r.report.proxy_note === "string" ? r.report.proxy_note : null;
   return (
-    <Section title={r.report_type.replace(/_/g, " ")} icon="task" mode={r.data_mode}>
+    <Section title={reportName(r.report_type)} icon="task" mode={r.data_mode}>
       <ReadOnlyBanner access={(r as unknown as { access?: AccessGrantView }).access} myRole={principal?.role ?? null} />
       <Related
         object={{ type: "report", id: r.report_id }}

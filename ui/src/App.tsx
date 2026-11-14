@@ -150,8 +150,13 @@ function HeaderProjectSwitcher() {
   const list = useApi<{ projects: { id: string; name: string }[]; current: string | null }>(
     identity.provider.mode === "header" ? "/api/projects" : null,
   );
+  const known = list.data?.projects.map((p) => p.id) ?? [];
+  const stale = Boolean(list.data && projectId && !known.includes(projectId));
+  useEffect(() => {
+    if (stale) identity.transition({ projectId: list.data?.current ?? null, principal: identity.snapshot.principal });
+  }, [stale, identity, list.data]);
   if (identity.provider.mode !== "header" || !list.data || list.data.projects.length < 2) return null;
-  const current = projectId ?? list.data.current ?? "";
+  const current = (stale ? null : projectId) ?? list.data.current ?? "";
   return (
     <label className="top-field role-switcher">
       Project

@@ -65,6 +65,7 @@ class Admission:
     created: bool
     hold_reason: str | None = None
     project_id: str = ""
+    admitted_at: str | None = None
 
 
 _SEP = "\x1f"
@@ -142,7 +143,7 @@ class AdmissionStore:
         return Admission(
             event_key=event_key, run_id=row[1], snapshot_id=row[2], trigger=json.loads(row[3]),
             started_by=json.loads(row[4]), status=row[5], created=created, hold_reason=row[6],
-            project_id=row[8] or "",
+            project_id=row[8] or "", admitted_at=row[7],
         )
 
     def get(self, run_id: str) -> Admission | None:

@@ -22,6 +22,8 @@ import { DatasetName } from "../components/dataset";
 import type { Notification, QueueEntry, TaskView } from "../api/types";
 import { IdDetails } from "../components/common";
 import { Link } from "../lib/router";
+import { reportName, runTitle, starterName } from "../lib/labels";
+import { Time } from "../components/common";
 
 export function RunList() {
   const data = useApi<{ runs: RunView[] } & Envelope>("/api/runs");
@@ -37,15 +39,18 @@ export function RunList() {
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Run</th><th>Status</th><th>Started by</th><th>Data as of</th><th className="num">Reports</th></tr>
+              <tr><th>Run</th><th>Status</th><th>Started by</th><th>Started</th><th className="num">Reports</th></tr>
             </thead>
             <tbody>
               {paged.slice.map((r) => (
                 <tr key={r.run_id}>
-                  <td className="mono"><Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link></td>
+                  <td>
+                    <Link to={`/runs/${encodeURIComponent(r.run_id)}`} className="row-title">{r.kind_label ?? runTitle(r)}</Link>
+                    {r.subject ? <span className="row-sub" title={r.subject}>{r.subject}</span> : null}
+                  </td>
                   <td><StatusPill status={r.run_status} /></td>
-                  <td>{describeStarter(r)}</td>
-                  <td><DatasetName id={r.snapshot_id} /></td>
+                  <td>{starterName(r.started_by)}</td>
+                  <td className="muted"><Time iso={r.started_at} short /></td>
                   <td className="num">{r.reports.length}</td>
                 </tr>
               ))}
@@ -61,9 +66,7 @@ export function RunList() {
 export function describeStarter(r: Pick<RunView, "started_by">): string {
   const s = r.started_by;
   if (!s) return "unknown";
-  if (s.kind === "person") return `a person (${s.role ?? "unknown role"})`;
-  if (s.kind === "watcher") return `watcher ${s.watcher_id ?? ""}`.trim();
-  return "schedule";
+  return starterName(s);
 }
 
 /** Events that make cached run or report data out of date. */
@@ -137,8 +140,8 @@ function eventText(e: LiveEvent): string {
   return e.event.replace(/[._]/g, " ");
 }
 
-function Timeline({ events }: { events: LiveEvent[] }) {
-  if (events.length === 0) return <p className="muted">No live events.</p>;
+function Timeline({ events, finished }: { events: LiveEvent[]; finished: boolean }) {
+  if (events.length === 0) return <p className="muted">{finished ? "Finished. Steps are shown while a run is in progress." : "Waiting for the first step…"}</p>;
   return (
     <ol className="timeline" aria-live="polite">
       {events.map((e) => {
@@ -192,7 +195,7 @@ export function RunDetail({ runId }: { runId: string }) {
   return (
     <div className="grid-2">
       <div>
-        <Section title={r.run_id} icon="list" mode={r.data_mode} end={<StatusPill status={r.run_status} />}>
+        <Section title={runTitle(r)} icon="list" mode={r.data_mode} end={<StatusPill status={r.run_status} />}>
           <Related
             chips={[
               { entity: "snapshot", id: r.snapshot_id, label: "Data set" },
@@ -204,13 +207,14 @@ export function RunDetail({ runId }: { runId: string }) {
           {status !== "live" ? <p className="banner">Live updates paused. Reconnecting…</p> : null}
           {notice ? <p className="banner banner-note">{notice}</p> : null}
           <dl className="facts">
-            <dt>Status</dt><dd>{r.run_status}{r.hold_reason ? ` (held: ${r.hold_reason})` : ""}</dd>
-            <dt>Started by</dt><dd>{describeStarter(r)}</dd>
+            {r.hold_reason ? (<><dt>On hold</dt><dd>{r.hold_reason}</dd></>) : null}
+            <dt>Started by</dt><dd>{starterName(r.started_by)}</dd>
+            <dt>Started</dt><dd><Time iso={r.started_at} /></dd>
             <dt>Data as of</dt><dd><DatasetName id={r.snapshot_id} /></dd>
-            <dt>Version</dt>
+            <dt>Sentinel check</dt>
             <dd>
-              {r.authoritative_generation ? `generation ${r.authoritative_generation}` : "not verified yet"}
-              {r.superseded_generations.length ? ` (earlier: ${r.superseded_generations.join(", ")}, kept for audit only)` : ""}
+              {r.authoritative_generation ? `Check ${r.authoritative_generation}` : "Not checked yet"}
+              {r.superseded_generations.length ? ` · ${r.superseded_generations.length} earlier` : ""}
             </dd>
             {r.error ? (<><dt>Error</dt><dd className="state-error">{r.error}</dd></>) : null}
           </dl>
@@ -220,7 +224,7 @@ export function RunDetail({ runId }: { runId: string }) {
           <IdDetails items={[["Run id", r.run_id], ["Data set", r.snapshot_id], ["Project", r.project_id ?? null]]} />
         </Section>
         <Section title="Progress" icon="pulse" end={<span className="muted">{status === "live" ? "Live" : "Paused"}</span>}>
-          <Timeline events={events} />
+          <Timeline events={events} finished={["complete", "partial", "unverified", "failed", "refused"].includes(r.run_status)} />
         </Section>
       </div>
       <div>
@@ -233,7 +237,7 @@ export function RunDetail({ runId }: { runId: string }) {
             {r.reports.map((rep) => (
               <li key={rep.report_id}>
                 <span className="grow">
-                  <Link to={`/reports/${encodeURIComponent(rep.report_id)}`}>{rep.report_type}</Link>{" "}
+                  <Link to={`/reports/${encodeURIComponent(rep.report_id)}`}>{reportName(rep.report_type)}</Link>{" "}
                   <span className="muted num">v{rep.report_version}</span>
                   <br />
                   <ReportVerdicts reportId={rep.report_id} />
