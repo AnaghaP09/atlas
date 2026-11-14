@@ -4,10 +4,11 @@ import type { ContainmentView, Envelope, Health, Notification, QueueEntry, Repor
 import { useApi } from "../app/context";
 import { ButtonLink, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Truncate } from "../components/common";
 import { Link } from "../lib/router";
+import { runTitle } from "../lib/labels";
 import { latestReport } from "./LatestReport";
 import { useCurrentProject } from "./Dashboard";
 
-function useLatest(type: string) {
+export function useLatest(type: string) {
   const runs = useApi<{ runs: RunView[] } & Envelope>("/api/runs");
   const link = latestReport(runs.data?.runs ?? [], type);
   const rep = useApi<ReportView>(link ? `/api/reports/${encodeURIComponent(link.report_id)}` : null);
@@ -150,7 +151,7 @@ function OncallFocus() {
         {investigations.length === 0 ? <Empty action={{ to: "/run-now", label: "Investigate a failure" }}>No investigations yet.</Empty> : null}
         <ul className="list">
           {investigations.map((r) => (
-            <li key={r.run_id}><span className="grow"><Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link></span><StatusPill status={r.run_status} /></li>
+            <li key={r.run_id}><span className="grow"><Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{runTitle(r)}</Link></span><StatusPill status={r.run_status} /></li>
           ))}
         </ul>
       </Section>

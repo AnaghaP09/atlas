@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable
+from atlas.sqlite_util import connect as safe_connect
 
 RETENTION = timedelta(days=7)
 
@@ -55,7 +56,7 @@ def validate_key(key: str | None) -> str:
 
 class IdempotencyStore:
     def __init__(self, path: str | Path = ":memory:", clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS idempotency (key TEXT PRIMARY KEY, principal TEXT, request_hash TEXT, "
             "state TEXT, status INTEGER, body TEXT, created TEXT)"

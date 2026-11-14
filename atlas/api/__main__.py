@@ -47,7 +47,7 @@ def build_server(env_file: str, scenario: bool, *, site_identity: tuple | None =
     services.model_configured = bool(settings.anthropic_api_key)
     try:  # the integration module connects the data and execution layers once they exist
         wiring = importlib.import_module("atlas.wiring")
-        wiring.connect(services, settings)
+        wiring.connect(services, settings, env_file=env_file)
     except ModuleNotFoundError:
         pass
     if site_identity is None:

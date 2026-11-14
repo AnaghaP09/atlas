@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from atlas.contracts import Principal
+from atlas.sqlite_util import connect as safe_connect
 
 TRIGGERS = frozenset(
     {
@@ -46,7 +47,7 @@ SLIP_DAYS = 7
 
 class HumanQueue:
     def __init__(self, path: str | Path = ":memory:", clock=lambda: datetime.now(timezone.utc)) -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS queue (id TEXT PRIMARY KEY, trig TEXT, subject_id TEXT, run_id TEXT, "
             "reason TEXT, evidence TEXT, required_scopes TEXT, status TEXT, created TEXT, "

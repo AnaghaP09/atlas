@@ -3,7 +3,8 @@ import type { ReactNode } from "react";
 
 export type IconName =
   | "home" | "pulse" | "play" | "clock" | "list" | "hand" | "check" | "task" | "bell" | "power"
-  | "chart" | "graph" | "pen" | "gauge" | "compass" | "sun" | "moon" | "menu" | "database" | "arrow" | "shield" | "lock" | "key";
+  | "chart" | "graph" | "pen" | "gauge" | "compass" | "sun" | "moon" | "menu" | "database" | "arrow" | "shield" | "lock" | "key"
+  | "help" | "close" | "search" | "alert" | "ok" | "user" | "code" | "scale";
 
 const PATHS: Record<IconName, ReactNode> = {
   home: <><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></>,
@@ -28,6 +29,14 @@ const PATHS: Record<IconName, ReactNode> = {
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
   lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
   key: <><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M17 6l3 3" /></>,
+  help: <><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.7-1.5 1.2-1.5 2.5" /><path d="M12 17.5v.01" /></>,
+  close: <path d="M6 6l12 12M18 6L6 18" />,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M16.5 16.5L21 21" /></>,
+  alert: <><path d="M12 3l9.5 17h-19z" /><path d="M12 10v4M12 17v.01" /></>,
+  ok: <><circle cx="12" cy="12" r="9" /><path d="M8 12.5l2.8 2.8L16 9.5" /></>,
+  user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0116 0" /></>,
+  code: <><path d="M8 7l-5 5 5 5M16 7l5 5-5 5" /></>,
+  scale: <><path d="M12 4v16M6 20h12" /><path d="M5 8h14" /><path d="M5 8l-3 6a3 3 0 006 0zM19 8l-3 6a3 3 0 006 0z" /></>,
   shield: <><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></>,
 };
 

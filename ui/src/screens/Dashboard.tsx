@@ -2,10 +2,10 @@ import { useState } from "react";
 import type { DataMode } from "../api/types";
 import type { LiveEvent } from "../api/stream";
 import { useApi, useApp, useIdentity, useLiveStream } from "../app/context";
-import { BarList, Sparkline, type Point } from "../components/charts";
-import { DataModeBadge, Empty, ErrorView, Loading, Section, Time } from "../components/common";
-import type { IconName } from "../components/icons";
+import { BarList } from "../components/charts";
+import { DataModeBadge, Empty, ErrorView, KpiTile, Loading, Pagination, Section, Time, usePaged } from "../components/common";
 import { Link } from "../lib/router";
+import { EvidenceCard } from "./Reports";
 
 export interface DashboardPanel {
   panel_id: string;
@@ -102,106 +102,179 @@ export function Dashboard() {
       });
   }
 
+  const projects = useApi<ProjectList>("/api/projects");
+  const nav = useApi<{ groups: { pages: { page_id: string }[] }[] }>("/api/navigation");
+  const canInvestigate = Boolean(nav.data?.groups.some((g) => g.pages.some((x) => x.page_id === "run_now")));
   const status = useLiveStream(project ? `/api/projects/${encodeURIComponent(project)}/stream` : null, onEvent, onReset);
 
   if (!project) return <Empty>No project is configured on this server yet. Add one to the projects file and restart ATLAS.</Empty>;
   if (first.isLoading && !board) return <Loading what="the dashboard" />;
   if (first.error && !board) return <ErrorView error={first.error} />;
   if (!board) return null;
-  const issues = board.panels.find((p) => p.panel_id === "open_issues");
-  const ci = board.panels.find((p) => p.panel_id === "failing_ci");
+  const panel = (id: string) => board.panels.find((p) => p.panel_id === id);
+  const issues = panel("open_issues");
+  const ci = panel("failing_ci");
+  const release = panel("latest_release");
+  const security = panel("security");
+  const issueItems = (issues?.items ?? []).filter(isItem);
+  const ciItems = (ci?.items ?? []).filter(isItem);
+  const ciNote = (ci?.items ?? []).find((i) => !isItem(i));
+  const ciPolled = Boolean(ci && ci.status === "live" && !ciNote);
+  const releaseItem = (release?.items ?? []).filter(isItem)[0];
+  const projectName = projects.data?.projects.find((x) => x.id === project)?.name ?? project;
   return (
     <>
-      <Section title={`Project ${project}`} icon="pulse" mode={board.data_mode} end={<span className={`mode-pill${status === "live" ? "" : " offline"}`}><span className="pulse" aria-hidden="true" />{status === "live" ? "Live updates on" : "Live updates paused"}</span>}>
-        <p className="poll-ticker" data-testid="poll-line">
-          Updated every {board.interval_seconds} s, last poll{" "}
-          {board.last_poll ? <Time iso={board.last_poll} /> : "not yet"} · live updates: {status === "live" ? "on" : "paused"}
-        </p>
-      </Section>
-      <div className="dash-grid">
-        <Section title="Open issues (this visit)" icon="chart">
-          <IssueTrend count={issues?.items.filter(isItem).length ?? 0} version={board.dashboard_version} />
-        </Section>
-        <Section title="Failing CI by workflow" icon="chart">
-          <CiBars items={(ci?.items ?? []).filter(isItem)} note={(ci?.items ?? []).find((i) => !isItem(i))} />
-        </Section>
-        {board.panels.map((p) => (
-          <Section key={p.panel_id} title={p.title} icon={PANEL_ICON[p.panel_id] ?? "list"} mode={p.status === "live" ? "REAL" : "STAGED"} reason={p.reason ?? null}>
-            {p.items.length === 0 ? (
-              <p className="muted">{p.status === "live" ? "Nothing right now." : "No data yet."}</p>
+      <div className="dash-status">
+        <strong>{projectName}</strong>
+        <DataModeBadge mode={board.data_mode} />
+        <span className={`mode-pill${status === "live" ? "" : " offline"}`}>
+          <span className="pulse" aria-hidden="true" />
+          {status === "live" ? "Live" : "Paused"}
+        </span>
+        <span className="muted" data-testid="poll-line">
+          Updated every {board.interval_seconds} s, last poll {board.last_poll ? <Time iso={board.last_poll} short /> : "not yet"}
+        </span>
+      </div>
+      <div className="kpis">
+        <KpiTile icon="list" label="Open bugs and flaky tests" value={issueItems.length} hint="stored from live polls" />
+        <KpiTile
+          icon="power"
+          tone={ciPolled && ciItems.length ? "critical" : "good"}
+          label="Failing CI runs"
+          value={ciPolled ? ciItems.length : <span className="pill pill-neutral" title={typeof ciNote?.note === "string" ? ciNote.note : "CI is not polled for this project"}>Not polled</span>}
+          small={!ciPolled}
+        />
+        <KpiTile
+          icon="database"
+          tone="teal"
+          label="Latest release"
+          value={releaseItem ? String(releaseItem.tag ?? releaseItem.tag_name ?? releaseItem.name ?? "—") : "—"}
+          small
+          hint={releaseItem && typeof releaseItem.published_at === "string" ? <Time iso={releaseItem.published_at} short /> : undefined}
+        />
+        <KpiTile
+          icon="shield"
+          tone="warn"
+          label="Security findings"
+          value={security && security.status === "live" ? security.items.filter(isItem).length : <span className="pill pill-neutral" title={security?.reason ?? "The live security scan is not connected in this build"}>Not in this demo</span>}
+          small={!(security && security.status === "live")}
+        />
+      </div>
+      <div className="grid-2">
+        <div>
+          <Section title="Open issues" icon="list" mode={issues?.status === "live" ? "REAL" : "STAGED"} end={<span className="muted num">{issueItems.length} shown</span>}>
+            {issueItems.length === 0 ? (
+              <Empty>No open issues stored yet. They appear after the next poll.</Empty>
             ) : (
-              <ul className="panel-items">
-                {p.items.map((item, i) => (
-                  <PanelItem key={i} item={item} />
-                ))}
-              </ul>
+              <IssueTable items={issueItems} project={project} canInvestigate={canInvestigate} />
             )}
           </Section>
-        ))}
-        <Section title="Activity" icon="list">
-          {activity.length === 0 ? <p className="muted">No activity yet.</p> : null}
-          <ul className="feed" data-testid="activity">
-            {activity.map((a, i) => {
-              const to = evidenceRoute({ ...a, project_id: a.project_id ?? project });
-              return (
-                <li key={a.activity_id ?? `${a.record_id}-${i}`}>
-                  <span className={`dot ${a.kind}`} aria-hidden="true" />
-                  <span>
-                    <span className="muted">{a.kind}</span> {to ? <Link to={to}>{a.title}</Link> : a.title}
-                  </span>
-                  {a.at ? <Time iso={a.at} /> : <span />}
-                </li>
-              );
-            })}
-          </ul>
-        </Section>
+        </div>
+        <div>
+          <Section title="Open issues by area" icon="chart">
+            <AreaBars items={issueItems} />
+          </Section>
+          <Section title="Failing CI by workflow" icon="power">
+            {ciPolled ? (
+              <CiBars items={ciItems} />
+            ) : (
+              <p className="quiet-note"><span className="pill pill-neutral">Not polled</span> {typeof ciNote?.note === "string" ? shortNote(ciNote.note) : "CI is not polled for this project."}</p>
+            )}
+          </Section>
+          <Section title="Activity" icon="pulse">
+            {activity.length === 0 ? <p className="muted">No activity yet.</p> : null}
+            <ul className="feed" data-testid="activity">
+              {activity.slice(0, 12).map((a, i) => {
+                const to = evidenceRoute({ ...a, project_id: a.project_id ?? project });
+                return (
+                  <li key={a.activity_id ?? `${a.record_id}-${i}`}>
+                    <span className={`dot ${a.kind}`} aria-hidden="true" />
+                    <span className="feed-text">{to ? <Link to={to}>{a.title}</Link> : a.title}</span>
+                    {a.at ? <Time iso={a.at} short /> : <span />}
+                  </li>
+                );
+              })}
+            </ul>
+          </Section>
+        </div>
       </div>
     </>
   );
 }
 
-const PANEL_ICON: Record<string, IconName> = { open_issues: "list", failing_ci: "power", latest_release: "database", security: "shield" };
+function shortNote(note: string): string {
+  return /prow/i.test(note) ? "This project runs its CI on Prow, which ATLAS does not poll." : note;
+}
+
+function labelsOf(item: Record<string, unknown>): string[] {
+  return Array.isArray(item.labels) ? (item.labels as unknown[]).map((l) => (typeof l === "string" ? l : String((l as { name?: string }).name ?? ""))).filter(Boolean) : [];
+}
+
+/** The area an issue belongs to, from its labels ("sig/network", "area/operator", "component/ui"). */
+export function areaOf(item: Record<string, unknown>): string {
+  const labels = labelsOf(item);
+  const hit = labels.find((l) => /^(sig|area|component|comp)[/:]/i.test(l));
+  return hit ? hit.replace(/^[^/:]+[/:]/, "") : "No area label";
+}
+
+function AreaBars({ items }: { items: Record<string, unknown>[] }) {
+  const counts = new Map<string, number>();
+  for (const it of items) counts.set(areaOf(it), (counts.get(areaOf(it)) ?? 0) + 1);
+  const rows = [...counts.entries()].map(([label, value]) => ({ label, value })).sort((x, y) => y.value - x.value);
+  if (!rows.length) return <p className="muted">No issues to count yet.</p>;
+  const top = rows.slice(0, 7);
+  const rest = rows.slice(7).reduce((n, r) => n + r.value, 0);
+  return <BarList rows={rest ? [...top, { label: "Other areas", value: rest }] : top} unit="open issues" />;
+}
+
+function IssueTable({ items, project, canInvestigate }: { items: Record<string, unknown>[]; project: string; canInvestigate: boolean }) {
+  const paged = usePaged(items, 12);
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="table-items">
+          <thead>
+            <tr><th>Issue</th><th>Area</th><th>Labels</th>{canInvestigate ? <th /> : null}</tr>
+          </thead>
+          <tbody>
+            {paged.slice.map((item, i) => {
+              const number = item.number ?? null;
+              const title = String(item.title ?? item.name ?? "Untitled");
+              const labels = labelsOf(item).filter((l) => !/^(sig|area|component|comp)[/:]/i.test(l));
+              const record = typeof item.record_id === "string" ? item.record_id : null;
+              const version = typeof item.content_version_id === "string" ? item.content_version_id : "";
+              const to = record ? `/activity-evidence/${encodeURIComponent(record)}?${new URLSearchParams({ project, version }).toString()}` : null;
+              return (
+                <tr key={String(number ?? i)}>
+                  <td>
+                    {to ? <Link to={to} className="row-title" title={title}>{title}</Link> : <span className="row-title" title={title}>{title}</span>}
+                    {number !== null ? <span className="row-sub num">#{String(number)}</span> : null}
+                  </td>
+                  <td>{areaOf(item)}</td>
+                  <td>{labels.slice(0, 2).map((l) => <span key={l} className="chip chip-quiet">{l}</span>)}</td>
+                  {canInvestigate ? (
+                    <td className="row-actions">
+                      {number !== null ? <Link className="btn btn-ghost btn-sm" to={`/run-now?investigate=${encodeURIComponent(String(number))}`}>Investigate</Link> : null}
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Pagination page={paged.page} pages={paged.pages} setPage={paged.setPage} total={items.length} />
+    </>
+  );
+}
+
 
 /** A panel row is a real item unless it is only a note from the server. */
 function isItem(item: Record<string, unknown>): boolean {
   return !("note" in item) || Object.keys(item).length > 1;
 }
 
-function PanelItem({ item }: { item: Record<string, unknown> }) {
-  if ("note" in item && Object.keys(item).length === 1) return <li className="panel-note">{String(item.note)}</li>;
-  const number = item.number ?? item.run_id ?? item.tag ?? null;
-  const title = String(item.title ?? item.name ?? item.tag_name ?? JSON.stringify(item));
-  const labels = Array.isArray(item.labels) ? (item.labels as unknown[]).map((l) => (typeof l === "string" ? l : String((l as { name?: string }).name ?? ""))) : [];
-  return (
-    <li>
-      {number !== null ? <span className="num">{typeof item.number === "number" ? `#${String(number)}` : String(number)}</span> : null}
-      <span>
-        {title}
-        {typeof item.conclusion === "string" ? <> <span className="pill pill-critical">{item.conclusion}</span></> : null}
-        {labels.length ? (
-          <span> {labels.slice(0, 3).map((l) => <span key={l} className="chip">{l}</span>)}</span>
-        ) : null}
-      </span>
-    </li>
-  );
-}
-
-function IssueTrend({ count, version }: { count: number; version: number }) {
-  // Readings are kept for this page only: the server does not store a history of panel sizes.
-  const [points, setPoints] = useState<Point[]>([]);
-  const [seen, setSeen] = useState<number | null>(null);
-  if (seen !== version) {
-    setSeen(version);
-    setPoints((prev) => [...prev, { label: new Date().toLocaleTimeString(), value: count }].slice(-40));
-  }
-  return (
-    <>
-      <Sparkline points={points} unit="open issues" />
-    </>
-  );
-}
-
-function CiBars({ items, note }: { items: Record<string, unknown>[]; note?: Record<string, unknown> }) {
+function CiBars({ items }: { items: Record<string, unknown>[] }) {
   const counts = new Map<string, number>();
   for (const it of items) {
     const name = String(it.name ?? "workflow");
@@ -209,7 +282,7 @@ function CiBars({ items, note }: { items: Record<string, unknown>[]; note?: Reco
   }
   const rows = [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
   if (rows.length === 0)
-    return <p className="muted">{note && typeof note.note === "string" ? note.note : "No failing runs in the latest poll."}</p>;
+    return <p className="quiet-note"><span className="pill pill-good">All passing</span> No failing runs in the latest poll.</p>;
   return <BarList rows={rows} unit="failing runs" />;
 }
 
@@ -221,12 +294,5 @@ export function ActivityEvidence({ recordId, project, version }: { recordId: str
   if (record.isLoading) return <Loading what="the record" />;
   if (record.error) return <ErrorView error={record.error} />;
   const r = record.data?.record ?? {};
-  return (
-    <Section title={`Record ${recordId}`} mode={record.data?.data_mode}>
-      <p className="muted">
-        Version {String(r.content_version_id ?? version)} · project {project} <DataModeBadge mode={record.data?.data_mode} />
-      </p>
-      <pre className="record-text">{String(r.text ?? r.title ?? "")}</pre>
-    </Section>
-  );
+  return <EvidenceCard rec={r as never} mode={record.data?.data_mode} />;
 }

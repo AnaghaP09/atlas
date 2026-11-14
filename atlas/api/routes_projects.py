@@ -75,7 +75,7 @@ def activity(request: Request, project_id: str, limit: int = Query(50, ge=1, le=
     return envelope(request, principal, {"project_id": project_id, "activity": items})
 
 
-@router.get("/projects/{project_id}/evidence/{record_id}")
+@router.get("/projects/{project_id}/evidence/{record_id:path}")
 def activity_evidence(request: Request, project_id: str, record_id: str,
                       content_version_id: str | None = Query(None)) -> dict[str, Any]:
     """Project-authorised, version-bound read of a live record behind an activity item.

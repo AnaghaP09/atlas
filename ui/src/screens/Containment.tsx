@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ContainmentView, Correction, Incident } from "../api/types";
 import { useAction, useApi, useIdentity, useInvalidateAll } from "../app/context";
-import { ActionResult, Button, ErrorView, KpiTile, Loading, Time } from "../components/common";
+import { ActionResult, Button, ConfirmButton, ErrorView, Loading, Time } from "../components/common";
 import { Icon } from "../components/icons";
 import { Link } from "../lib/router";
 
@@ -67,7 +67,6 @@ function Corrections({ incidentId }: { incidentId: string }) {
 }
 
 function ResumePanel({ incident, done }: { incident: Incident & { drill?: boolean }; done: () => void }) {
-  const [confirming, setConfirming] = useState(false);
   const [kind, setKind] = useState("");
   const [reference, setReference] = useState("");
   const base = `/api/incidents/${encodeURIComponent(incident.incident_id)}`;
@@ -104,25 +103,25 @@ function ResumePanel({ incident, done }: { incident: Incident & { drill?: boolea
           <ActionResult state={record.state} retry={() => void record.retrySame()} />
         </>
       ) : null}
-      {confirming ? (
-        <span className="confirm">
-          Resume?
-          <Button size="sm" variant="primary" onClick={() => void resume.run({}).then(done)}>Yes</Button>
-          <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>No</Button>
-        </span>
-      ) : (
-        <Button variant="primary" size="sm" icon="play" disabled={!ready} title={ready ? undefined : "Record the steps first"} onClick={() => setConfirming(true)}>
-          Resume
-        </Button>
-      )}
-      <ActionResult state={resume.state} retry={() => void resume.retrySame()} />
+      <ConfirmButton
+        label="Resume"
+        title={incident.drill ? "End this drill?" : "Resume this switch?"}
+        body={incident.drill ? "The blocked actions become available again." : "All required steps are recorded. The blocked actions become available again."}
+        confirmLabel="Resume"
+        variant="primary"
+        icon="play"
+        disabled={!ready}
+        hint={ready ? undefined : "Record the steps first"}
+        onConfirm={() => void resume.run({}).then(done)}
+      />
+      <ActionResult state={resume.state} retry={() => void resume.retrySame()} success="Switch resumed" />
       <Corrections incidentId={incident.incident_id} />
     </div>
   );
 }
 
 function SwitchCard({ s, audit, done }: { s: SwitchView; audit: boolean; done: () => void }) {
-  const [confirming, setConfirming] = useState(false);
+  const lastTripped = s.last_tripped_at ?? s.last_tripped ?? s.incident?.tripped_at ?? null;
   const drill = useAction<Record<string, never>, unknown>(`/api/containment/${encodeURIComponent(s.switch_id)}/drill`);
   const state = switchState(s);
   return (
@@ -137,21 +136,24 @@ function SwitchCard({ s, audit, done }: { s: SwitchView; audit: boolean; done: (
       <div className="switch-blocks">
         {blockChips(s.blocks).map((b) => <span key={b} className="chip">{b}</span>)}
       </div>
-      <p className="muted small">
-        Last tripped: {s.last_tripped_at || s.last_tripped || s.incident?.tripped_at ? <Time iso={s.last_tripped_at ?? s.last_tripped ?? s.incident?.tripped_at ?? null} short /> : "never"}
-      </p>
-      {audit && state === "ready" && s.can_drill === true ? (
-        confirming ? (
-          <span className="confirm">
-            Run a drill?
-            <Button size="sm" variant="danger" onClick={() => void drill.run({}).then(() => { setConfirming(false); done(); })}>Yes</Button>
-            <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>No</Button>
-          </span>
-        ) : (
-          <Button size="sm" variant="ghost" icon="power" onClick={() => setConfirming(true)}>Run drill</Button>
-        )
-      ) : null}
-      <ActionResult state={drill.state} retry={() => void drill.retrySame()} />
+      <div className="switch-foot">
+        <span className="muted small">
+          {lastTripped ? <>Last tripped <Time iso={lastTripped} short /></> : "Never tripped"}
+        </span>
+        {audit && state === "ready" && s.can_drill === true ? (
+          <ConfirmButton
+            label="Run drill"
+            title={`Run a drill on "${s.title ?? "this switch"}"?`}
+            body={<>This really blocks: {blockChips(s.blocks).join(", ") || "nothing"}. You can resume it right after.</>}
+            confirmLabel="Run drill"
+            icon="power"
+            variant="secondary"
+            danger
+            onConfirm={() => void drill.run({}).then(done)}
+          />
+        ) : null}
+      </div>
+      <ActionResult state={drill.state} retry={() => void drill.retrySame()} success="Drill started" />
       {audit && s.incident && state !== "ready" ? <ResumePanel incident={s.incident} done={done} /> : null}
     </article>
   );
@@ -168,15 +170,10 @@ export function Containment() {
   const audit = principal?.role === "audit";
   return (
     <>
-      <div className="kpis">
-        <KpiTile
-          icon="power"
-          tone={tripped.length ? "critical" : "good"}
-          label="Kill switches"
-          value={tripped.length ? `${tripped.length} tripped` : `All ${switches.length} ready`}
-          small
-          hint={audit ? undefined : "View only"}
-        />
+      <div className={`switch-summary${tripped.length ? " tripped" : ""}`} role="status">
+        <span className={`light ${tripped.length ? "light-tripped" : "light-ready"}`} aria-hidden="true" />
+        <strong>{tripped.length ? `${tripped.length} of ${switches.length} tripped` : `All ${switches.length} ready`}</strong>
+        {audit ? null : <span className="pill pill-neutral">View only</span>}
       </div>
       <div className="switch-grid">
         {switches.map((s) => <SwitchCard key={s.switch_id} s={s} audit={audit} done={refresh} />)}

@@ -83,6 +83,13 @@ export interface RunView extends Envelope {
   error?: string | null;
   cost?: unknown;
   reports: ReportLink[];
+  /** Plain words for the run, for example "Release close · KubeVirt at release v1.9.0". */
+  title?: string;
+  kind?: string;
+  kind_label?: string;
+  subject?: string;
+  dataset_title?: string | null;
+  started_at?: string | null;
 }
 
 export interface Claim {

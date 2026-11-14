@@ -11,6 +11,7 @@ import json
 import math
 import re
 import threading
+from pathlib import Path
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Protocol, Sequence
@@ -578,19 +579,46 @@ class SpendMeter:
     scheduler so automatic work is held, not dropped, once the ceiling is reached.
     """
 
-    def __init__(self, ceiling_usd: float, notify: Callable[[str, float], None] | None = None) -> None:
+    def __init__(self, ceiling_usd: float, notify: Callable[[str, float], None] | None = None,
+                 path: Any = None) -> None:
         self.ceiling = float(ceiling_usd)
         self.spent = 0.0
         self.notify = notify
         self._sent: set[str] = set()
         self._lock = threading.Lock()
+        self._path = Path(path) if path else None
+        self._load()
+
+    def _load(self) -> None:
+        """Read the running total kept on disk, so a restart does not reset the ceiling."""
+        if self._path is None or not self._path.is_file():
+            return
+        try:
+            saved = json.loads(self._path.read_text(encoding="utf-8"))
+            self.spent = max(float(saved.get("spent_usd", 0.0)), 0.0)
+            self._sent = {str(e) for e in saved.get("notified", [])}
+        except (OSError, ValueError, TypeError):
+            self.spent = 0.0
+
+    def _save(self) -> None:
+        if self._path is None:
+            return
+        try:
+            self._path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = self._path.with_suffix(".tmp")
+            tmp.write_text(json.dumps({"spent_usd": round(self.spent, 6), "notified": sorted(self._sent)}), encoding="utf-8")
+            tmp.replace(self._path)
+        except OSError:
+            pass  # the in-memory total still enforces the ceiling for this process
 
     def add(self, usd: float) -> None:
         with self._lock:
             self.spent += usd
+            self._save()
             for mark, event in ((1.0, "spend.100"), (0.8, "spend.80")):
                 if self.spent >= mark * self.ceiling and event not in self._sent:
                     self._sent.add(event)
+                    self._save()
                     if self.notify:
                         self.notify(event, self.spent)
 

@@ -4,9 +4,10 @@ import { Empty, ErrorView, Loading } from "../components/common";
 import { REPORT_TYPE } from "../lib/nav";
 import { ReportDetail } from "./Reports";
 
-/** The newest report of one type across the project's runs, or null. Runs are listed newest first. */
+/** The newest report of one type across the project's runs, or null. */
 export function latestReport(runs: RunView[], type: string): ReportLink | null {
-  for (const r of runs) {
+  const newestFirst = runs.slice().sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
+  for (const r of newestFirst) {
     const hit = r.reports.filter((rep) => rep.report_type === type && !rep.superseded);
     if (hit.length) return hit.sort((a, b) => b.report_version - a.report_version)[0] ?? null;
   }

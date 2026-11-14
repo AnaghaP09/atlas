@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 from atlas.contracts import Mode, StartedBy, StartedByKind
+from atlas.sqlite_util import connect as safe_connect
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS admissions (
@@ -65,6 +66,7 @@ class Admission:
     created: bool
     hold_reason: str | None = None
     project_id: str = ""
+    admitted_at: str | None = None
 
 
 _SEP = "\x1f"
@@ -86,7 +88,7 @@ class AdmissionStore:
     """The single entry point for every run, automatic or manual."""
 
     def __init__(self, path: str | Path = ":memory:") -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.executescript(SCHEMA)
         cols = {r[1] for r in self._db.execute("PRAGMA table_info(admissions)").fetchall()}
         if "project_id" not in cols:
@@ -142,7 +144,7 @@ class AdmissionStore:
         return Admission(
             event_key=event_key, run_id=row[1], snapshot_id=row[2], trigger=json.loads(row[3]),
             started_by=json.loads(row[4]), status=row[5], created=created, hold_reason=row[6],
-            project_id=row[8] or "",
+            project_id=row[8] or "", admitted_at=row[7],
         )
 
     def get(self, run_id: str) -> Admission | None:

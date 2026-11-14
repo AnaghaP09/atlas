@@ -5,7 +5,8 @@
 // - The server answers 401: sign-in mode, but there is no session; go to the sign-in page.
 // - The server has no such route (404): the demo role header mode.
 
-import { IdentityStore, headerIdentity, sessionIdentity, type SessionInfo } from "./identity";
+import { IdentityStore, ROLES, headerIdentity, sessionIdentity, type Role, type SessionInfo } from "./identity";
+import { rememberDemoIdentity, storedDemoProject, storedDemoRole } from "../lib/theme";
 
 export type Bootstrap =
   | { kind: "ready"; identity: IdentityStore }
@@ -23,10 +24,10 @@ export async function bootstrapIdentity(
       headers: { Accept: "application/json" },
     });
   } catch {
-    return { kind: "ready", identity: new IdentityStore(headerIdentity, { role: "pm" }) };
+    return { kind: "ready", identity: headerStore() };
   }
   if (res.status === 401) return { kind: "redirect", to: "/login" };
-  if (!res.ok) return { kind: "ready", identity: new IdentityStore(headerIdentity, { role: "pm" }) };
+  if (!res.ok) return { kind: "ready", identity: headerStore() };
   const session = (await res.json()) as SessionInfo;
   return { kind: "ready", identity: IdentityStore.fromSession(sessionIdentity(navigate), session) };
 }
@@ -48,4 +49,13 @@ export async function signOut(
   } finally {
     navigate("/login");
   }
+}
+
+/** Header mode: start from the role and project picked last time, if they are still valid. */
+function headerStore(): IdentityStore {
+  const saved = storedDemoRole();
+  const role = (ROLES as readonly string[]).includes(saved ?? "") ? (saved as Role) : "pm";
+  const store = new IdentityStore(headerIdentity, { role }, storedDemoProject());
+  store.subscribe((snap) => rememberDemoIdentity(snap.principal?.role, snap.projectId));
+  return store;
 }

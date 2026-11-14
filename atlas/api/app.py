@@ -105,6 +105,9 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
     if services.is_scenario:
         api.include_router(routes_eval.scenario_router)
     app.include_router(api)
+    from atlas.api import guide
+
+    app.include_router(guide.router)
     for extra in extra_routers:
         app.include_router(extra)
     app.state.sessions = sessions

@@ -4,6 +4,8 @@ import { useApi, useIdentity } from "../app/context";
 import { LockedChip, ReadOnlyBanner, typeLabel } from "../components/access";
 import { ErrorView, Loading, Section } from "../components/common";
 import { Markdown } from "../lib/markdown";
+import type { ReportView } from "../api/types";
+import { ReportBody } from "./Reports";
 import type { AccessRequest } from "./AccessRequests";
 
 interface ObjectBody {
@@ -25,7 +27,7 @@ function Facts({ value }: { value: Record<string, unknown> }) {
     <dl className="facts">
       {rows.map(([k, v]) => (
         <div key={k} className="fact-row">
-          <dt>{k.replace(/_/g, " ")}</dt>
+          <dt>{k.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase())}</dt>
           <dd>{String(v)}</dd>
         </div>
       ))}
@@ -57,7 +59,9 @@ export function ObjectView({ objectType, objectId }: { objectType: string; objec
           myRole={principal?.role ?? null}
         />
       ) : null}
-      {typeof body.markdown === "string" ? (
+      {objectType === "report" && body.report && typeof body.report === "object" && typeof body.markdown === "string" ? (
+        <ReportBody r={body as unknown as ReportView} />
+      ) : typeof body.markdown === "string" ? (
         <div className="report"><Markdown source={body.markdown} /></div>
       ) : (
         <>

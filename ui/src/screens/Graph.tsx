@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { Envelope } from "../api/types";
 import { useApi } from "../app/context";
 import { Button, Empty, ErrorView, Loading, Pagination, Section, Segmented, Tabs, usePaged } from "../components/common";
+import { Icon } from "../components/icons";
+import { Link } from "../lib/router";
+import { useLatest } from "./RoleHome";
 import type { SnapshotItem } from "./Home";
 import { DatasetPicker, kindOf, visibleDatasets } from "../components/dataset";
 import { useRouter } from "../lib/router";
@@ -57,177 +60,109 @@ export function normalise(g: RawGraph): { nodes: GNode[]; edges: GEdge[] } {
 }
 
 // ---------- Layout ----------
+//
+// Components are grouped by the top folder of their path (for example cmd, pkg, tests). Each group is
+// one disc. Inside a disc the most-used components sit in the middle and are drawn larger, so the
+// picture reads from the centre out. The layout is a plain calculation: the same data always gives
+// the same picture, and there is nothing to wait for.
 
 export interface Placed {
   id: string;
   x: number;
   y: number;
-  depth: number;
+  r: number;
+  group: string;
+}
+
+export interface GroupDisc {
+  key: string;
+  label: string;
+  count: number;
+  cx: number;
+  cy: number;
+  r: number;
 }
 
 export interface Layout {
   placed: Map<string, Placed>;
+  groups: GroupDisc[];
   width: number;
   height: number;
-  /** Where the row of components with no links starts, if there are any. */
-  looseTop: number | null;
 }
 
-const W = 1200;
-const H = 760;
+const GROUP_NAME: Record<string, string> = {
+  cmd: "Commands",
+  pkg: "Packages",
+  tests: "Tests",
+  test: "Tests",
+  staging: "Staging",
+  tools: "Tools",
+  api: "API",
+  internal: "Internal",
+  docs: "Docs",
+};
 
-/** Starting positions: each team gets its own sector, so teams start (and mostly stay) together. Deterministic. */
-function seedPositions(comps: GNode[]): Map<string, { x: number; y: number }> {
-  const teams = [...new Set(comps.map((c) => c.team ?? "~none"))].sort();
-  const out = new Map<string, { x: number; y: number }>();
-  comps
-    .slice()
-    .sort((a, b) => (a.team ?? "~none").localeCompare(b.team ?? "~none") || a.name.localeCompare(b.name))
-    .forEach((c, i) => {
-      const t = teams.indexOf(c.team ?? "~none");
-      const angle = (2 * Math.PI * (t + 0.5)) / teams.length + (i % 7) * 0.05;
-      const radius = 120 + ((i * 37) % 220);
-      out.set(c.id, { x: W / 2 + radius * Math.cos(angle), y: H / 2 + radius * Math.sin(angle) });
-    });
-  return out;
+export function groupOf(name: string): string {
+  const first = name.split("/")[0] ?? name;
+  return first || "other";
 }
 
-export interface ForceState {
-  ids: string[];
-  pos: Float64Array;
-  links: [number, number][];
-  team: Int32Array;
-  temp: number;
-  iter: number;
+function groupLabel(key: string): string {
+  return GROUP_NAME[key] ?? key.replace(/^./, (c) => c.toUpperCase());
 }
 
-export function forceInit(nodes: GNode[], edges: GEdge[]): ForceState {
+export function fanInOf(edges: GEdge[]): Map<string, number> {
+  const m = new Map<string, number>();
+  for (const e of edges) if (e.kind === "depends_on") m.set(e.target, (m.get(e.target) ?? 0) + 1);
+  return m;
+}
+
+const GOLDEN = Math.PI * (3 - Math.sqrt(5));
+const SPACING = 21;
+const MAX_GROUPS = 6;
+
+export function clusterLayout(nodes: GNode[], edges: GEdge[]): Layout {
   const comps = nodes.filter((n) => n.kind === "component");
-  const ids = comps.map((c) => c.id);
-  const index = new Map(ids.map((id, i) => [id, i]));
-  const seed = seedPositions(comps);
-  const pos = new Float64Array(ids.length * 2);
-  ids.forEach((id, i) => {
-    const p = seed.get(id)!;
-    pos[i * 2] = p.x;
-    pos[i * 2 + 1] = p.y;
-  });
-  const seen = new Set<string>();
-  const links: [number, number][] = [];
-  for (const e of edges) {
-    if (e.kind !== "depends_on") continue;
-    const a = index.get(e.source);
-    const b = index.get(e.target);
-    if (a === undefined || b === undefined || a === b) continue;
-    const key = a < b ? `${a}-${b}` : `${b}-${a}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
-    links.push([a, b]);
+  const fanIn = fanInOf(edges);
+  const byGroup = new Map<string, GNode[]>();
+  for (const c of comps) {
+    const g = groupOf(c.name);
+    byGroup.set(g, [...(byGroup.get(g) ?? []), c]);
   }
-  const teams = [...new Set(comps.map((c) => c.team ?? "~none"))].sort();
-  const team = new Int32Array(ids.length);
-  comps.forEach((c, i) => (team[i] = teams.indexOf(c.team ?? "~none")));
-  return { ids, pos, links, team, temp: 60, iter: 0 };
-}
+  // Keep the largest groups; fold the small rest into one disc so the picture stays readable.
+  let entries = [...byGroup.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+  if (entries.length > MAX_GROUPS) {
+    const rest = entries.slice(MAX_GROUPS - 1).flatMap(([, list]) => list);
+    entries = [...entries.slice(0, MAX_GROUPS - 1), ["other", rest]];
+  }
+  // The group other groups depend on most goes in the middle.
+  const weight = (list: GNode[]) => list.reduce((n, c) => n + (fanIn.get(c.id) ?? 0), 0);
+  const ranked = entries.slice().sort((a, b) => weight(b[1]) - weight(a[1]) || a[0].localeCompare(b[0]));
+  const order: [string, GNode[]][] = [];
+  ranked.forEach((g, i) => (i % 2 === 0 ? order.push(g) : order.unshift(g)));
 
-/** Runs a batch of force iterations (repulsion, link springs, gravity, weak team cohesion). */
-export function forceStep(st: ForceState, iterations: number) {
-  const n = st.ids.length;
-  if (n === 0) return;
-  const k = Math.sqrt((W * H) / n) * 0.55;
-  const disp = new Float64Array(n * 2);
-  for (let it = 0; it < iterations; it++) {
-    disp.fill(0);
-    for (let i = 0; i < n; i++) {
-      for (let j = i + 1; j < n; j++) {
-        let dx = st.pos[i * 2]! - st.pos[j * 2]!;
-        let dy = st.pos[i * 2 + 1]! - st.pos[j * 2 + 1]!;
-        let d2 = dx * dx + dy * dy;
-        if (d2 < 0.01) {
-          dx = 0.1 * ((i % 3) - 1) || 0.1;
-          dy = 0.1;
-          d2 = 0.02;
-        }
-        const f = (k * k) / d2;
-        const same = st.team[i] === st.team[j] && st.team[i] !== -1 ? 0.7 : 1;
-        disp[i * 2]! += dx * f * same;
-        disp[i * 2 + 1]! += dy * f * same;
-        disp[j * 2]! -= dx * f * same;
-        disp[j * 2 + 1]! -= dy * f * same;
-      }
-    }
-    for (const [a, b] of st.links) {
-      const dx = st.pos[a * 2]! - st.pos[b * 2]!;
-      const dy = st.pos[a * 2 + 1]! - st.pos[b * 2 + 1]!;
-      const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
-      const f = (d * d) / k / d / 4;
-      disp[a * 2]! -= dx * f;
-      disp[a * 2 + 1]! -= dy * f;
-      disp[b * 2]! += dx * f;
-      disp[b * 2 + 1]! += dy * f;
-    }
-    for (let i = 0; i < n; i++) {
-      disp[i * 2]! += (W / 2 - st.pos[i * 2]!) * 0.02;
-      disp[i * 2 + 1]! += (H / 2 - st.pos[i * 2 + 1]!) * 0.02;
-      const dx = disp[i * 2]!;
-      const dy = disp[i * 2 + 1]!;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const step = Math.min(len, st.temp);
-      st.pos[i * 2]! += (dx / len) * step;
-      st.pos[i * 2 + 1]! += (dy / len) * step;
-    }
-    st.temp = Math.max(1, st.temp * 0.97);
-    st.iter += 1;
-  }
-}
-
-/** Turns the force state into placed nodes. Linked components fill the drawing area (scaled on the 3rd to 97th
- * percentile so a few stragglers cannot shrink the picture); components with no links sit in a row at the bottom. */
-export function forceResult(st: ForceState): Layout {
-  const n = st.ids.length;
-  const degree = new Int32Array(n);
-  for (const [a, b] of st.links) {
-    degree[a]! += 1;
-    degree[b]! += 1;
-  }
-  const linked: number[] = [];
-  const loose: number[] = [];
-  for (let i = 0; i < n; i++) (degree[i]! > 0 ? linked : loose).push(i);
-  const q = (vals: number[], f: number) => {
-    const sorted = vals.slice().sort((x, y) => x - y);
-    return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))] ?? 0;
-  };
-  const xs = linked.map((i) => st.pos[i * 2]!);
-  const ys = linked.map((i) => st.pos[i * 2 + 1]!);
-  const minX = q(xs, 0.03), maxX = q(xs, 0.97), minY = q(ys, 0.03), maxY = q(ys, 0.97);
-  const margin = 70;
-  const strip = loose.length ? 70 : 0;
-  const innerW = W - margin * 2;
-  const innerH = H - margin * 2 - strip;
+  const radius = (n: number) => SPACING * Math.sqrt(Math.max(n, 1)) + 26;
+  const gap = 56;
+  const top = 64;
+  const maxR = Math.max(...order.map(([, l]) => radius(l.length)), 60);
   const placed = new Map<string, Placed>();
-  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
-  for (const i of linked) {
-    const x = margin + ((st.pos[i * 2]! - minX) / Math.max(maxX - minX, 1)) * innerW;
-    const y = margin + ((st.pos[i * 2 + 1]! - minY) / Math.max(maxY - minY, 1)) * innerH;
-    placed.set(st.ids[i]!, { id: st.ids[i]!, x: clamp(x, 24, W - 24), y: clamp(y, 24, H - strip - 24), depth: 0 });
-  }
-  loose.forEach((i, k) => {
-    const per = Math.max(1, Math.floor((W - margin * 2) / 26));
-    placed.set(st.ids[i]!, {
-      id: st.ids[i]!,
-      x: margin + (k % per) * 26,
-      y: H - strip + 24 + Math.floor(k / per) * 22,
-      depth: -1,
+  const groups: GroupDisc[] = [];
+  let x = gap;
+  for (const [key, list] of order) {
+    const R = radius(list.length);
+    const cx = x + R;
+    const cy = top + maxR;
+    const sorted = list.slice().sort((a, b) => (fanIn.get(b.id) ?? 0) - (fanIn.get(a.id) ?? 0) || a.name.localeCompare(b.name));
+    sorted.forEach((c, i) => {
+      const rr = SPACING * Math.sqrt(i + 0.35);
+      const angle = i * GOLDEN;
+      const size = 4 + Math.min(7, Math.sqrt(fanIn.get(c.id) ?? 0) * 1.25);
+      placed.set(c.id, { id: c.id, x: cx + rr * Math.cos(angle), y: cy + rr * Math.sin(angle), r: size, group: key });
     });
-  });
-  return { placed, width: W, height: H + (loose.length > 0 ? Math.floor(loose.length / Math.max(1, Math.floor((W - 140) / 26))) * 22 : 0), looseTop: loose.length ? H - strip : null };
-}
-
-/** Runs the whole layout synchronously (used by tests). */
-export function forceLayout(nodes: GNode[], edges: GEdge[], iterations = 220): Layout {
-  const st = forceInit(nodes, edges);
-  forceStep(st, iterations);
-  return forceResult(st);
+    groups.push({ key, label: groupLabel(key), count: list.length, cx, cy, r: R });
+    x += R * 2 + gap;
+  }
+  return { placed, groups, width: Math.max(x, 400), height: top + maxR * 2 + 40 };
 }
 
 // ---------- Team colours: three named teams, then "other", then "no owner" (secondary encoding: outline) ----------
@@ -260,49 +195,39 @@ interface Box {
 
 type LinkMode = "key" | "all" | "none";
 
-function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode[]; edges: GEdge[]; limitation?: string; initialFocus?: string | null }) {
-  const [layout, setLayout] = useState<Layout | null>(null);
-  const [box, setBox] = useState<Box | null>(null);
-  const [progress, setProgress] = useState(0);
-  // The layout is computed in small chunks between frames, so the page stays responsive on large graphs.
-  useEffect(() => {
-    let cancelled = false;
-    const total = 220;
-    const st = forceInit(nodes, edges);
-    let t = 0;
-    const tick = () => {
-      if (cancelled) return;
-      forceStep(st, 10);
-      if (st.iter < total) {
-        setProgress(Math.round((st.iter / total) * 100));
-        t = window.setTimeout(tick, 0);
-        return;
-      }
-      const l = forceResult(st);
-      setLayout(l);
-      setBox({ x: 0, y: 0, w: l.width, h: l.height });
-    };
-    t = window.setTimeout(tick, 0);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(t);
-    };
-  }, [nodes, edges]);
+interface ForecastRow {
+  title?: string | null;
+  issue_id?: string | null;
+  component?: string | null;
+  score?: number | null;
+}
 
+/** "sig/storage" and a forecast item's "storage" name the same area. */
+function areaName(team: string | null): string | null {
+  return team ? team.replace(/^[^/:]+[/:]/, "") : null;
+}
+
+function shortName(name: string): string {
+  const last = name.split("/").slice(1).join("/") || name;
+  return last.length > 26 ? `${last.slice(0, 25)}…` : last;
+}
+
+function GraphDrawing({ nodes, edges, limitation, initialFocus, snapshotId }: { nodes: GNode[]; edges: GEdge[]; limitation?: string; initialFocus?: string | null; snapshotId: string }) {
+  const layout = useMemo(() => clusterLayout(nodes, edges), [nodes, edges]);
+  const [box, setBox] = useState<Box>({ x: 0, y: 0, w: layout.width, h: layout.height });
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const { slot, top } = useMemo(() => teamSlots(nodes), [nodes]);
-  const compEdges = useMemo(() => edges.filter((e) => e.kind !== "owned_by_team" && byId.has(e.source) && byId.has(e.target)), [edges, byId]);
-  const fanIn = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const e of compEdges) if (e.kind === "depends_on") m.set(e.target, (m.get(e.target) ?? 0) + 1);
-    return m;
-  }, [compEdges]);
+  const compEdges = useMemo(() => edges.filter((e) => e.kind !== "owned_by_team" && layout.placed.has(e.source) && layout.placed.has(e.target)), [edges, layout]);
+  const fanIn = useMemo(() => fanInOf(compEdges), [compEdges]);
   const hubs = useMemo(
-    () => new Set([...fanIn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12).map(([id]) => id)),
+    () => new Set([...fanIn.entries()].sort((a, b) => b[1] - a[1]).slice(0, 7).map(([id]) => id)),
     [fanIn],
   );
+  const issues = useMemo(() => nodes.filter((n) => n.kind === "issue"), [nodes]);
+  const forecast = useLatest("forecast");
+  const forecastItems: ForecastRow[] = (forecast.report?.report?.forecast as { items?: ForecastRow[] } | undefined)?.items ?? [];
 
-  const [selected, setSelected] = useState<string | null>(initialFocus ?? null);
+  const [selected, setSelected] = useState<string | null>(initialFocus && layout.placed.has(initialFocus) ? initialFocus : null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [links, setLinks] = useState<LinkMode>("key");
   const [showTest, setShowTest] = useState(false);
@@ -310,7 +235,7 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; box: Box } | null>(null);
 
-  const fit = (l = layout) => (l ? setBox({ x: 0, y: 0, w: l.width, h: l.height }) : undefined);
+  const fit = () => setBox({ x: 0, y: 0, w: layout.width, h: layout.height });
 
   // Wheel zoom needs a non-passive listener so the page does not scroll at the same time.
   useEffect(() => {
@@ -319,12 +244,11 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
     const onWheel = (ev: WheelEvent) => {
       ev.preventDefault();
       setBox((b) => {
-        if (!b) return b;
         const rect = el.getBoundingClientRect();
         const px = b.x + ((ev.clientX - rect.left) / rect.width) * b.w;
         const py = b.y + ((ev.clientY - rect.top) / rect.height) * b.h;
         const k = ev.deltaY > 0 ? 1.15 : 1 / 1.15;
-        const w = Math.min(Math.max(b.w * k, 120), 20000);
+        const w = Math.min(Math.max(b.w * k, 160), layout.width * 3);
         const h = (b.h / b.w) * w;
         return { x: px - ((px - b.x) / b.w) * w, y: py - ((py - b.y) / b.h) * h, w, h };
       });
@@ -333,22 +257,14 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
     return () => el.removeEventListener("wheel", onWheel);
   }, [layout]);
 
-  const zoom = (k: number) =>
-    setBox((b) => (b ? { x: b.x + (b.w - b.w * k) / 2, y: b.y + (b.h - b.h * k) / 2, w: b.w * k, h: b.h * k } : b));
+  const zoom = (k: number) => setBox((b) => ({ x: b.x + (b.w - b.w * k) / 2, y: b.y + (b.h - b.h * k) / 2, w: b.w * k, h: b.h * k }));
 
   const focusOn = (id: string) => {
-    const p = layout?.placed.get(id);
+    const p = layout.placed.get(id);
     setSelected(id);
-    if (p) setBox((b) => ({ x: p.x - 360, y: p.y - 220, w: 720, h: (720 * (b?.h ?? 1)) / (b?.w ?? 1) }));
+    setQuery("");
+    if (p) setBox((b) => ({ x: p.x - 260, y: p.y - (260 * b.h) / b.w, w: 520, h: (520 * b.h) / b.w }));
   };
-
-  if (!layout || !box)
-    return (
-      <div role="status" className="graph-progress">
-        <span className="muted">Arranging {nodes.filter((n) => n.kind === "component").length} components… {progress}%</span>
-        <progress className="bar" max={100} value={progress} />
-      </div>
-    );
 
   const focus = hovered ?? selected;
   const neighbours = new Set<string>();
@@ -360,33 +276,50 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
     if (links === "key") return hubs.has(e.target);
     return true;
   });
-  const zoomedIn = box.w < 700;
+  const zoomedIn = box.w < layout.width * 0.55;
   const matches = query.trim()
     ? nodes.filter((n) => n.kind === "component" && n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
     : [];
-  const detail = focus ? byId.get(focus) : null;
-  const detailDeps = detail ? compEdges.filter((e) => e.source === detail.id && e.kind === "depends_on").map((e) => byId.get(e.target)?.name ?? e.target) : [];
-  const detailUsers = detail ? compEdges.filter((e) => e.target === detail.id && e.kind === "depends_on").map((e) => byId.get(e.source)?.name ?? e.source) : [];
+  const detail = selected ? byId.get(selected) : focus ? byId.get(focus) : null;
+  const imports = detail ? compEdges.filter((e) => e.source === detail.id && e.kind === "depends_on").map((e) => e.target) : [];
+  const users = detail ? compEdges.filter((e) => e.target === detail.id && e.kind === "depends_on").map((e) => e.source) : [];
+  const area = detail ? areaName(detail.team) : null;
+  const teamIssues = detail?.team ? issues.filter((i) => i.labels.includes(detail.team as string)) : [];
+  const teamForecast = area ? forecastItems.filter((f) => f.component === area) : [];
+
+  const nameList = (ids: string[]) => (
+    <ul className="node-list">
+      {ids.slice(0, 12).map((id) => (
+        <li key={id}>
+          <button type="button" className="link-button" onClick={() => focusOn(id)}>{byId.get(id)?.name ?? id}</button>
+        </li>
+      ))}
+      {ids.length > 12 ? <li className="muted">and {ids.length - 12} more</li> : null}
+    </ul>
+  );
 
   return (
     <>
       <div className="graph-bar">
-        <label className="sr-only" htmlFor="graph-search">Find a component</label>
-        <input
-          id="graph-search"
-          placeholder="Find a component, for example pkg/virt-handler"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && matches[0]) focusOn(matches[0].id);
-          }}
-        />
+        <span className="search-field">
+          <Icon name="search" size={16} />
+          <label className="sr-only" htmlFor="graph-search">Find a component</label>
+          <input
+            id="graph-search"
+            placeholder="Find a component"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && matches[0]) focusOn(matches[0].id);
+            }}
+          />
+        </span>
         <Segmented<LinkMode>
           label="Links shown"
           value={links}
           onChange={setLinks}
           options={[
-            { value: "key", label: "Key links" },
+            { value: "key", label: "Main links" },
             { value: "all", label: "All links" },
             { value: "none", label: "No links" },
           ]}
@@ -397,8 +330,15 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
         <span className="zoom-controls" role="group" aria-label="Zoom">
           <Button size="sm" onClick={() => zoom(1 / 1.3)} aria-label="Zoom in">+</Button>
           <Button size="sm" onClick={() => zoom(1.3)} aria-label="Zoom out">−</Button>
-          <Button size="sm" onClick={() => fit()}>Fit</Button>
+          <Button size="sm" onClick={fit}>Fit</Button>
         </span>
+        <ul className="legend" aria-label="Owner teams">
+          {top.map((t, i) => (
+            <li key={t.team}><span className={`swatch s${i + 1}`} aria-hidden="true" /> {areaName(t.team)}</li>
+          ))}
+          <li><span className="swatch other" aria-hidden="true" /> Other teams</li>
+          <li><span className="swatch none" aria-hidden="true" /> No owner</li>
+        </ul>
       </div>
       {matches.length ? (
         <p className="graph-matches">
@@ -412,9 +352,9 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
           ref={svgRef}
           className="graph"
           viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
-          preserveAspectRatio="xMidYMin meet"
+          preserveAspectRatio="xMidYMid meet"
           role="img"
-          aria-label={`Dependency graph of ${layout.placed.size} components`}
+          aria-label={`Dependency graph of ${layout.placed.size} components in ${layout.groups.length} groups`}
           onPointerDown={(e) => {
             (e.target as Element).setPointerCapture?.(e.pointerId);
             drag.current = { x: e.clientX, y: e.clientY, box };
@@ -431,36 +371,32 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
           onPointerUp={() => (drag.current = null)}
           onPointerLeave={() => (drag.current = null)}
         >
-          {layout.looseTop !== null ? (
-            <>
-              <line className="strip-line" x1={40} x2={layout.width - 40} y1={layout.looseTop} y2={layout.looseTop} />
-              <text className="col-label" x={70} y={layout.looseTop + 14}>No import links in this snapshot</text>
-            </>
-          ) : null}
+          {layout.groups.map((g) => (
+            <g key={g.key}>
+              <circle className="group-disc" cx={g.cx} cy={g.cy} r={g.r} />
+              <text className="group-label" x={g.cx} y={g.cy - g.r - 14} textAnchor="middle">
+                {g.label} · {g.count}
+              </text>
+            </g>
+          ))}
           {shownEdges.map((e, i) => {
             const a = layout.placed.get(e.source);
             const b = layout.placed.get(e.target);
             if (!a || !b) return null;
-            const mx = (a.x + b.x) / 2;
-            return (
-              <path
-                key={i}
-                d={`M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`}
-                className={`edge ${e.kind}${focus ? " hl" : ""}`}
-                fill="none"
-              />
-            );
+            const side = focus ? (e.source === focus ? " out" : " in") : "";
+            return <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} className={`edge ${e.kind}${side}`} />;
           })}
           {[...layout.placed.values()].map((p) => {
-            const n = byId.get(p.id)!;
-            const dim = focus && p.id !== focus && !neighbours.has(p.id);
-            const showLabel = zoomedIn || p.id === focus || neighbours.has(p.id) || hubs.has(p.id);
+            const n = byId.get(p.id);
+            if (!n) return null;
+            const dim = Boolean(focus) && p.id !== focus && !neighbours.has(p.id);
+            const showLabel = !dim && (p.id === focus || hubs.has(p.id) || (zoomedIn && p.r > 5) || (Boolean(focus) && neighbours.has(p.id) && neighbours.size <= 14));
             return (
               <g key={p.id}>
                 <circle
                   cx={p.x}
                   cy={p.y}
-                  r={hubs.has(p.id) ? 7 : 5}
+                  r={p.r}
                   className={`node ${nodeClass(n, slot)}${p.id === selected ? " sel" : ""}${dim ? " dim" : ""}`}
                   tabIndex={0}
                   onMouseEnter={() => setHovered(p.id)}
@@ -470,11 +406,11 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
                   onClick={() => setSelected(p.id === selected ? null : p.id)}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
-                  <title>{`${n.name}${n.team ? ` · ${n.team}` : " · no owner team"} · used by ${fanIn.get(p.id) ?? 0}`}</title>
+                  <title>{`${n.name} · ${n.team ?? "no owner team"} · used by ${fanIn.get(p.id) ?? 0}`}</title>
                 </circle>
-                {showLabel && !dim ? (
-                  <text className="node-label" x={p.x + 10} y={p.y + 3}>
-                    {n.name.length > 30 ? `…${n.name.slice(-29)}` : n.name}
+                {showLabel ? (
+                  <text className="node-label" x={p.x} y={p.y - p.r - 4} textAnchor="middle">
+                    {shortName(n.name)}
                   </text>
                 ) : null}
               </g>
@@ -484,33 +420,57 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode
         <aside className="node-detail" aria-live="polite">
           {detail ? (
             <>
-              <h3 className="mono">{detail.name}</h3>
-              <dl className="facts">
-                <dt>Owner team</dt><dd>{detail.team ?? "none recorded"}</dd>
-                <dt>Used by</dt><dd className="num">{detailUsers.length} components</dd>
-                <dt>Imports</dt><dd className="num">{detailDeps.length} components</dd>
-              </dl>
-              {detailDeps.length ? (<><p className="muted">Imports</p><ul>{detailDeps.slice(0, 30).map((d) => <li key={d}>{d}</li>)}</ul></>) : null}
-              {detailUsers.length ? (<><p className="muted">Used by</p><ul>{detailUsers.slice(0, 30).map((d) => <li key={d}>{d}</li>)}</ul></>) : null}
-              {selected ? <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>Clear selection</Button> : null}
+              <p className="detail-kicker">{groupOf(detail.name)}</p>
+              <h3>{detail.name.split("/").slice(1).join("/") || detail.name}</h3>
+              <div className="detail-stats">
+                <div><span className="num">{users.length}</span><span>used by</span></div>
+                <div><span className="num">{imports.length}</span><span>imports</span></div>
+                <div><span className="num">{teamIssues.length}</span><span>open issues</span></div>
+              </div>
+              <p className="detail-owner">
+                <Icon name="user" size={14} /> {detail.team ?? "No owner team recorded"}
+              </p>
+              {teamForecast.length ? (
+                <>
+                  <h4>Likely to carry over <span className="pill pill-warn num">{teamForecast.length}</span></h4>
+                  <ul className="node-list">
+                    {teamForecast.slice(0, 5).map((f) => (
+                      <li key={f.issue_id ?? f.title ?? ""} title={f.title ?? undefined}>
+                        <span className="num muted">#{f.issue_id}</span> {f.title && f.title.length > 44 ? `${f.title.slice(0, 43)}…` : f.title}
+                      </li>
+                    ))}
+                  </ul>
+                  {forecast.link ? <Link className="btn btn-ghost btn-sm" to={`/reports/${encodeURIComponent(forecast.link.report_id)}`}>Open the forecast</Link> : null}
+                </>
+              ) : null}
+              {teamIssues.length ? (
+                <>
+                  <h4>Open issues for {area}</h4>
+                  <p className="chip-row">
+                    {teamIssues.slice(0, 14).map((i) => <span key={i.id} className="chip chip-quiet num">#{i.name}</span>)}
+                    {teamIssues.length > 14 ? <span className="muted small">+{teamIssues.length - 14}</span> : null}
+                  </p>
+                </>
+              ) : null}
+              {users.length ? (<><h4>Used by</h4>{nameList(users)}</>) : null}
+              {imports.length ? (<><h4>Imports</h4>{nameList(imports)}</>) : null}
+              {selected ? <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>Clear</Button> : null}
             </>
           ) : (
-            <p className="muted">Hover or click a dot.</p>
+            <div className="detail-empty">
+              <Icon name="graph" size={22} />
+              <p>Select a component</p>
+              <p className="muted small">Larger dots are used by more components.</p>
+            </div>
           )}
-          <ul className="legend" aria-label="Owner teams">
-            {top.map((t, i) => (
-              <li key={t.team}><span className={`swatch s${i + 1}`} aria-hidden="true" /> {t.team} <span className="muted num">{t.count}</span></li>
-            ))}
-            <li><span className="swatch other" aria-hidden="true" /> Other teams</li>
-            <li><span className="swatch none" aria-hidden="true" /> No owner team</li>
-          </ul>
           {limitation ? (
-            <span className="pill pill-neutral" title={limitation}>
-              Import links only
-            </span>
+            <p className="detail-foot">
+              <span className="pill pill-neutral" title={limitation}>Import links only</span>
+            </p>
           ) : null}
         </aside>
       </div>
+      <span className="sr-only" data-testid="graph-snapshot">{snapshotId}</span>
     </>
   );
 }
@@ -538,8 +498,8 @@ function ComponentTable({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
           <tbody>
             {paged.slice.map((r) => (
               <tr key={r.id}>
-                <td className="mono">{r.name}</td>
-                <td>{r.team ?? <span className="muted">none</span>}</td>
+                <td><span className="row-title">{r.name}</span></td>
+                <td>{r.team ?? <span className="muted">—</span>}</td>
                 <td className="num">{r.fanIn}</td>
                 <td className="num">{r.fanOut}</td>
               </tr>
@@ -555,7 +515,7 @@ function ComponentTable({ nodes, edges }: { nodes: GNode[]; edges: GEdge[] }) {
 function IssueTable({ nodes }: { nodes: GNode[] }) {
   const issues = nodes.filter((n) => n.kind === "issue");
   const paged = usePaged(issues, 25);
-  if (!issues.length) return <Empty>This snapshot has no open issues.</Empty>;
+  if (!issues.length) return <Empty>No open issues at this point in time.</Empty>;
   return (
     <>
       <div className="table-wrap">
@@ -564,8 +524,8 @@ function IssueTable({ nodes }: { nodes: GNode[] }) {
           <tbody>
             {paged.slice.map((n) => (
               <tr key={n.id}>
-                <td className="mono">#{n.name}</td>
-                <td>{n.labels.map((l) => <span key={l} className="chip">{l}</span>)}</td>
+                <td className="num">#{n.name}</td>
+                <td><span className="chip-row tight">{n.labels.map((l) => <span key={l} className="chip chip-quiet">{l}</span>)}</span></td>
               </tr>
             ))}
           </tbody>
@@ -601,7 +561,7 @@ function GraphPicture({ snapshotId, focus }: { snapshotId: string; focus: string
           { value: "issues", label: "Open issues", count: issues },
         ]}
       />
-      {view === "graph" ? <GraphDrawing nodes={data.nodes} edges={data.edges} limitation={g.data?.limitation} initialFocus={focus} /> : null}
+      {view === "graph" ? <GraphDrawing nodes={data.nodes} edges={data.edges} limitation={g.data?.limitation} initialFocus={focus} snapshotId={snapshotId} /> : null}
       {view === "components" ? <ComponentTable nodes={data.nodes} edges={data.edges} /> : null}
       {view === "issues" ? <IssueTable nodes={data.nodes} /> : null}
     </>

@@ -193,3 +193,16 @@ def test_runs_without_a_run_engine_fail_with_a_reason(services, client):
     r = _investigate(client)
     run = client.get(f"/api/runs/{r.json()['run_id']}", headers=H("em")).json()
     assert run["run_status"] == "failed" and "not connected" in run["error"]
+
+
+def test_evidence_ids_with_slashes_resolve(client, services):
+    """Real record ids look like ``issues:issue/16936@abc``; the route must accept the slash."""
+    record_id = "issues:issue/16936@6ce4e1c11e9fa2ea"
+    services.snapshots.records[("snap-v1.9.0", record_id)] = {
+        "record_id": record_id, "content_version_id": "cv1", "source": "issues",
+        "access_scopes": ["public"], "provenance": "observed", "text": "flaky test"}
+    run_id = _investigate(client).json()["run_id"]
+    for path in (f"/api/evidence/{record_id}", "/api/evidence/issues%3Aissue%2F16936%406ce4e1c11e9fa2ea"):
+        r = client.get(path, params={"run_id": run_id}, headers=H("pm"))
+        assert r.status_code == 200, path
+        assert r.json()["record"]["record_id"] == record_id

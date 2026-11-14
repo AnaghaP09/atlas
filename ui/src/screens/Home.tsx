@@ -2,6 +2,7 @@ import type { Envelope, Health, RunView } from "../api/types";
 import { useApi } from "../app/context";
 import { DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Time } from "../components/common";
 import { Link } from "../lib/router";
+import { runTitle } from "../lib/labels";
 import { useCurrentProject, type ActivityItem } from "./Dashboard";
 import { LiveNumber, useMetrics } from "../lib/metrics";
 import type { Navigation } from "../lib/nav";
@@ -125,9 +126,12 @@ export function Home() {
               <Empty action={{ to: "/run-now", label: "Start a release close" }}>No runs yet.</Empty>
             ) : null}
             <ul className="list">
-              {runList.slice(0, 6).map((r) => (
+              {runList.slice().sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? ""))).slice(0, 6).map((r) => (
                 <li key={r.run_id}>
-                  <span className="grow"><Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link></span>
+                  <span className="grow">
+                    <Link to={`/runs/${encodeURIComponent(r.run_id)}`} className="row-title">{r.kind_label ?? runTitle(r)}</Link>
+                    <span className="row-sub">{[r.subject, null].filter(Boolean).join(" ")}{r.subject && r.started_at ? " · " : ""}<Time iso={r.started_at} short /></span>
+                  </span>
                   <StatusPill status={r.run_status} />
                 </li>
               ))}
@@ -140,13 +144,13 @@ export function Home() {
             {health.isLoading ? <Loading what="status" lines={2} /> : <ErrorView error={health.error} />}
             <ul className="list">
               {(health.data?.staged ?? []).map((s) => (
-                <li key={s}><span className="grow">{s}</span></li>
+                <li key={s}><span className="grow">{s.replace(/^./, (c) => c.toUpperCase())}</span></li>
               ))}
             </ul>
             {health.data?.unevaluated?.length ? (
               <>
                 <h3>Not evaluated in this build</h3>
-                <ul>{health.data.unevaluated.map((s) => <li key={s}>{s}</li>)}</ul>
+                <ul>{health.data.unevaluated.map((s) => <li key={s}>{s.replace(/^./, (c) => c.toUpperCase())}</li>)}</ul>
               </>
             ) : null}
           </Section>

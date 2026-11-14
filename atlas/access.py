@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
+from atlas.sqlite_util import connect as safe_connect
 
 ALL_ROLES = frozenset({"pm", "em", "architect", "security", "oncall", "audit"})
 SECURITY_SCOPE = "restricted:security"
@@ -141,7 +142,7 @@ class AccessRequestStore:
 
     def __init__(self, path: str | Path = ":memory:",
                  clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)) -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.executescript(SCHEMA)
         self._lock = threading.RLock()
         self.clock = clock
