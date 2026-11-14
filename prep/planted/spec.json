@@ -1,0 +1,25 @@
+{
+  "description": "Planted verifier set. Each case has one true finding supported by the cited record and one wrong finding that cites a real record from the same case snapshot which does not support it. Facts in true findings are limited to what the issue stated when it was reported.",
+  "cases": [
+    {"case": "G01", "true": {"text": "Passt-based network tests began flaking after the test image moved to Fedora 43, where passt uses nearly 100% CPU.", "support": {"source": "issues", "source_id": "18234", "part": "body"}},
+     "wrong": {"text": "The network test flakes are caused by a race between virt-handler and the VM controller.", "cite": {"source": "issues", "source_id": "18234", "part": "labels"}}},
+    {"case": "G02", "true": {"text": "Datavolume migration to filesystem volumes fails in about 21% of runs on Kubernetes 1.36 and is stable on 1.34 and 1.35.", "support": {"source": "issues", "source_id": "17724", "part": "body"}},
+     "wrong": {"text": "The migration failures happen equally on every supported Kubernetes version.", "cite": {"source": "issues", "source_id": "17724", "part": "labels"}}},
+    {"case": "G02b", "true": {"text": "The failing migration case is reported against Kubernetes 1.36 specifically.", "support": {"source": "issues", "source_id": "17724", "part": "body"}},
+     "wrong": {"text": "The failure was introduced by an outdated passt package in the test image.", "cite": {"source": "issues", "source_id": "17724", "part": "labels"}}},
+    {"case": "G03", "true": {"text": "The force-restart test for a VM with terminationGracePeriodSeconds>0 failed in CI.", "support": {"source": "issues", "source_id": "17388", "part": "body"}},
+     "wrong": {"text": "The force-restart failure only occurs on the s390x cluster.", "cite": {"source": "issues", "source_id": "17388", "part": "labels"}}},
+    {"case": "G04a", "true": {"text": "The release-blocker upgrade test was quarantined.", "support": {"source": "issues", "source_id": "18465", "part": "body"}},
+     "wrong": {"text": "The upgrade test fails because the cluster ran out of storage.", "cite": {"source": "issues", "source_id": "18465", "part": "labels"}}},
+    {"case": "G04b", "true": {"text": "The issue reports workload-update migrations racing with the virt-handler DaemonSet re-roll during upgrade.", "support": {"source": "issues", "source_id": "18396", "part": "body"}},
+     "wrong": {"text": "The upgrade race is caused by an IPv6-only network configuration.", "cite": {"source": "issues", "source_id": "18396", "part": "labels"}}},
+    {"case": "G04c", "true": {"text": "The issue reports a failure in the upgrade test path.", "support": {"source": "issues", "source_id": "18336", "part": "body"}},
+     "wrong": {"text": "The upgrade failure is a known upstream bug in the Fedora 43 image.", "cite": {"source": "issues", "source_id": "18336", "part": "labels"}}},
+    {"case": "G05", "true": {"text": "IPv6 masquerade binding tests have flaked only on the IPv6 lane since a merged image change.", "support": {"source": "issues", "source_id": "15886", "part": "body"}},
+     "wrong": {"text": "The masquerade tests flake on every network lane, IPv4 included.", "cite": {"source": "issues", "source_id": "15886", "part": "labels"}}},
+    {"case": "G06", "true": {"text": "Around 20 tests fail on every run of the periodic s390x end-to-end job.", "support": {"source": "issues", "source_id": "17371", "part": "body"}},
+     "wrong": {"text": "The s390x failures come from a regression in the virt-api force-restart code.", "cite": {"source": "issues", "source_id": "17371", "part": "labels"}}},
+    {"case": "G07", "true": {"text": "The issue lists clustered failing runs of the sig-compute lane without stating a cause.", "support": {"source": "issues", "source_id": "17022", "part": "body"}},
+     "wrong": {"text": "The clustered failures were caused by a dependency bump of passt.", "cite": {"source": "issues", "source_id": "17022", "part": "labels"}}}
+  ]
+}
