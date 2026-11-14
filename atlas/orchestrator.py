@@ -311,9 +311,7 @@ class Orchestrator:
         items = list(self.d.open_items_for(ctx))
         for it in items:
             for rid in it.record_ids:
-                rec = self.d.store.get(ctx, "issues", rid) if hasattr(self.d.store, "get") else None
-                if rec:
-                    resolver.resolve(rec)
+                self._preload(resolver, ctx, rid)
         f = forecast(items, ctx.evidence_clock)
         out["classification"] = {"value": "CARRY_OVER_FORECAST", "claim_ids": [], "required_scopes": ["public"]}
         out["action"] = {"value": "PUBLISH_FORECAST", "claim_ids": [], "required_scopes": ["public"]}
@@ -393,8 +391,15 @@ class Orchestrator:
         return new
 
     def _preload(self, resolver: EvidenceResolver, ctx: RunContext, record_id: str) -> None:
-        for source in ("issues", "git", "ci", "security", "kubernetes", "telemetry", "architecture", "capacity"):
-            rec = self.d.store.get(ctx, source, record_id)
-            if rec:
-                resolver.resolve(rec)
-                return
+        """Make a cited record readable by Sentinel. Citations are record ids, not source ids."""
+        get_record = getattr(self.d.store, "get_record", None)
+        rec = get_record(ctx, record_id) if get_record else None
+        if rec is None:
+            source, _, rest = record_id.partition(":")
+            source_id = rest.split("@", 1)[0]
+            if source and source_id:
+                rec = self.d.store.get(ctx, source, source_id)
+                if rec is not None and rec.record_id != record_id:
+                    rec = None
+        if rec is not None:
+            resolver.resolve(rec)
