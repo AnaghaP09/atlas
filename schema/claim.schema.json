@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AnaghaP09/atlas/schema/claim.schema.json",
+  "title": "Claim",
+  "description": "One statement made by the investigator or a service, with the evidence it cites and the verifier's verdict.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "text", "kind", "evidence_ids", "depends_on", "required_scopes", "verdict"],
+  "properties": {
+    "id": {"type": "string", "minLength": 1},
+    "text": {"type": "string", "minLength": 1},
+    "kind": {"enum": ["finding", "root_cause", "classification", "forecast_item", "allocation", "option", "security_finding", "task_rationale", "contradiction"]},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "depends_on": {"type": "array", "items": {"type": "string"}, "description": "Claim ids this claim relies on; pruning follows these transitively."},
+    "required_scopes": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "verdict": {"enum": ["supported", "rejected", "contradicted", "missing"]},
+    "verdict_reason": {"type": ["string", "null"]}
+  }
+}

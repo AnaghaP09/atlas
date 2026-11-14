@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/AnaghaP09/atlas/schema/events.json",
+  "title": "Live event",
+  "description": "Every event on /api/runs/{id}/stream and /api/notifications/stream. Producers, the API stream and the UI use exactly these names and fields.",
+  "streams": ["/api/runs/{id}/stream", "/api/notifications/stream"],
+  "event_names": [
+    "run.progress",
+    "run.status_changed",
+    "run.generation_changed",
+    "report.superseded",
+    "report.corrected",
+    "report.withdrawn",
+    "task.state_changed",
+    "approval.voided",
+    "notification.created",
+    "containment.tripped",
+    "containment.resumed",
+    "stream.reset"
+  ],
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "event_id", "emitted_at", "run_id", "authoritative_generation", "report_version", "correction_version", "data"],
+  "properties": {
+    "event": {"enum": [
+      "run.progress", "run.status_changed", "run.generation_changed", "report.superseded",
+      "report.corrected", "report.withdrawn", "task.state_changed", "approval.voided",
+      "notification.created", "containment.tripped", "containment.resumed", "stream.reset"
+    ]},
+    "event_id": {"type": "string", "minLength": 1},
+    "emitted_at": {"type": "string", "format": "date-time"},
+    "run_id": {"type": ["string", "null"]},
+    "authoritative_generation": {"type": ["integer", "null"], "minimum": 1},
+    "report_version": {"type": ["integer", "null"], "minimum": 1},
+    "correction_version": {"type": ["integer", "null"], "minimum": 0},
+    "data": {"type": "object"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event": {"const": "stream.reset"}}},
+      "then": {
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["reason", "resume_from"],
+            "properties": {
+              "reason": {"type": "string"},
+              "resume_from": {"type": ["string", "null"], "description": "Event id from which the stream continues after the client has refetched."}
+            }
+          }
+        }
+      }
+    }
+  ]
+}

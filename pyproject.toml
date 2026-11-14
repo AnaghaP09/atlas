@@ -1,0 +1,11 @@
+[project]
+name = "atlas"
+version = "0.1.0"
+description = "Engineering control plane: next-release debt forecasts, cited failure investigations and approved coding-agent tasks"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "Proprietary"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

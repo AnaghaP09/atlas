@@ -1,0 +1,52 @@
+[
+  {
+    "event": "run.progress",
+    "event_id": "e1",
+    "emitted_at": "2026-07-30T12:00:00Z",
+    "run_id": "run-0001",
+    "authoritative_generation": 1,
+    "report_version": null,
+    "correction_version": null,
+    "data": {
+      "steps": 3,
+      "tool_calls": 4
+    }
+  },
+  {
+    "event": "report.corrected",
+    "event_id": "e2",
+    "emitted_at": "2026-07-30T12:01:00Z",
+    "run_id": "run-0001",
+    "authoritative_generation": 1,
+    "report_version": 1,
+    "correction_version": 1,
+    "data": {
+      "report_id": "rep-0001"
+    }
+  },
+  {
+    "event": "run.generation_changed",
+    "event_id": "e3",
+    "emitted_at": "2026-07-30T12:02:00Z",
+    "run_id": "run-0001",
+    "authoritative_generation": 2,
+    "report_version": 2,
+    "correction_version": 0,
+    "data": {
+      "previous": 1
+    }
+  },
+  {
+    "event": "stream.reset",
+    "event_id": "e4",
+    "emitted_at": "2026-07-30T12:03:00Z",
+    "run_id": null,
+    "authoritative_generation": null,
+    "report_version": null,
+    "correction_version": null,
+    "data": {
+      "reason": "replay buffer exceeded",
+      "resume_from": "e4"
+    }
+  }
+]
