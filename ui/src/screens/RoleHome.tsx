@@ -2,7 +2,7 @@
 // (GET /api/navigation "home"); the data comes from the same projected API reads as everywhere else.
 import type { ContainmentView, Envelope, Health, Notification, QueueEntry, ReportView, RunView, TaskView } from "../api/types";
 import { useApi } from "../app/context";
-import { ButtonLink, DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Truncate } from "../components/common";
+import { ButtonLink, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Truncate } from "../components/common";
 import { Link } from "../lib/router";
 import { latestReport } from "./LatestReport";
 import { useCurrentProject } from "./Dashboard";
@@ -62,7 +62,7 @@ function EmFocus() {
   const queue = useApi<{ entries: QueueEntry[] }>("/api/queue");
   const tasks = useApi<{ tasks: TaskView[] }>("/api/tasks");
   const { link, report } = useLatest("allocation");
-  const allocation = (report?.report?.items as { id?: string; allocation?: string }[] | undefined) ?? [];
+  const allocation = (report?.report?.items as { id?: string; title?: string; issue_id?: string; allocation?: string }[] | undefined) ?? [];
   const waiting = (tasks.data?.tasks ?? []).filter((t) => ["proposed", "prepared", "awaiting_reapproval"].includes(String((t as { state?: string }).state)));
   return (
     <>
@@ -77,7 +77,14 @@ function EmFocus() {
         ) : (
           <ul className="list">
             {allocation.slice(0, 10).map((a, i) => (
-              <li key={`${a.id}-${i}`}><span className="grow mono">{a.id}</span><span className="pill pill-accent">{String(a.allocation ?? "").replace(/_/g, " ").toLowerCase()}</span></li>
+              <li key={`${a.id}-${i}`}>
+                <span className="grow"><Truncate text={a.title ?? String(a.id ?? "")} max={80} /> <span className="muted num">{a.issue_id ? `#${a.issue_id}` : ""}</span></span>
+                {a.allocation ? (
+                  <span className="pill pill-accent">{String(a.allocation).replace(/_/g, " ").toLowerCase()}</span>
+                ) : (
+                  <span className="pill pill-neutral" title="No owner proposed yet">Not allocated</span>
+                )}
+              </li>
             ))}
           </ul>
         )}
@@ -184,6 +191,6 @@ export function RoleFocus({ home }: { home: string | undefined }) {
     case "audit_home":
       return <AuditFocus />;
     default:
-      return <DataModeBadge mode="STAGED" reason="no home layout for this role" />;
+      return null;
   }
 }
