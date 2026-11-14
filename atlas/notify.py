@@ -109,7 +109,7 @@ class NotificationService:
 
     def emit(self, event_type: str, subject_id: str, payload_refs: Sequence[str],
              required_scopes: frozenset[str], content: Mapping[str, Any] | None = None,
-             project_id: str = "") -> str:
+             project_id: str = "", roles: Sequence[str] | None = None) -> str:
         """Record a notification. Severity, kind and roles come only from the catalog.
 
         A notification about one project's object carries that ``project_id``: only members of the
@@ -119,6 +119,12 @@ class NotificationService:
         if event_type not in self.catalog:
             raise KeyError(f"event type not in catalog: {event_type}")
         entry = self.catalog[event_type]
+        if roles is not None:
+            # Only catalog entries marked ``dynamic_roles`` let the caller name the target roles,
+            # and only roles the entry lists.
+            if not entry.get("dynamic_roles") or not roles or not set(roles) <= set(entry["roles"]):
+                raise ValueError(f"event {event_type} does not accept these target roles")
+            entry = dict(entry, roles=sorted(set(roles)), backup_roles=[])
         now = self.clock()
         with self._lock:
             dup = self._db.execute(

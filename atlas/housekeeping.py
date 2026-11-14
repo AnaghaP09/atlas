@@ -72,6 +72,10 @@ def build_housekeeper(services: Any, sessions: Any = None, *, interval: float = 
         jobs["approvals"] = lambda: approvals.sweep(clock())
     if sessions is not None:
         jobs["sessions"] = sessions.sweep
+    if getattr(services, "access", None) is not None:
+        from atlas.api.routes_access import sweep_expiring
+
+        jobs["access"] = lambda: sweep_expiring(services)
 
     def report(name: str, exc: Exception) -> None:
         notifier = getattr(services, "notifier", None)

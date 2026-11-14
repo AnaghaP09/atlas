@@ -80,6 +80,9 @@ class ContainmentPort(Protocol):
 
     def switch(self, switch_id: str) -> Mapping[str, Any] | None: ...
 
+    def drill(self, switch_id: str, note: str, principal_role: str, user: str | None = None) -> Mapping[str, Any]:
+        """Trip a switch as a drill through the same path as a real trip."""
+
     def record_prerequisite(self, incident_id: str, kind: str, reference: str, note: str,
                             principal_role: str) -> Mapping[str, Any]: ...
 

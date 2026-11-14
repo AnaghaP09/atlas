@@ -105,7 +105,7 @@ def test_reports_discovery_and_projection(client):
     run_id = _investigate(client).json()["run_id"]
     reports = client.get("/api/reports", params={"run_id": run_id}, headers=H("pm")).json()["reports"]
     assert {r["report_type"] for r in reports} == {"investigation", "security_gate"}
-    pm = client.get(f"/api/reports/{run_id}:investigation", headers=H("pm"))
+    pm = client.get(f"/api/reports/{run_id}:investigation", headers=H("oncall"))
     sec = client.get(f"/api/reports/{run_id}:investigation", headers=H("security"))
     assert "SECRET-FINDING-MARKER" not in pm.text and pm.json()["withheld"] >= 1
     assert "SECRET-FINDING-MARKER" in sec.text
@@ -120,8 +120,8 @@ def test_reverify_creates_new_generation_once_per_key_and_keeps_older_readable(c
     replay = client.post(f"/api/runs/{run_id}/reverify", json={}, headers=H("em", key))
     assert replay.headers.get("Idempotent-Replay") == "true"
     assert services.orchestrator.runs.authoritative(run_id)[0] == 2  # no generation 3
-    current = client.get(f"/api/reports/{run_id}:investigation", headers=H("pm")).json()
-    old = client.get(f"/api/reports/{run_id}:investigation", params={"generation": 1}, headers=H("pm")).json()
+    current = client.get(f"/api/reports/{run_id}:investigation", headers=H("oncall")).json()
+    old = client.get(f"/api/reports/{run_id}:investigation", params={"generation": 1}, headers=H("oncall")).json()
     assert current["report_version"] == 2 and "public finding" not in current["markdown"]
     assert old["superseded_by"] == 2 and "public finding" in old["markdown"]
     assert client.post(f"/api/runs/{run_id}/reverify", json={}, headers=H("pm")).status_code == 403
