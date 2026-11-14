@@ -499,7 +499,8 @@ td.mono { font-family: var(--mono); font-size: 0.84rem; }
 .zoom-controls { display: inline-flex; gap: 2px; }
 .zoom-controls button { margin: 0; padding: 4px 10px; }
 .node-detail { border: 1px solid var(--line); border-radius: var(--radius); padding: var(--s-4); background: var(--surface); }
-.node-detail h3 { margin-top: 0; font-family: var(--mono); font-size: 0.9rem; word-break: break-all; }
+.node-detail h3 { margin-top: 0; font-size: 0.95rem; word-break: break-all; }
+.node-detail h3.mono { font-family: var(--mono); font-size: 0.88rem; }
 .node-detail ul { padding-left: var(--s-4); margin: var(--s-1) 0; font-size: 0.84rem; max-height: 12rem; overflow-y: auto; }
 .graph .node.dim, .graph .edge.dim { opacity: 0.12; }
 .graph-note { font-size: 0.82rem; color: var(--muted); }
@@ -533,3 +534,5 @@ td.mono { font-family: var(--mono); font-size: 0.84rem; }
 .graph-matches .chip { cursor: pointer; margin: 0; }
 label.check { display: inline-flex; align-items: center; gap: var(--s-2); font-weight: 500; margin: 0; }
 label.check input { width: auto; margin: 0; }
+.graph-progress { display: grid; gap: var(--s-2); padding: var(--s-6); max-width: 28rem; }
+.graph .strip-line { stroke: var(--line-strong); stroke-dasharray: 4 4; }

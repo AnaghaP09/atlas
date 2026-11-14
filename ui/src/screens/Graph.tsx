@@ -63,56 +63,169 @@ export interface Placed {
   depth: number;
 }
 
-const COL_W = 220;
-const ROW_H = 22;
+export interface Layout {
+  placed: Map<string, Placed>;
+  width: number;
+  height: number;
+  /** Where the row of components with no links starts, if there are any. */
+  looseTop: number | null;
+}
 
-/** Dependency depth: 0 for components that import no other component; otherwise one more than the deepest import. Cycles are cut. */
-export function depths(ids: string[], deps: Map<string, string[]>): Map<string, number> {
-  const out = new Map<string, number>();
-  const visiting = new Set<string>();
-  const visit = (id: string): number => {
-    const known = out.get(id);
-    if (known !== undefined) return known;
-    if (visiting.has(id)) return 0;
-    visiting.add(id);
-    let d = 0;
-    for (const t of deps.get(id) ?? []) d = Math.max(d, visit(t) + 1);
-    visiting.delete(id);
-    out.set(id, d);
-    return d;
-  };
-  for (const id of ids) visit(id);
+const W = 1200;
+const H = 760;
+
+/** Starting positions: each team gets its own sector, so teams start (and mostly stay) together. Deterministic. */
+function seedPositions(comps: GNode[]): Map<string, { x: number; y: number }> {
+  const teams = [...new Set(comps.map((c) => c.team ?? "~none"))].sort();
+  const out = new Map<string, { x: number; y: number }>();
+  comps
+    .slice()
+    .sort((a, b) => (a.team ?? "~none").localeCompare(b.team ?? "~none") || a.name.localeCompare(b.name))
+    .forEach((c, i) => {
+      const t = teams.indexOf(c.team ?? "~none");
+      const angle = (2 * Math.PI * (t + 0.5)) / teams.length + (i % 7) * 0.05;
+      const radius = 120 + ((i * 37) % 220);
+      out.set(c.id, { x: W / 2 + radius * Math.cos(angle), y: H / 2 + radius * Math.sin(angle) });
+    });
   return out;
 }
 
-/** Layered layout: one column per depth, rows ordered by team then by how many components import it. */
-export function layered(nodes: GNode[], edges: GEdge[]): { placed: Map<string, Placed>; width: number; height: number; columns: number } {
+export interface ForceState {
+  ids: string[];
+  pos: Float64Array;
+  links: [number, number][];
+  team: Int32Array;
+  temp: number;
+  iter: number;
+}
+
+export function forceInit(nodes: GNode[], edges: GEdge[]): ForceState {
   const comps = nodes.filter((n) => n.kind === "component");
-  const ids = new Set(comps.map((c) => c.id));
-  const deps = new Map<string, string[]>();
-  const fanIn = new Map<string, number>();
+  const ids = comps.map((c) => c.id);
+  const index = new Map(ids.map((id, i) => [id, i]));
+  const seed = seedPositions(comps);
+  const pos = new Float64Array(ids.length * 2);
+  ids.forEach((id, i) => {
+    const p = seed.get(id)!;
+    pos[i * 2] = p.x;
+    pos[i * 2 + 1] = p.y;
+  });
+  const seen = new Set<string>();
+  const links: [number, number][] = [];
   for (const e of edges) {
-    if (e.kind !== "depends_on" || !ids.has(e.source) || !ids.has(e.target)) continue;
-    deps.set(e.source, [...(deps.get(e.source) ?? []), e.target]);
-    fanIn.set(e.target, (fanIn.get(e.target) ?? 0) + 1);
+    if (e.kind !== "depends_on") continue;
+    const a = index.get(e.source);
+    const b = index.get(e.target);
+    if (a === undefined || b === undefined || a === b) continue;
+    const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    links.push([a, b]);
   }
-  const depth = depths([...ids], deps);
-  const cols = new Map<number, GNode[]>();
-  for (const c of comps) {
-    const d = depth.get(c.id) ?? 0;
-    cols.set(d, [...(cols.get(d) ?? []), c]);
+  const teams = [...new Set(comps.map((c) => c.team ?? "~none"))].sort();
+  const team = new Int32Array(ids.length);
+  comps.forEach((c, i) => (team[i] = teams.indexOf(c.team ?? "~none")));
+  return { ids, pos, links, team, temp: 60, iter: 0 };
+}
+
+/** Runs a batch of force iterations (repulsion, link springs, gravity, weak team cohesion). */
+export function forceStep(st: ForceState, iterations: number) {
+  const n = st.ids.length;
+  if (n === 0) return;
+  const k = Math.sqrt((W * H) / n) * 0.55;
+  const disp = new Float64Array(n * 2);
+  for (let it = 0; it < iterations; it++) {
+    disp.fill(0);
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        let dx = st.pos[i * 2]! - st.pos[j * 2]!;
+        let dy = st.pos[i * 2 + 1]! - st.pos[j * 2 + 1]!;
+        let d2 = dx * dx + dy * dy;
+        if (d2 < 0.01) {
+          dx = 0.1 * ((i % 3) - 1) || 0.1;
+          dy = 0.1;
+          d2 = 0.02;
+        }
+        const f = (k * k) / d2;
+        const same = st.team[i] === st.team[j] && st.team[i] !== -1 ? 0.7 : 1;
+        disp[i * 2]! += dx * f * same;
+        disp[i * 2 + 1]! += dy * f * same;
+        disp[j * 2]! -= dx * f * same;
+        disp[j * 2 + 1]! -= dy * f * same;
+      }
+    }
+    for (const [a, b] of st.links) {
+      const dx = st.pos[a * 2]! - st.pos[b * 2]!;
+      const dy = st.pos[a * 2 + 1]! - st.pos[b * 2 + 1]!;
+      const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+      const f = (d * d) / k / d / 4;
+      disp[a * 2]! -= dx * f;
+      disp[a * 2 + 1]! -= dy * f;
+      disp[b * 2]! += dx * f;
+      disp[b * 2 + 1]! += dy * f;
+    }
+    for (let i = 0; i < n; i++) {
+      disp[i * 2]! += (W / 2 - st.pos[i * 2]!) * 0.02;
+      disp[i * 2 + 1]! += (H / 2 - st.pos[i * 2 + 1]!) * 0.02;
+      const dx = disp[i * 2]!;
+      const dy = disp[i * 2 + 1]!;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const step = Math.min(len, st.temp);
+      st.pos[i * 2]! += (dx / len) * step;
+      st.pos[i * 2 + 1]! += (dy / len) * step;
+    }
+    st.temp = Math.max(1, st.temp * 0.97);
+    st.iter += 1;
   }
+}
+
+/** Turns the force state into placed nodes. Linked components fill the canvas (scaled on the 3rd to 97th
+ * percentile so a few stragglers cannot shrink the picture); components with no links sit in a row at the bottom. */
+export function forceResult(st: ForceState): Layout {
+  const n = st.ids.length;
+  const degree = new Int32Array(n);
+  for (const [a, b] of st.links) {
+    degree[a]! += 1;
+    degree[b]! += 1;
+  }
+  const linked: number[] = [];
+  const loose: number[] = [];
+  for (let i = 0; i < n; i++) (degree[i]! > 0 ? linked : loose).push(i);
+  const q = (vals: number[], f: number) => {
+    const sorted = vals.slice().sort((x, y) => x - y);
+    return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round(f * (sorted.length - 1))))] ?? 0;
+  };
+  const xs = linked.map((i) => st.pos[i * 2]!);
+  const ys = linked.map((i) => st.pos[i * 2 + 1]!);
+  const minX = q(xs, 0.03), maxX = q(xs, 0.97), minY = q(ys, 0.03), maxY = q(ys, 0.97);
+  const margin = 70;
+  const strip = loose.length ? 70 : 0;
+  const innerW = W - margin * 2;
+  const innerH = H - margin * 2 - strip;
   const placed = new Map<string, Placed>();
-  let maxRows = 0;
-  const colKeys = [...cols.keys()].sort((a, b) => a - b);
-  for (const d of colKeys) {
-    const list = (cols.get(d) ?? []).sort(
-      (a, b) => (a.team ?? "~").localeCompare(b.team ?? "~") || (fanIn.get(b.id) ?? 0) - (fanIn.get(a.id) ?? 0) || a.name.localeCompare(b.name),
-    );
-    maxRows = Math.max(maxRows, list.length);
-    list.forEach((n, i) => placed.set(n.id, { id: n.id, x: 80 + d * COL_W, y: 60 + i * ROW_H, depth: d }));
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  for (const i of linked) {
+    const x = margin + ((st.pos[i * 2]! - minX) / Math.max(maxX - minX, 1)) * innerW;
+    const y = margin + ((st.pos[i * 2 + 1]! - minY) / Math.max(maxY - minY, 1)) * innerH;
+    placed.set(st.ids[i]!, { id: st.ids[i]!, x: clamp(x, 24, W - 24), y: clamp(y, 24, H - strip - 24), depth: 0 });
   }
-  return { placed, width: 80 + Math.max(colKeys.length, 1) * COL_W, height: 60 + maxRows * ROW_H + 40, columns: colKeys.length };
+  loose.forEach((i, k) => {
+    const per = Math.max(1, Math.floor((W - margin * 2) / 26));
+    placed.set(st.ids[i]!, {
+      id: st.ids[i]!,
+      x: margin + (k % per) * 26,
+      y: H - strip + 24 + Math.floor(k / per) * 22,
+      depth: -1,
+    });
+  });
+  return { placed, width: W, height: H + (loose.length > 0 ? Math.floor(loose.length / Math.max(1, Math.floor((W - 140) / 26))) * 22 : 0), looseTop: loose.length ? H - strip : null };
+}
+
+/** Runs the whole layout synchronously (used by tests). */
+export function forceLayout(nodes: GNode[], edges: GEdge[], iterations = 220): Layout {
+  const st = forceInit(nodes, edges);
+  forceStep(st, iterations);
+  return forceResult(st);
 }
 
 // ---------- Team colours: three named teams, then "other", then "no owner" (secondary encoding: outline) ----------
@@ -146,17 +259,28 @@ interface Box {
 type LinkMode = "key" | "all" | "none";
 
 function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdge[]; limitation?: string }) {
-  const [layout, setLayout] = useState<ReturnType<typeof layered> | null>(null);
+  const [layout, setLayout] = useState<Layout | null>(null);
   const [box, setBox] = useState<Box | null>(null);
-  // The layout runs after the first paint so the page never freezes on a large graph.
+  const [progress, setProgress] = useState(0);
+  // The layout is computed in small chunks between frames, so the page stays responsive on large graphs.
   useEffect(() => {
     let cancelled = false;
-    const t = window.setTimeout(() => {
+    const total = 220;
+    const st = forceInit(nodes, edges);
+    let t = 0;
+    const tick = () => {
       if (cancelled) return;
-      const l = layered(nodes, edges);
+      forceStep(st, 10);
+      if (st.iter < total) {
+        setProgress(Math.round((st.iter / total) * 100));
+        t = window.setTimeout(tick, 0);
+        return;
+      }
+      const l = forceResult(st);
       setLayout(l);
-      setBox({ x: 0, y: 0, w: l.width, h: Math.max(l.height, 400) });
-    }, 0);
+      setBox({ x: 0, y: 0, w: l.width, h: l.height });
+    };
+    t = window.setTimeout(tick, 0);
     return () => {
       cancelled = true;
       window.clearTimeout(t);
@@ -184,7 +308,7 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
   const svgRef = useRef<SVGSVGElement>(null);
   const drag = useRef<{ x: number; y: number; box: Box } | null>(null);
 
-  const fit = (l = layout) => (l ? setBox({ x: 0, y: 0, w: l.width, h: Math.max(l.height, 400) }) : undefined);
+  const fit = (l = layout) => (l ? setBox({ x: 0, y: 0, w: l.width, h: l.height }) : undefined);
 
   // Wheel zoom needs a non-passive listener so the page does not scroll at the same time.
   useEffect(() => {
@@ -216,7 +340,13 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
     if (p) setBox((b) => ({ x: p.x - 360, y: p.y - 220, w: 720, h: (720 * (b?.h ?? 1)) / (b?.w ?? 1) }));
   };
 
-  if (!layout || !box) return <Loading what="the graph layout" lines={4} />;
+  if (!layout || !box)
+    return (
+      <div role="status" className="graph-progress">
+        <span className="muted">Arranging {nodes.filter((n) => n.kind === "component").length} components… {progress}%</span>
+        <progress className="bar" max={100} value={progress} />
+      </div>
+    );
 
   const focus = hovered ?? selected;
   const neighbours = new Set<string>();
@@ -228,7 +358,7 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
     if (links === "key") return hubs.has(e.target);
     return true;
   });
-  const zoomedIn = box.w < 1100;
+  const zoomedIn = box.w < 700;
   const matches = query.trim()
     ? nodes.filter((n) => n.kind === "component" && n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
     : [];
@@ -282,7 +412,7 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
           viewBox={`${box.x} ${box.y} ${box.w} ${box.h}`}
           preserveAspectRatio="xMidYMin meet"
           role="img"
-          aria-label={`Dependency graph of ${layout.placed.size} components in ${layout.columns} layers`}
+          aria-label={`Dependency graph of ${layout.placed.size} components`}
           onPointerDown={(e) => {
             (e.target as Element).setPointerCapture?.(e.pointerId);
             drag.current = { x: e.clientX, y: e.clientY, box };
@@ -299,11 +429,12 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
           onPointerUp={() => (drag.current = null)}
           onPointerLeave={() => (drag.current = null)}
         >
-          {Array.from({ length: layout.columns }, (_, d) => (
-            <text key={d} className="col-label" x={80 + d * COL_W - 10} y={32}>
-              {d === 0 ? "Foundation" : `Layer ${d}`}
-            </text>
-          ))}
+          {layout.looseTop !== null ? (
+            <>
+              <line className="strip-line" x1={40} x2={layout.width - 40} y1={layout.looseTop} y2={layout.looseTop} />
+              <text className="col-label" x={70} y={layout.looseTop + 14}>No import links in this snapshot</text>
+            </>
+          ) : null}
           {shownEdges.map((e, i) => {
             const a = layout.placed.get(e.source);
             const b = layout.placed.get(e.target);
@@ -351,7 +482,7 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
         <aside className="node-detail" aria-live="polite">
           {detail ? (
             <>
-              <h3>{detail.name}</h3>
+              <h3 className="mono">{detail.name}</h3>
               <dl className="facts">
                 <dt>Owner team</dt><dd>{detail.team ?? "none recorded"}</dd>
                 <dt>Used by</dt><dd className="num">{detailUsers.length} components</dd>
@@ -365,8 +496,9 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
             <>
               <h3>How to read this</h3>
               <p className="muted">
-                Columns are dependency layers: foundation packages on the left, the components that import them to the right. Hover
-                or click a dot to see what it imports and what uses it. Drag to pan, scroll or use + and − to zoom.
+                Each dot is a component. Components that import each other are pulled together; teams start in their own
+                area. Larger dots are imported by the most components. Hover or click a dot to see what it imports and what
+                uses it. Drag to pan, scroll or use + and − to zoom.
               </p>
             </>
           )}
