@@ -166,6 +166,29 @@ class NotificationService:
     def acknowledge(self, nid: str) -> None:
         self._db.execute("UPDATE notifications SET status = 'acknowledged' WHERE id = ?", (nid,))
 
+    def resolve(self, nid: str) -> None:
+        """Mark a notification resolved; the record itself is kept."""
+        self._db.execute("UPDATE notifications SET status = 'resolved' WHERE id = ?", (nid,))
+
+    def test_send(self, content: Mapping[str, Any]) -> list[dict[str, Any]]:
+        """Send one test message to every external destination under the normal rules (declared
+        audience, mode, containment, retries, dead-letter). Nothing is added to the in-app list."""
+        test = {"id": f"test-{uuid.uuid4().hex[:10]}", "event_type": "notification.test", "severity": "info",
+                "subject_id": "webhook-test", "content": dict(content)}
+        results = []
+        for dest in self.destinations:
+            if dest.audience is None:
+                self._set_delivery(test["id"], dest.name, "held", "audience_undeclared")
+            elif self.mode() == Mode.OFFLINE or not self.external_allowed():
+                self._set_delivery(test["id"], dest.name, "paused",
+                                   "offline" if self.mode() == Mode.OFFLINE else "containment")
+            else:
+                self._attempt(test, dest, notify_on_failure=False)
+            row = next((d for d in self.deliveries() if d["notification_id"] == test["id"] and d["destination"] == dest.name), None)
+            results.append({"destination": dest.name, "status": row["status"] if row else "unknown",
+                            "reason": row["reason"] if row else None})
+        return results
+
     # ------------------------------------------------------------ external
 
     def _set_delivery(self, nid: str, dest: str, status: str, reason: str | None, attempts: int = 0) -> None:
@@ -197,7 +220,7 @@ class NotificationService:
                 continue
             self._attempt(n, dest)
 
-    def _attempt(self, n: Mapping[str, Any], dest: Destination) -> None:
+    def _attempt(self, n: Mapping[str, Any], dest: Destination, notify_on_failure: bool = True) -> None:
         principal = self.principal_for(dest.audience)
         projected = self.projection.project({"required_scopes": [], "content": n["content"]}, principal)
         body = {"event_type": n["event_type"], "severity": n["severity"], "subject_id": n["subject_id"],
@@ -212,6 +235,8 @@ class NotificationService:
                 last_error = type(exc).__name__
                 self.backoff(attempt)
         self._set_delivery(n["id"], dest.name, "dead_letter", last_error, self.max_attempts)
+        if not notify_on_failure:
+            return
         # In-app only: never through the channel that failed, never through any external channel.
         self.emit("delivery.dead_lettered", n["id"], [n["id"]], frozenset({"internal"}),
                   {"text": f"delivery to {dest.name} failed", "required_scopes": ["internal"]})

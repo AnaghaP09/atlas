@@ -126,7 +126,10 @@ def test_errors_use_one_schema(client):
 def test_security_headers_on_ui_routes(client):
     r = client.get("/", headers={"Host": "127.0.0.1:8000"})
     assert "frame-ancestors 'none'" in r.headers.get("content-security-policy", "")
-    assert r.headers["content-type"].startswith("application/json")  # no UI built: JSON, never an api route
+    from atlas.api.app import UI_DIST
+
+    expected = "text/html" if (UI_DIST / "index.html").exists() else "application/json"  # built UI, or a JSON 404
+    assert r.headers["content-type"].startswith(expected)
 
 
 def test_staged_and_unevaluated_listed_in_health(client):

@@ -267,7 +267,8 @@ class Scheduler:
         st = self.store.watcher_state(watcher_id, self.watchers[watcher_id].default_enabled)
         self.store.save_watcher({**st, "enabled": False, "paused_reason": reason})
 
-    def tick(self, only: str | None = None, run_once: bool = False) -> SchedulerResult:
+    def tick(self, only: str | None = None, run_once: bool = False,
+             started_by: StartedBy | None = None) -> SchedulerResult:
         result = SchedulerResult()
         for wid, watcher in self.watchers.items():
             if only and wid != only:
@@ -280,19 +281,19 @@ class Scheduler:
                 result.skipped[wid] = st["paused_reason"] or "disabled"
                 continue
             try:
-                self._poll(watcher, result)
+                self._poll(watcher, result, started_by)
             except Exception as exc:  # a failing watcher must not stop the others
                 result.skipped[wid] = f"error: {type(exc).__name__}"
                 if self.on_error:
                     self.on_error(wid, exc)
         return result
 
-    def _poll(self, watcher: Watcher, result: SchedulerResult) -> None:
+    def _poll(self, watcher: Watcher, result: SchedulerResult, origin: StartedBy | None = None) -> None:
         cursor = self.store.cursor(watcher.watcher_id)
         last_event = None
         for ev in watcher.poll(cursor):
             hold = self.hold_reason()
-            started_by = StartedBy(
+            started_by = origin or StartedBy(
                 kind=StartedByKind.SCHEDULE if watcher.kind in {"nightly", "digest"} else StartedByKind.WATCHER,
                 watcher_id=watcher.watcher_id,
             )
