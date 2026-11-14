@@ -27,6 +27,7 @@ from typing import Any, Iterable
 from atlas.connectors.ci import job_view
 from atlas.connectors.normalize import AsOf, issue_as_of, pull_request_as_of, to_record
 from atlas.connectors.synthetic import all_synthetic
+from atlas.graph import ArchitectureGraph, architecture_records
 from atlas.contracts import Record
 from atlas.store import AUTHORITATIVE_WRITERS, EvidenceDB, from_iso
 from atlas.snapshots import normalized_sha256
@@ -178,10 +179,30 @@ def build_issue_case(case_id: str, people: People) -> tuple[EvidenceDB, dict[str
         for text in texts:
             for p in prow_paths(text)[:2]:
                 stats["ci_jobs"] += _add_job(db, p, cutoff)
+    arch_tag = architecture_tag_for(cutoff)
+    stats["architecture_tag"] = arch_tag
+    if arch_tag:
+        graph = ArchitectureGraph.from_json(json.loads((paths()["data"] / "snapshots" / "architecture" / f"{arch_tag}.json").read_text(encoding="utf-8")))
+        for record, content, etype in architecture_records(graph, cutoff - timedelta(seconds=1)):
+            _put(db, record, {"content": content, "entity_type": etype, "freshness_basis": "identity"})
     for record, content, etype in all_synthetic(case_id, cutoff):
         _put(db, record, {"content": content, "entity_type": etype, "freshness_basis": "series_end" if record.source == "telemetry" else "per_run"})
         stats["synthetic"] += 1
     return db, {"cutoff": cutoff, "stats": stats}
+
+
+def architecture_tag_for(cutoff: datetime) -> str | None:
+    """The latest release tag (with a committed architecture graph) at or before the cutoff."""
+    best = None
+    for tag in REF.releases.get("architecture_tags", []):
+        info = _load("tags", tag)
+        graph = paths()["data"] / "snapshots" / "architecture" / f"{tag}.json"
+        if not info or not graph.exists():
+            continue
+        when = from_iso(info["data"]["tagged_at"])
+        if when <= cutoff and (best is None or when > best[0]):
+            best = (when, tag)
+    return best[1] if best else None
 
 
 def _add_job(db: EvidenceDB, prow_path: str, cutoff: datetime) -> int:

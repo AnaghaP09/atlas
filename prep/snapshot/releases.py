@@ -173,7 +173,13 @@ def main(argv: list[str]) -> int:
         db, info = build_close(tag, nums, label_filter=label_filter, people=people)
         later_backports = set()
         for m in rel["minors"]:
-            later_backports |= set(_numbers(f"backports-{major}.{m}"))
+            for b in _numbers(f"backports-{major}.{m}"):
+                pr = (_load("pulls", str(b)) or {}).get("data") or {}
+                merged = from_iso(pr.get("mergedAt")) if pr.get("mergedAt") else None
+                created = from_iso(pr.get("createdAt")) if pr.get("createdAt") else None
+                # Only back-ports that did not exist yet at this close are outcome records.
+                if created is None or created > info["cutoff"] or (merged and merged > info["cutoff"] and created > info["cutoff"]):
+                    later_backports.add(b)
         problems = check_close_leakage(db, info["cutoff"], later_backports)
         if problems:
             raise LeakageError(f"{tag}: " + "; ".join(problems[:5]))
