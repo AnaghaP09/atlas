@@ -6,6 +6,7 @@ import { ActionResult, Button, Empty, ErrorView, IdDetails, Loading, Section, St
 import { EntityLink, Related } from "../components/related";
 import { isReadOnly, ReadOnlyBanner, type AccessGrantView } from "../components/access";
 import { useIdentity } from "../app/context";
+import { BlockedNote, useBlockedBy } from "./Containment";
 import { ExternalLink } from "../components/ExternalLink";
 import { Link } from "../lib/router";
 
@@ -52,6 +53,8 @@ export function TaskDetail({ taskId }: { taskId: string }) {
   const [note, setNote] = useState("");
   const approvals = useApi<{ approvals: Approval[] }>("/api/approvals");
   const { principal } = useIdentity();
+  const prepBlock = useBlockedBy("preparation");
+  const pubBlock = useBlockedBy("publication");
   if (task.isLoading) return <Loading what="the task" />;
   if (task.error) return <ErrorView error={task.error} />;
   const t = task.data;
@@ -84,8 +87,9 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         </>
       ) : null}
       <div className="actions">
-        <Button variant="primary" icon="play" disabled={readOnly} loading={prepare.state.status === "running"} onClick={() => void prepare.run({})}>Prepare</Button>
-        <Button icon="arrow" disabled={readOnly} loading={publish.state.status === "running"} onClick={() => void publish.run({})}>Publish draft PR</Button>
+        <Button variant="primary" icon={prepBlock.length ? "lock" : "play"} disabled={readOnly || prepBlock.length > 0} title={prepBlock.length ? `Stopped by: ${prepBlock[0]!.title}` : undefined} loading={prepare.state.status === "running"} onClick={() => void prepare.run({})}>Prepare</Button>
+        <Button icon={pubBlock.length ? "lock" : "arrow"} disabled={readOnly || pubBlock.length > 0} title={pubBlock.length ? `Stopped by: ${pubBlock[0]!.title}` : undefined} loading={publish.state.status === "running"} onClick={() => void publish.run({})}>Publish draft PR</Button>
+        <BlockedNote by={[...prepBlock, ...pubBlock]} />
         <Button variant="ghost" icon="shield" disabled={readOnly} loading={refresh.state.status === "running"} onClick={() => void refresh.run({})}>Refresh security</Button>
         <ActionResult state={prepare.state} retry={() => void prepare.retrySame()} />
         <ActionResult state={publish.state} retry={() => void publish.retrySame()} />

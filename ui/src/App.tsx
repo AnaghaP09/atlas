@@ -6,6 +6,7 @@ import { BrandMark, Icon, type IconName } from "./components/icons";
 import { LatestReport } from "./screens/LatestReport";
 import { LockedChip } from "./components/access";
 import { AccessRequests } from "./screens/AccessRequests";
+import { ContainmentBanner } from "./screens/Containment";
 import { SystemScreen } from "./screens/System";
 import { signOut } from "./identity/bootstrap";
 import { ROLES, ROLE_LABELS, type Role } from "./identity/identity";
@@ -364,6 +365,7 @@ export function App() {
       </header>
       {/* Keyed by the identity epoch: a role or project switch remounts every screen and drops its state. */}
       <main key={epoch} className="main">
+        <ContainmentBanner />
         <Route path={path} search={search} nav={nav.data} />
       </main>
     </div>

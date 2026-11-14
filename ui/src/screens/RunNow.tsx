@@ -62,8 +62,8 @@ function TriggerForm({ trigger, snapshots, preset }: { trigger: ManualTrigger; s
         ),
       )}
       {!available ? (
-        <p className="state state-staged" data-testid="unavailable-reason">
-          Not available now: {trigger.reason ?? "the server did not say why"}
+        <p className="state state-staged" data-testid="unavailable-reason" title={trigger.reason ?? undefined}>
+          <Icon name="lock" size={12} /> Not available now: {trigger.reason ?? "the server did not say why"}
         </p>
       ) : null}
       <div className="trigger-foot">
