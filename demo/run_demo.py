@@ -2,6 +2,7 @@
 
     python -m demo.run_demo                        # every row
     python -m demo.run_demo --rows T1 T2 T6a      # chosen rows
+    python -m demo.run_demo --sign-in              # the HTTPS site with built-in sign-in
 
 Base URLs come from ATLAS_BASE_URL and ATLAS_SCENARIO_URL, or are built from ATLAS_HOST and
 ATLAS_PORT (the scenario server uses ATLAS_PEER_UI_URL, or the next port). Snapshot, release and case
@@ -9,6 +10,9 @@ ids come from the ATLAS_DEMO_* settings named in the manifest. Before each step 
 asks the target server for /api/health and stops if it is not the server the row names. Each call
 can save values from its response for later calls (``{name}`` in paths and bodies), wait until a
 condition holds, and assert machine-checkable conditions.
+
+With ``--sign-in`` (or ATLAS_IDENTITY=local) the runner signs in as the demo user for each role
+instead of sending a role header; see ``demo/session_client.py``.
 """
 
 from __future__ import annotations
@@ -185,20 +189,36 @@ def httpx_send() -> Send:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="python -m demo.run_demo")
     parser.add_argument("--rows", nargs="*")
+    parser.add_argument("--sign-in", action="store_true", help="sign in per role on the HTTPS site")
     args = parser.parse_args(argv)
     env = settings_env(Path(".env"))
-    host = env.get("ATLAS_HOST", "127.0.0.1")
-    port = int(env.get("ATLAS_PORT", "8000"))
-    host = f"[{host}]" if ":" in host else host
-    urls = {"normal": env.get("ATLAS_BASE_URL") or f"http://{host}:{port}",
-            "scenario": env.get("ATLAS_SCENARIO_URL") or env.get("ATLAS_PEER_UI_URL") or f"http://{host}:{port + 1}"}
+    sign_in = args.sign_in or env.get("ATLAS_IDENTITY", "header").lower() == "local"
+    if sign_in:
+        org = env.get("ATLAS_ORG_SLUG", "demo")
+        urls = {"normal": env.get("ATLAS_BASE_URL") or f"https://atlas.{org}.internal",
+                "scenario": env.get("ATLAS_SCENARIO_URL") or f"https://scenario.{org}.internal:8443"}
+    else:
+        host = env.get("ATLAS_HOST", "127.0.0.1")
+        port = int(env.get("ATLAS_PORT", "8000"))
+        host = f"[{host}]" if ":" in host else host
+        urls = {"normal": env.get("ATLAS_BASE_URL") or f"http://{host}:{port}",
+                "scenario": env.get("ATLAS_SCENARIO_URL") or env.get("ATLAS_PEER_UI_URL") or f"http://{host}:{port + 1}"}
     missing = missing_variables(env)
     if missing:
         print("set these demo settings first: " + ", ".join(missing), file=sys.stderr)
         return 2
     try:
-        Runner(httpx_send(), urls, saved=dict(demo_variables(env))).run(load_rows(args.rows))
+        if sign_in:
+            from demo.session_client import httpx_session_send
+
+            send = httpx_session_send(Path(env.get("ATLAS_DATA_DIR", "data")))
+        else:
+            send = httpx_send()
+        Runner(send, urls, saved=dict(demo_variables(env))).run(load_rows(args.rows))
     except DemoStop as exc:
+        print(f"demo stopped: {exc}", file=sys.stderr)
+        return 1
+    except RuntimeError as exc:  # sign-in problems, with the setting to fix
         print(f"demo stopped: {exc}", file=sys.stderr)
         return 1
     print("demo finished")

@@ -198,3 +198,29 @@ def test_housekeeper_sweeps_approvals_and_sessions(site):
     assert set(keeper.jobs) == {"approvals", "sessions"}
     results = keeper.run_once()
     assert set(results["approvals"]) == {"expired", "nearing_expiry", "sla_missed"}
+
+
+def test_demo_runner_signs_in_per_role_with_csrf_and_origin(site):
+    from demo.run_demo import Runner
+    from demo.session_client import SessionSend
+
+    app, _, sessions, _ = site
+    made: list[TestClient] = []
+
+    def make() -> TestClient:
+        c = TestClient(app, base_url=ORIGIN, follow_redirects=False)
+        made.append(c)
+        return c
+
+    send = SessionSend(make, password_for=lambda role: PASSWORD)
+    status, _, health = send("GET", ORIGIN, "/api/health", {}, None, None)
+    assert status == 200 and health["environment"] == "normal"
+    body = {"question": "Which components carry the most open flaky tests?"}
+    for role in ("pm", "em"):
+        status, _, data = send("POST", ORIGIN, "/api/triggers/question",
+                               {"X-Atlas-Role": role, "Idempotency-Key": str(uuid.uuid4())}, body, None)
+        assert status != 401 and data.get("error") not in {"csrf_failed", "origin_required", "unauthorised"}, data
+    assert len(made) == 2  # one signed-in client (cookie jar) per role on this server
+    runner = Runner(send, {"normal": ORIGIN}, log=lambda _: None)
+    runner.run_row({"row_id": "X", "title": "health", "canvas_box": 1, "data_mode": "REAL", "server": "normal",
+                    "calls": [{"method": "GET", "path": "/api/health", "role": "pm"}]})
