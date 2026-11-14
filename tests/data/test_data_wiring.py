@@ -207,6 +207,7 @@ def test_poller_updates_dashboard_with_ci_runs_and_release(registry):
     assert result["polled"] is True and feed.connected and feed.polls == ["beta"]
     panels = feed.panels["beta"]
     assert panels["failing_ci"][0]["conclusion"] == "failure"
+    assert len(registry.live("beta").search({"source": "ci"})) == 1
     assert panels["latest_release"][0]["tag"] == "v1.0.0"
     stored = registry.live("beta").search({"source": "ci"})
     assert len(stored) == 1 and registry.live("alpha").search({"source": "ci"}) == []
@@ -264,3 +265,15 @@ def test_project_configs_come_only_from_the_projects_file(tmp_path):
                  encoding="utf-8")
     cfg = load_project_configs(f)["one"]
     assert cfg.sources.repository == "example/one" and cfg.ci == "github_actions" and cfg.labels == {"bug": "bug"}
+
+
+def test_failing_ci_panel_says_so_when_nothing_failed(registry):
+    routes = {"/issues?": [], "/releases/latest": {},
+              "/actions/runs": {"workflow_runs": [{"id": 1, "name": "ci", "status": "completed", "conclusion": "success",
+                                                   "updated_at": T0.isoformat()}]}}
+    gateway = Gateway(_github(routes), sources=SOURCES, clock=lambda: T0)
+    feed = FakeFeed()
+    poller = ProjectPoller("beta", ProjectConfig(sources=SOURCES.projects[1], ci="github_actions"), gateway, registry,
+                           feed, clock=lambda: T0)
+    poller.poll_once()
+    assert "no failing runs" in feed.panels["beta"]["failing_ci"][0]["note"]

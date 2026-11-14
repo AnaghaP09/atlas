@@ -489,7 +489,7 @@ class ProjectPoller:
         runs = (result.body or {}).get("workflow_runs", []) if isinstance(result.body, Mapping) else []
         out = []
         failing = [r for r in runs if r.get("conclusion") in ("failure", "timed_out", "startup_failure")]
-        for run in (failing or runs)[:10]:
+        for run in runs[:10]:
             view = {"kind": "workflow_run", "run_id": run.get("id"), "name": run.get("name"),
                     "status": run.get("status"), "conclusion": run.get("conclusion"),
                     "branch": run.get("head_branch"), "head_sha": run.get("head_sha"),
@@ -497,7 +497,10 @@ class ProjectPoller:
                     "html_url": run.get("html_url")}
             if not result.unchanged:
                 self._store_run(view)
-            out.append({k: view[k] for k in ("run_id", "name", "status", "conclusion", "branch", "updated_at")})
+            if run in failing:
+                out.append({k: view[k] for k in ("run_id", "name", "status", "conclusion", "branch", "updated_at")})
+        if not out:
+            out.append({"note": f"no failing runs among the last {min(len(runs), 10)} workflow runs"})
         return out
 
     def _store_run(self, view: Mapping[str, Any]) -> None:
