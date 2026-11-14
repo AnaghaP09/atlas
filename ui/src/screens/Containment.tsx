@@ -136,7 +136,7 @@ function SwitchCard({ s, audit, done }: { s: SwitchView; audit: boolean; done: (
       <p className="muted small">
         Last tripped: {s.last_tripped || s.incident?.tripped_at ? <Time iso={s.last_tripped ?? s.incident?.tripped_at ?? null} short /> : "never"}
       </p>
-      {audit && state === "ready" && s.can_drill !== false ? (
+      {audit && state === "ready" && s.can_drill === true ? (
         confirming ? (
           <span className="confirm">
             Run a drill?

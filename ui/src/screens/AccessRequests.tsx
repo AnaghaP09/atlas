@@ -3,18 +3,19 @@ import { ApiError } from "../api/client";
 import { useAction, useApi, useIdentity, useInvalidateAll } from "../app/context";
 import { typeLabel } from "../components/access";
 import { Button, DataModeBadge, Empty, ErrorView, Loading, Section, Tabs, Time } from "../components/common";
+import { Link } from "../lib/router";
 
 export interface AccessRequest {
   request_id: string;
   object_type: string;
   object_id: string;
-  requester_role?: string;
-  state: "pending" | "granted" | "denied" | "withdrawn" | "revoked" | string;
+  label?: string;
+  requester?: { user?: string | null; role?: string };
+  status: "pending" | "granted" | "denied" | "withdrawn" | "revoked" | "expired" | string;
+  needs_decision?: boolean;
   reason?: string | null;
   created_at?: string;
-  expires_at?: string | null;
-  grant_id?: string | null;
-  automatic?: boolean;
+  grant?: { grant_id?: string; expires_at?: string | null; automatic?: boolean } | null;
 }
 
 const STATE_PILL: Record<string, string> = {
@@ -25,33 +26,40 @@ const STATE_PILL: Record<string, string> = {
   revoked: "pill-neutral",
 };
 
-const APPROVERS = new Set(["security", "audit"]);
+// Any role can own items others ask for (automatic grants can be revoked by the owning role).
+const APPROVERS = new Set(["pm", "em", "architect", "security", "oncall", "audit"]);
 
 function RequestRow({ r, deciding, done }: { r: AccessRequest; deciding: boolean; done: () => void }) {
   const decide = useAction<{ decision: string; hours?: number }, unknown>(`/api/access-requests/${encodeURIComponent(r.request_id)}/decision`);
   const withdraw = useAction<Record<string, never>, unknown>(`/api/access-requests/${encodeURIComponent(r.request_id)}/withdraw`);
-  const revoke = useAction<Record<string, never>, unknown>(`/api/access-grants/${encodeURIComponent(r.grant_id ?? "")}/revoke`);
+  const revoke = useAction<Record<string, never>, unknown>(`/api/access-grants/${encodeURIComponent(r.grant?.grant_id ?? "")}/revoke`);
   return (
     <tr>
-      <td>{typeLabel(r.object_type)}</td>
-      <td>{deciding ? r.requester_role ?? "—" : null}</td>
       <td>
-        <span className={`pill ${STATE_PILL[r.state] ?? "pill-neutral"}`}>{r.state}</span>
-        {r.state === "granted" && r.expires_at ? <> <span className="muted">until <Time iso={r.expires_at} short /></span></> : null}
+        {r.label ?? typeLabel(r.object_type)}
+        {!deciding && r.status === "granted" ? (
+          <> <Link to={`/object/${encodeURIComponent(r.object_type)}/${encodeURIComponent(r.object_id)}`}>Open</Link></>
+        ) : null}
+      </td>
+      <td>{deciding ? r.requester?.role ?? "—" : null}</td>
+      <td>
+        <span className={`pill ${STATE_PILL[r.status] ?? "pill-neutral"}`}>{r.status}</span>
+        {r.grant?.automatic ? <> <span className="pill pill-neutral">automatic</span></> : null}
+        {r.status === "granted" && r.grant?.expires_at ? <> <span className="muted">until <Time iso={r.grant.expires_at} short /></span></> : null}
       </td>
       <td className="muted">{r.reason ?? ""}</td>
       <td><Time iso={r.created_at ?? null} short /></td>
       <td className="row-actions">
-        {deciding && r.state === "pending" ? (
+        {deciding && r.status === "pending" ? (
           <>
             <Button size="sm" variant="primary" onClick={() => void decide.run({ decision: "grant", hours: 24 }).then(done)}>Grant 24 h</Button>
             <Button size="sm" variant="danger" onClick={() => void decide.run({ decision: "deny" }).then(done)}>Deny</Button>
           </>
         ) : null}
-        {deciding && r.state === "granted" && r.grant_id ? (
+        {deciding && r.status === "granted" && r.grant?.grant_id ? (
           <Button size="sm" variant="danger" onClick={() => void revoke.run({}).then(done)}>Revoke</Button>
         ) : null}
-        {!deciding && r.state === "pending" ? (
+        {!deciding && r.status === "pending" ? (
           <Button size="sm" variant="ghost" onClick={() => void withdraw.run({}).then(done)}>Withdraw</Button>
         ) : null}
       </td>

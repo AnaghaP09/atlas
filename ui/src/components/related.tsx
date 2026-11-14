@@ -32,37 +32,44 @@ export interface RelatedChip {
 }
 
 interface ServerRelated {
-  items: {
+  related: {
     object_type: string;
     object_id: string;
     label?: string;
-    count?: number;
-    path?: string;
     access: "open" | "locked";
+    via_grant?: boolean;
+    requestable?: boolean;
     request?: AccessRequestState | null;
+    expires_at?: string | null;
   }[];
 }
+
+const ENTITY_OF: Record<string, Entity> = { run: "run", report: "report", task: "task", approval: "approval", incident: "incident", graph: "snapshot" };
 
 /** Chips with icon + count. Open items link to their page; locked items show a lock and a "Request access" action.
  * Uses GET /api/related/{type}/{id} when the server has it; otherwise the local link map (locked items then hidden). */
 export function Related({ chips, object }: { chips: RelatedChip[]; object?: { type: string; id: string } }) {
+  const allowedNow = useAllowed();
   const server = useApi<ServerRelated>(object ? `/api/related/${encodeURIComponent(object.type)}/${encodeURIComponent(object.id)}` : null);
   const fallback = !object || (server.error instanceof ApiError && server.error.status === 404) || (!!server.error && !(server.error instanceof ApiError));
   if (object && !fallback) {
-    if (!server.data) return null;
-    if (!server.data.items.length) return null;
+    if (!server.data || !server.data.related.length) return null;
     return (
       <nav className="related" aria-label="Related">
-        {server.data.items.map((it) =>
-          it.access === "open" && it.path ? (
-            <Link key={`${it.object_type}-${it.object_id}`} to={it.path} className="chip related-chip">
+        {server.data.related.map((it) => {
+          const key = `${it.object_type}-${it.object_id}`;
+          if (it.access !== "open") return <LockedChip key={key} objectType={it.object_type} objectId={it.object_id} request={it.request ?? null} />;
+          const entity = ENTITY_OF[it.object_type];
+          // Opened through a grant: the read-only view. Otherwise the item's normal page, if the menu has it.
+          const own = !it.via_grant && entity ? resolveLink(entity, it.object_id, allowedNow) : null;
+          const to = own?.to ?? `/object/${encodeURIComponent(it.object_type)}/${encodeURIComponent(it.object_id)}`;
+          return (
+            <Link key={key} to={to} className="chip related-chip">
+              {it.via_grant ? <Icon name="lock" size={12} /> : null}
               {it.label ?? it.object_type}
-              {typeof it.count === "number" ? <span className="num related-count">{it.count}</span> : null}
             </Link>
-          ) : (
-            <LockedChip key={`${it.object_type}-${it.object_id}`} objectType={it.object_type} objectId={it.object_id} request={it.request ?? null} />
-          ),
-        )}
+          );
+        })}
       </nav>
     );
   }

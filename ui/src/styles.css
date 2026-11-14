@@ -606,3 +606,4 @@ label.check input { width: auto; margin: 0; }
 .delta.down { color: var(--good); }
 .kpi-updated { font-size: 0.72rem; color: var(--muted); margin: var(--s-1) 0 0; }
 .nav-count.danger { background: #ff8f8f; }
+.fact-row { display: contents; }

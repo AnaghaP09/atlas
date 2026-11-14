@@ -29,7 +29,7 @@ describe("read-only banner", () => {
 describe("locked chip", () => {
   function renderChip(status: "granted" | "pending") {
     const f = fakeFetch({
-      "POST /api/access-requests": () => json({ request_id: "q1", status, expires_at: status === "granted" ? expires : null }, 201),
+      "POST /api/access-requests": () => json({ request: { request_id: "q1", status, grant: status === "granted" ? { expires_at: expires, automatic: true } : null }, access: status === "granted" ? "open" : "locked" }, 201),
     });
     render(
       <AppProvider identity={new IdentityStore(headerIdentity, { role: "pm" })} queryClient={createQueryClient()} fetchImpl={f.impl}>
