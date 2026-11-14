@@ -296,18 +296,23 @@ def export(db: EvidenceDB, snapshot_id: str, kind: str, manifest: dict[str, Any]
 
 
 def check_export_people(target: Path, people: People) -> list[str]:
+    """One pass over the export: tokenise once, then set lookups (no per-handle regex)."""
     problems = []
     text = (target / "records.jsonl").read_text(encoding="utf-8")
-    for h in people.handles:
-        if len(h) >= 4 and re.search(r"(?<![A-Za-z0-9_-])@?" + re.escape(h) + r"(?![A-Za-z0-9_-])", text):
+    authors = {h.lower() for h in people.handles if len(h) >= 4}
+    mentioned = {h.lower() for h in people.mentioned}
+    for m in re.finditer(r"(?<![A-Za-z0-9_/.-])(@?)([A-Za-z0-9][A-Za-z0-9-]*)(?![A-Za-z0-9_-])", text):
+        token = m.group(2).lower()
+        if token in authors:
             problems.append(f"{target.name}: author handle survived pseudonymisation")
             break
-    for h in people.mentioned:
-        if re.search(r"(?<![A-Za-z0-9_/.-])@" + re.escape(h) + r"(?![A-Za-z0-9_-])", text):
+        if m.group(1) and token in mentioned:
             problems.append(f"{target.name}: mentioned handle survived pseudonymisation")
             break
-    if re.search(r"\b[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text):
+    if re.search(r"[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text):
         problems.append(f"{target.name}: email address survived pseudonymisation")
+    if re.search(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ", text):
+        problems.append(f"{target.name}: signed token survived")
     return problems
 
 

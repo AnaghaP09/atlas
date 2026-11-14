@@ -72,6 +72,10 @@ def test_pseudonymisation_removes_handles_emails_images_and_keys(tmp_path):
     assert "corp.example.org" not in out and "base64" not in out and "AAAAB3" not in out
     assert people.scrub({"author": "somedev"})["author"].startswith("person-")
     assert people.scrub({"author": "kubevirt-bot"})["author"] == "kubevirt-bot"
+    signed = "https://img.example/a.png?jwt=" + "eyJhbGciOiJIUzI1NiJ9" + ".eyJpc3MiOiJ4In0" + ".sigsigsigsig&w=1"
+    badge = "logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2C" + "PHN2ZyB3aWR0aD0i" + "ODYi"
+    cleaned = people.scrub_text(signed + " " + badge)
+    assert "eyJ" not in cleaned and "base64" not in cleaned
     # Handles directly followed by non-ASCII text are still replaced.
     assert "somedev" not in people.scrub_text("cc @somedev我们 and somedev说")
 

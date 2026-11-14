@@ -17,6 +17,9 @@ from prep.reference import paths, reference
 
 LOCAL = paths()["local"]
 MENTION = re.compile(r"(?<![A-Za-z0-9_/.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![A-Za-z0-9_-])")
+ENCODED_DATA_URI = re.compile(r"data(?::|%3A)[A-Za-z0-9.+/%-]+?(?:;|%3B)base64(?:,|%2C)[A-Za-z0-9+/=%]+", re.I)
+SIGNED_PARAM = re.compile(r"([?&](?:jwt|token|sig|signature|X-Amz-Signature|X-Goog-Signature)=)[^&\s\"'<>)\]]+", re.I)
+JWT = re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}")
 DATA_URI = re.compile(r"data:[A-Za-z0-9.+/-]+;base64,[A-Za-z0-9+/=]+")
 SSH_KEY = re.compile(r"\b(ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-nistp\d+) AAAA[A-Za-z0-9+/=]{20,}")
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
@@ -60,6 +63,9 @@ class People:
         if text is None:
             return None
         text = DATA_URI.sub("[embedded image removed]", text)
+        text = ENCODED_DATA_URI.sub("[embedded image removed]", text)
+        text = SIGNED_PARAM.sub(lambda m: m.group(1) + "[removed]", text)
+        text = JWT.sub("[token removed]", text)
         text = SSH_KEY.sub(lambda m: f"{m.group(1)} [public key removed]", text)
         text = re.sub(r"\bAAAAB3NzaC1[A-Za-z0-9+/=]{20,}", "[public key removed]", text)
         text = EMAIL.sub("[email removed]", text)
