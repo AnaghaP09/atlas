@@ -228,36 +228,7 @@ ROLES = ("investigator", "verifier", "coding_agent", "triage", "log_filter", "in
 REASONING_ROLES = frozenset({"investigator", "verifier", "coding_agent"})
 
 
-@dataclass(frozen=True)
-class ModelLimits:
-    max_tokens: int = 4096
-    effort: str | None = None
-
-
-@dataclass(frozen=True)
-class ModelResult:
-    """Provider-neutral result of one model call."""
-
-    content: Any  # parsed structured output (dict or list) or text
-    stop: str  # complete | refused | truncated | failed
-    input_tokens: int
-    output_tokens: int
-    model: str
-    provider: str
-
-
-class ModelProvider(Protocol):
-    """One model backend. Used only by the outbound boundary, after redaction and every check."""
-
-    name: str
-    internal: bool  # True when the endpoint is inside the organisation's network
-
-    def model_for(self, role: str) -> str: ...
-
-    def endpoint_host(self) -> str | None: ...
-
-    def complete(self, role: str, messages: Sequence[Mapping[str, Any]], schema: Mapping[str, Any] | None,
-                 limits: ModelLimits) -> ModelResult: ...
+from atlas.contracts import ModelLimits, ModelProvider, ModelResult  # noqa: E402  (shared swap-point types)
 
 
 # Per million tokens, USD (input, output); used only for the spend counter.

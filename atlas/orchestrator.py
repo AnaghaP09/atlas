@@ -8,6 +8,8 @@ disposed of depends on its publication phase and is applied by the execution lay
 
 from __future__ import annotations
 
+from atlas.contracts import TaskDisposition  # noqa: F401
+
 import json
 import sqlite3
 import threading
@@ -42,16 +44,6 @@ QUEUE_TO_EVENT = {
     "forecast_slip": "forecast.slip_over_week",
     "nightly_backlog": "nightly.backlog_high",
 }
-
-
-class TaskDisposition(Protocol):
-    """Execution-layer hooks used by re-verification."""
-
-    def tasks_for_run(self, run_id: str) -> list[Mapping[str, Any]]:
-        """Tasks bound to the run: ``{"task_id", "action", "state"}``."""
-
-    def apply_reverification(self, run_id: str, new_generation: int, assessments: Mapping[str, str]) -> None:
-        """Apply ``still_supported | unsupported | verification_failed`` per task, by publication phase."""
 
 
 class RunStore:

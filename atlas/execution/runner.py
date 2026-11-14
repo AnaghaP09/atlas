@@ -14,6 +14,7 @@ import os
 from dataclasses import asdict, dataclass, field
 from typing import Any, Mapping, Protocol, Sequence, runtime_checkable
 
+from atlas.contracts import IsolationSpec, SandboxBundle, SandboxLimits, SandboxRunner
 from atlas.execution.sandbox import (
     EXECUTABLE_CHECKS,
     ContainerSandbox,
@@ -29,35 +30,6 @@ MAX_MEMORY_BYTES = 1 << 30
 
 class IsolationViolation(RuntimeError):
     """A runner was about to run code without the full isolation contract."""
-
-
-@dataclass(frozen=True)
-class SandboxLimits:
-    timeout_seconds: float = 300
-    memory: str = "1g"
-    cpus: str = "2"
-    pids: int = 256
-
-
-@dataclass(frozen=True)
-class SandboxBundle:
-    """What runs in the sandbox: the tree of the frozen artefact and where behavioural tests go."""
-
-    tree: Mapping[str, str]
-    behaviour_package: str = "netaddr"
-
-
-@dataclass(frozen=True)
-class IsolationSpec:
-    network: str
-    read_only_root: bool
-    non_root: bool
-    cap_drop_all: bool
-    no_new_privileges: bool
-    pids_limit: int
-    memory_bytes: int
-    secrets: tuple[str, ...] = ()
-    host_mounts: tuple[str, ...] = field(default_factory=tuple)
 
 
 def _memory_bytes(text: str) -> int:
@@ -109,17 +81,6 @@ def spec_from_docker_flags(flags: Sequence[str]) -> IsolationSpec:
         secrets=secret_env,
         host_mounts=tuple(flags[i + 1] for i, f in enumerate(flags) if f == "-v"),
     )
-
-
-@runtime_checkable
-class SandboxRunner(Protocol):
-    name: str
-    data_mode: str
-
-    def prepare(self, task: Any, bundle: SandboxBundle, limits: SandboxLimits) -> SandboxResult:
-        """Run the task's preparation checks on the bundle under the isolation contract."""
-
-    def run_checks(self, bundle: SandboxBundle, limits: SandboxLimits) -> SandboxResult: ...
 
 
 def _check_bundle(task: Any, bundle: SandboxBundle) -> None:

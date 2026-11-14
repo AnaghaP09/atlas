@@ -10,6 +10,8 @@ every executable check as ``unavailable``, so such a task can never be approved 
 
 from __future__ import annotations
 
+from atlas.contracts import SandboxResult
+
 import os
 import shutil
 import subprocess
@@ -38,14 +40,6 @@ if go build ./... ; then echo "CHECK go_build passed"; else echo "CHECK go_build
 if go vet ./... ; then echo "CHECK go_vet passed"; else echo "CHECK go_vet failed"; fi
 if go test -count=1 ./... ; then echo "CHECK behavioural_tests passed"; else echo "CHECK behavioural_tests failed"; fi
 """
-
-
-@dataclass
-class SandboxResult:
-    checks: dict[str, str]
-    log: str = ""
-    container: bool = False
-    isolation: dict[str, str] = field(default_factory=dict)
 
 
 def write_tree(tree: Mapping[str, str], root: Path) -> None:

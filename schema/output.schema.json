@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/AnaghaP09/atlas/schema/output.schema.json",
+  "$id": "https://atlas.invalid/schema/output.schema.json",
   "title": "Run output",
   "description": "The result of one run at one verification generation. Only the verified artefact (every field bound to a rejected, contradicted or missing claim removed) may be rendered, published or executed.",
   "type": "object",

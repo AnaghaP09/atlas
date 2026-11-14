@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/AnaghaP09/atlas/schema/evidence.schema.json",
+  "$id": "https://atlas.invalid/schema/evidence.schema.json",
   "title": "Evidence record",
   "description": "One version of one source record as held in the evidence store. Records are immutable; a newer revision is a new record.",
   "type": "object",

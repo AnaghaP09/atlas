@@ -310,11 +310,304 @@ class Store(Protocol):
     def get(self, ctx: RunContext, source: str, source_id: str) -> Record | None:
         """Newest record visible in the run's snapshot, with conflicts attached."""
 
+    def get_record(self, ctx: RunContext, record_id: str) -> Record | None:
+        """One record by its id, only if it is visible in the run's snapshot."""
+
+    def read_content(self, ctx: RunContext, record: Record) -> str:
+        """The content behind ``record.content_ref``, only if the record is visible to ``ctx``."""
+
     def history(self, ctx: RunContext, source: str, source_id: str) -> list[Record]:
         """All revisions visible in the run's snapshot, oldest first."""
 
     def search(self, ctx: RunContext, query: Mapping[str, Any]) -> list[Record]:
         """Search within the run's snapshot only."""
+
+
+# ---------------------------------------------------------------------------
+# Security scan records
+# ---------------------------------------------------------------------------
+
+SECURITY_RECORD_KINDS = ("scan_run", "finding")
+"""Content kinds of security records; JSON shape in ``schema/security_record.schema.json``."""
+
+
+@runtime_checkable
+class SecurityReader(Protocol):
+    """Read access to one task's action-security partition (provided by the evidence store)."""
+
+    def read(self, ctx: SecurityContext) -> list[Record]: ...
+
+
+# ---------------------------------------------------------------------------
+# Forecast input
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class OpenItem:
+    """One open issue at a release close, as the forecast service sees it."""
+
+    issue_id: str
+    title: str
+    labels: frozenset[str]
+    created: datetime
+    last_activity: datetime
+    component: str | None
+    record_ids: tuple[str, ...]
+    ci_recurrences: int = 0
+    component_churn: int = 0
+    fan_in: int = 0
+    requirement_bound: bool = False
+    required_scopes: frozenset[str] = field(default_factory=lambda: frozenset({"public"}))
+
+
+@runtime_checkable
+class OpenItemsSource(Protocol):
+    def open_items_for(self, ctx: RunContext) -> list[OpenItem]:
+        """Open items visible in the run's snapshot at its cutoff."""
+
+
+# ---------------------------------------------------------------------------
+# Re-verification hook (execution side)
+# ---------------------------------------------------------------------------
+
+REVERIFICATION_ASSESSMENTS = ("still_supported", "unsupported", "verification_failed")
+
+
+@runtime_checkable
+class TaskDisposition(Protocol):
+    """Execution-layer hooks used by re-verification."""
+
+    def tasks_for_run(self, run_id: str) -> list[Mapping[str, Any]]:
+        """Tasks bound to the run: ``{"task_id", "action", "state"}``."""
+
+    def apply_reverification(self, run_id: str, new_generation: int, assessments: Mapping[str, str]) -> None:
+        """Apply one of ``REVERIFICATION_ASSESSMENTS`` per task, by publication phase."""
+
+
+# ---------------------------------------------------------------------------
+# Swap point 1: model provider (used only inside the outbound boundary)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ModelLimits:
+    max_tokens: int = 4096
+    effort: str | None = None
+
+
+@dataclass(frozen=True)
+class ModelResult:
+    """Provider-neutral result of one model call."""
+
+    content: Any  # parsed structured output (dict or list) or text
+    stop: str  # complete | refused | truncated | failed
+    input_tokens: int
+    output_tokens: int
+    model: str
+    provider: str
+
+
+class ModelProvider(Protocol):
+    """One model backend. Used only by the outbound boundary, after redaction and every check."""
+
+    name: str
+    internal: bool  # True when the endpoint is inside the organisation's network
+
+    def model_for(self, role: str) -> str: ...
+
+    def endpoint_host(self) -> str | None: ...
+
+    def complete(self, role: str, messages: Sequence[Mapping[str, Any]], schema: Mapping[str, Any] | None,
+                 limits: ModelLimits) -> ModelResult: ...
+
+
+# ---------------------------------------------------------------------------
+# Swap point 2: identity provider
+# ---------------------------------------------------------------------------
+
+
+class IdentityMode(StrEnum):
+    HEADER = "header"  # tests and development only, loopback bind
+    LOCAL = "local"  # built-in sign-in
+    OIDC = "oidc"  # company single sign-on (not available in this build)
+
+
+@runtime_checkable
+class IdentityProvider(Protocol):
+    mode: IdentityMode
+
+    def authenticate(self, request: Any) -> Principal | None:
+        """The principal for a request, or None when it is not signed in."""
+
+    def login(self, request: Any) -> Any:
+        """Start or complete sign-in; returns the response to send."""
+
+    def logout(self, request: Any) -> Any:
+        """End the session server-side; returns the response to send."""
+
+
+# ---------------------------------------------------------------------------
+# Swap point 3: sandbox runner
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SandboxLimits:
+    timeout_seconds: float = 300
+    memory: str = "1g"
+    cpus: str = "2"
+    pids: int = 256
+
+
+@dataclass(frozen=True)
+class SandboxBundle:
+    """What runs in the sandbox: the tree of the frozen artefact and where behavioural tests go."""
+
+    tree: Mapping[str, str]
+    behaviour_package: str = "netaddr"
+
+
+@dataclass(frozen=True)
+class IsolationSpec:
+    network: str
+    read_only_root: bool
+    non_root: bool
+    cap_drop_all: bool
+    no_new_privileges: bool
+    pids_limit: int
+    memory_bytes: int
+    secrets: tuple[str, ...] = ()
+    host_mounts: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass
+class SandboxResult:
+    checks: dict[str, str]
+    log: str = ""
+    container: bool = False
+    isolation: dict[str, str] = field(default_factory=dict)
+
+
+@runtime_checkable
+class SandboxRunner(Protocol):
+    name: str
+    data_mode: str
+
+    def prepare(self, task: Any, bundle: SandboxBundle, limits: SandboxLimits) -> SandboxResult:
+        """Run the task's preparation checks on the bundle under the isolation contract."""
+
+    def run_checks(self, bundle: SandboxBundle, limits: SandboxLimits) -> SandboxResult: ...
+
+
+# ---------------------------------------------------------------------------
+# Execution ports (implemented by other components, used by the execution layer)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SecurityDecision:
+    decision_id: str
+    state: SecurityState
+    valid_until: datetime | None
+    policy_version: str
+    scanned_revision: str
+    signoff_valid: bool = False
+    reasons: tuple[str, ...] = ()
+
+
+@runtime_checkable
+class SecurityScanner(Protocol):
+    def scan(self, ctx: SecurityContext) -> str:
+        """Scan the context's revision into the action-security partition; returns the scan-run id."""
+
+
+@runtime_checkable
+class SecurityGate(Protocol):
+    def decide(self, ctx: SecurityContext, now: datetime) -> SecurityDecision:
+        """Create a new decision from the scans in the action-security partition."""
+
+    def revalidate(self, decision_id: str, now: datetime) -> SecurityDecision:
+        """The decision as it stands now: expiry, exception revocation, sign-off and policy re-checked."""
+
+
+@runtime_checkable
+class RunState(Protocol):
+    def authoritative_generation(self, run_id: str) -> int:
+        """Current authoritative verification generation of the run."""
+
+    def verified_actions(self, run_id: str, generation: int) -> frozenset[str]:
+        """Actions present in the verified artefact of that generation."""
+
+    def injection_flagged(self, run_id: str) -> bool: ...
+
+
+@dataclass(frozen=True)
+class ReviewResult:
+    passed: bool
+    reason: str
+
+
+@runtime_checkable
+class DiffReviewer(Protocol):
+    def review(self, task_text: str, scope: Sequence[str], diff: str) -> ReviewResult:
+        """Independent review of a diff against its task (the verifier agent)."""
+
+
+@dataclass(frozen=True)
+class RepoIdentity:
+    node_id: str
+    full_name: str
+
+
+@dataclass
+class PullRequest:
+    number: int
+    head: str
+    base: str
+    title: str
+    body: str
+    draft: bool = True
+    state: str = "open"
+
+
+@runtime_checkable
+class PublicationAPI(Protocol):
+    """Remote repository operations, performed by the gateway with the scoped publication token."""
+
+    def repo_identity(self, full_name: str) -> RepoIdentity: ...
+
+    def branch_head(self, full_name: str, branch: str) -> str | None: ...
+
+    def push_branch(
+        self, full_name: str, branch: str, base_commit: str, files: Mapping[str, str], message: str
+    ) -> str:
+        """Create ``branch`` with one commit on ``base_commit`` writing ``files``; returns the commit."""
+
+    def find_pulls(self, full_name: str, head: str) -> list[PullRequest]:
+        """Pull requests with this head branch, including closed ones."""
+
+    def create_draft_pull(self, full_name: str, head: str, base: str, title: str, body: str) -> PullRequest: ...
+
+    def get_pull(self, full_name: str, number: int) -> PullRequest: ...
+
+    def replace_pull_body(self, full_name: str, number: int, body: str) -> None: ...
+
+
+@dataclass(frozen=True)
+class EvidenceRecord:
+    kind: str  # ci_observation | behavioural_check | adjudication
+    data: Mapping[str, Any]
+    recorded_at: datetime
+
+
+@runtime_checkable
+class ValidationEvidence(Protocol):
+    """Action-scoped validation store: evidence only, never task state."""
+
+    def read(self, ctx: ValidationContext, kind: str) -> list[EvidenceRecord]: ...
+
+    def write(self, ctx: ValidationContext, kind: str, data: Mapping[str, Any], writer: str) -> None: ...
 
 
 @runtime_checkable

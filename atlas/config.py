@@ -8,11 +8,16 @@ from __future__ import annotations
 
 import ipaddress
 import os
+import re
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
 
 LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+MODEL_PROVIDERS = ("anthropic", "openai_compatible")
+SANDBOX_RUNNERS = ("local_docker", "remote", "none")
+IDENTITY_MODES = ("header", "local", "oidc")
 UPSTREAM_REPOSITORIES = {"kubevirt/kubevirt"}
 
 
@@ -104,7 +109,37 @@ class Settings:
     failure_poll_minutes: int
     nightly_time: str
     question_digest: bool
+    model_provider: str = "anthropic"
+    model_base_url: str = ""
+    model_internal_hosts: frozenset[str] = frozenset()
+    model_api_key: Secret = field(default_factory=lambda: Secret(""))
+    sandbox_runner: str = "local_docker"
+    image_cache: Path = Path("data/local/images")
+    org_slug: str = "demo"
+    default_project: str = ""
+    base_url: str = ""
+    scenario_url: str = ""
+    docker_bin: Path | None = None
+    go_bin: Path | None = None
+    openssl_bin: Path | None = None
     warnings: tuple[str, ...] = field(default_factory=tuple)
+
+    @property
+    def publication_enabled(self) -> bool:
+        return bool(self.publish_target)
+
+    def require_feature(self, feature: str) -> None:
+        """Refuse a feature whose required setting is empty, naming the setting to fill in."""
+        needs = {
+            "publication": ("ATLAS_PUBLISH_TARGET", self.publish_target),
+            "watchers": ("ATLAS_WATCH_REPOSITORY", self.watch_repository),
+            "sandbox": ("ATLAS_DOCKER_BIN", str(self.docker_bin or "") if self.sandbox_runner == "local_docker" else "ok"),
+            "certificates": ("ATLAS_OPENSSL_BIN", str(self.openssl_bin or "")),
+            "go_checks": ("ATLAS_GO_BIN", str(self.go_bin or "")),
+        }
+        setting, value = needs[feature]
+        if not value:
+            raise ConfigError(f"{feature} is disabled: set {setting} in .env (or put the tool on PATH)")
 
     @property
     def allowed_hosts(self) -> frozenset[str]:
@@ -128,6 +163,7 @@ class Settings:
             "GITHUB_TOKEN": bool(self.github_token),
             "ATLAS_PUBLISH_TOKEN": bool(self.publish_token),
             "ATLAS_WEBHOOK_URL": bool(self.webhook_url),
+            "ATLAS_MODEL_API_KEY": bool(self.model_api_key),
         }
 
 
@@ -171,8 +207,10 @@ def load_settings(
 
     host = get("ATLAS_HOST", "127.0.0.1")
     identity = get("ATLAS_IDENTITY", "header").lower()
-    if identity not in {"header"}:
-        errors.append("ATLAS_IDENTITY must be 'header' (sign-in is not available in this build)")
+    if identity not in IDENTITY_MODES:
+        errors.append("ATLAS_IDENTITY must be 'header', 'local' or 'oidc'")
+    elif identity == "oidc":
+        errors.append("ATLAS_IDENTITY 'oidc' (company single sign-on) is not available in this build")
     if identity == "header" and not _is_loopback(host):
         errors.append(
             "ATLAS_HOST must be a loopback address (127.0.0.1 or ::1) while the demo role header "
@@ -187,6 +225,15 @@ def load_settings(
         errors.append("ATLAS_DEMO_SCENARIOS may only be enabled on the scenario server")
 
     publish_target = get("ATLAS_PUBLISH_TARGET")
+    if "<" in publish_target or ">" in publish_target:
+        publish_target = ""  # placeholder left from .env.example: publication disabled
+    if not publish_target:
+        warnings.append("publication is disabled: set ATLAS_PUBLISH_TARGET to 'owner/repository' to enable it")
+    watch_repository = get("ATLAS_WATCH_REPOSITORY")
+    if "<" in watch_repository or ">" in watch_repository:
+        watch_repository = ""
+    if publish_target and watch_repository and publish_target.lower() == watch_repository.lower():
+        errors.append("ATLAS_PUBLISH_TARGET must not be a watched project repository")
     if publish_target and publish_target.lower() in UPSTREAM_REPOSITORIES:
         errors.append("ATLAS_PUBLISH_TARGET must not be an upstream project repository")
     if publish_target and publish_target.count("/") != 1:
@@ -220,6 +267,45 @@ def load_settings(
     if len(parts) != 2 or not all(p.isdigit() for p in parts) or not (0 <= int(parts[0]) < 24 and 0 <= int(parts[1]) < 60):
         errors.append("ATLAS_NIGHTLY_TIME must be HH:MM")
 
+    model_provider = get("ATLAS_MODEL_PROVIDER", "anthropic").lower()
+    if model_provider not in MODEL_PROVIDERS:
+        errors.append("ATLAS_MODEL_PROVIDER must be 'anthropic' or 'openai_compatible'")
+    model_base_url = get("ATLAS_MODEL_BASE_URL")
+    internal_hosts = frozenset(h.strip().lower() for h in get("ATLAS_MODEL_INTERNAL_HOSTS").split(",") if h.strip())
+    if model_provider == "openai_compatible":
+        if not model_base_url:
+            errors.append("ATLAS_MODEL_BASE_URL is required for the openai_compatible provider")
+        else:
+            endpoint_host = model_base_url.split("://", 1)[-1].split("/", 1)[0].rsplit(":", 1)[0].strip("[]").lower()
+            if mode == "offline" and endpoint_host not in internal_hosts:
+                errors.append(
+                    "in offline mode the model endpoint host must be listed in ATLAS_MODEL_INTERNAL_HOSTS"
+                )
+    if mode == "offline" and model_provider == "anthropic":
+        warnings.append("offline mode with the anthropic provider: every model step will fail closed")
+
+    org_slug = get("ATLAS_ORG_SLUG", "demo").lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", org_slug):
+        errors.append("ATLAS_ORG_SLUG must be lowercase letters, digits and hyphens")
+
+    def tool(setting: str, name: str) -> Path | None:
+        configured = get(setting)
+        if configured:
+            path = Path(configured)
+            if not path.is_file():
+                errors.append(f"{setting} does not point to a file")
+            return path
+        found = shutil.which(name)
+        return Path(found) if found else None
+
+    docker_bin = tool("ATLAS_DOCKER_BIN", "docker")
+    go_bin = tool("ATLAS_GO_BIN", "go")
+    openssl_bin = tool("ATLAS_OPENSSL_BIN", "openssl")
+
+    sandbox_runner = get("ATLAS_SANDBOX_RUNNER", "local_docker").lower()
+    if sandbox_runner not in SANDBOX_RUNNERS:
+        errors.append("ATLAS_SANDBOX_RUNNER must be 'local_docker', 'remote' or 'none'")
+
     api_key = Secret(get("ANTHROPIC_API_KEY"))
     if require_model_key and mode == "connected" and not api_key:
         errors.append("ANTHROPIC_API_KEY is required in connected mode")
@@ -246,11 +332,24 @@ def load_settings(
         model_fast=get("ATLAS_MODEL_FAST", "claude-haiku-5-5"),
         webhook_url=Secret(webhook_url),
         webhook_audience=webhook_audience,
-        watch_repository=get("ATLAS_WATCH_REPOSITORY", "kubevirt/kubevirt"),
+        watch_repository=watch_repository,
         watch_releases=_bool(env.get("ATLAS_WATCH_RELEASES"), default=False),
         watch_failures=_bool(env.get("ATLAS_WATCH_FAILURES"), default=False),
         failure_poll_minutes=poll,
         nightly_time=nightly,
         question_digest=_bool(env.get("ATLAS_QUESTION_DIGEST"), default=False),
+        model_provider=model_provider,
+        model_base_url=model_base_url,
+        model_internal_hosts=internal_hosts,
+        model_api_key=Secret(get("ATLAS_MODEL_API_KEY")),
+        sandbox_runner=sandbox_runner,
+        image_cache=Path(get("ATLAS_IMAGE_CACHE", str(Path("data") / "local" / "images"))),
+        org_slug=org_slug,
+        default_project=get("ATLAS_DEFAULT_PROJECT"),
+        base_url=get("ATLAS_BASE_URL"),
+        scenario_url=get("ATLAS_SCENARIO_URL"),
+        docker_bin=docker_bin,
+        go_bin=go_bin,
+        openssl_bin=openssl_bin,
         warnings=tuple(warnings),
     )

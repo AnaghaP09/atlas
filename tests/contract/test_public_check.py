@@ -86,3 +86,41 @@ def test_repository_is_clean() -> None:
     ).stdout.splitlines()
     hits = public_check.scan_paths([ROOT / n for n in names if n])
     assert not hits, hits
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        j("Built by ", "Swe", "tha"),
+        j("thanks to ", "Bhunesh", "wari"),
+        j("owner: ", "Ana", "gha"),
+        j("for the ", "ju", "ry"),
+        j("two ", "Ju", "rors"),
+    ],
+)
+def test_names_and_review_words_detected(text: str) -> None:
+    assert public_check.scan_text(text, "f", entropy=False)
+
+
+def test_account_handle_is_not_a_name() -> None:
+    assert not public_check.scan_text(j("https://github.com/", "Ana", "ghaP09/atlas"), "f", entropy=False)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        j("path = 'C:", "\\\\", "Us", "ers", "\\\\", "someone", "\\\\", "project'"),
+        j("C:/", "Us", "ers/someone/tools/bin"),
+        j("cache=/", "ho", "me/someone/.cache"),
+        j("cd /", "Us", "ers/someone/work"),
+        j("%LOCAL", "APPDATA% or C:/x/", "App", "Data/Local/Programs"),
+    ],
+)
+def test_machine_specific_values_detected(text: str) -> None:
+    assert public_check.scan_text(text, "f", entropy=False)
+
+
+def test_relative_and_example_paths_allowed() -> None:
+    for text in ("ATLAS_DATA_DIR=data", "data/local/images", "https://atlas.invalid/schema/x.json",
+                 "ATLAS_PUBLISH_TARGET=<owner>/<repo>"):
+        assert not public_check.scan_text(text, "f", entropy=False)

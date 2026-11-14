@@ -10,6 +10,8 @@ before every execution step.
 
 from __future__ import annotations
 
+from atlas.contracts import SecurityReader  # noqa: F401
+
 import json
 import uuid
 from dataclasses import dataclass, field
@@ -204,12 +206,6 @@ def parse_security_records(records: Iterable[Record], content_of: Callable[[Reco
             findings.append(Finding(data["finding_id"], data.get("component", ""), data.get("severity"),
                                     data.get("fix_version"), rec.record_id))
     return scans, findings
-
-
-class SecurityReader(Protocol):
-    """Read access to one task's action-security partition (provided by the evidence store)."""
-
-    def read(self, ctx: SecurityContext) -> list[Record]: ...
 
 
 class SecurityGate:

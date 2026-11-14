@@ -7,28 +7,14 @@ churn and dependency fan-in. Probabilities are never shown as calibrated: every 
 
 from __future__ import annotations
 
+from atlas.contracts import OpenItem
+
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Mapping, Sequence
 
 TRACKER_TITLE = re.compile(r"(?i)quarantine (transition )?tracker")
-
-
-@dataclass(frozen=True)
-class OpenItem:
-    issue_id: str
-    title: str
-    labels: frozenset[str]
-    created: datetime
-    last_activity: datetime
-    component: str | None
-    record_ids: tuple[str, ...]
-    ci_recurrences: int = 0
-    component_churn: int = 0
-    fan_in: int = 0
-    requirement_bound: bool = False
-    required_scopes: frozenset[str] = field(default_factory=lambda: frozenset({"public"}))
 
 
 def is_tracker(item: OpenItem) -> bool:

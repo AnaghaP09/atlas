@@ -9,4 +9,3 @@ the public KubeVirt project.
 Status: planning. The build starts after the plan is approved. A web UI will sit on top of the
 backend's HTTP API (see `ui/`).
 
-Team: Swetha, Bhuneshwari, Anagha.

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://atlas.invalid/schema/security_record.schema.json",
+  "title": "Security record content",
+  "description": "Content of a security evidence record. A scan run is stored even when it finds nothing, so a clean scan can be told apart from a missing one.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "scan_run_id", "target_revision", "coverage", "status", "finding_ids", "observed_at"],
+      "properties": {
+        "kind": {"const": "scan_run"},
+        "scan_run_id": {"type": "string", "minLength": 1},
+        "target_revision": {"type": "string", "minLength": 1, "description": "Commit or revision that was scanned."},
+        "coverage": {"type": "array", "items": {"type": "string"}, "description": "Components or modules the scan covered."},
+        "status": {"enum": ["success", "partial", "error"]},
+        "finding_ids": {"type": "array", "items": {"type": "string"}},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "module_inventory": {"type": "array", "items": {"type": "object"}, "description": "Modules and versions sent to the scanner."}
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "finding_id", "component", "severity", "scan_run_id"],
+      "properties": {
+        "kind": {"const": "finding"},
+        "finding_id": {"type": "string", "minLength": 1, "description": "Scanner identifier, for example an OSV id."},
+        "scan_run_id": {"type": "string", "minLength": 1},
+        "component": {"type": "string"},
+        "module": {"type": "string"},
+        "version": {"type": "string"},
+        "severity": {"type": ["string", "null"]},
+        "fix_version": {"type": ["string", "null"]}
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/AnaghaP09/atlas/schema/events.json",
+  "$id": "https://atlas.invalid/schema/events.json",
   "title": "Live event",
   "description": "Every event on /api/runs/{id}/stream and /api/notifications/stream. Producers, the API stream and the UI use exactly these names and fields.",
   "streams": ["/api/runs/{id}/stream", "/api/notifications/stream"],
@@ -33,7 +33,7 @@
     "authoritative_generation": {"type": ["integer", "null"], "minimum": 1},
     "report_version": {"type": ["integer", "null"], "minimum": 1},
     "correction_version": {"type": ["integer", "null"], "minimum": 0},
-    "data": {"type": "object"}
+    "data": {"type": "object", "description": "Event-specific body. Producers must use this field name (data)."}
   },
   "allOf": [
     {

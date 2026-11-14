@@ -4,7 +4,9 @@ Scans tracked files (and, with --history, every commit message) for:
   - secrets: known token formats, private keys and long high-entropy strings;
   - personal data: email addresses (except example domains and GitHub no-reply addresses),
     and any handle listed in data/local/handles.txt when that local file exists;
-  - internal project markers that belong in private planning notes, not in the product.
+  - internal project markers that belong in private planning notes, not in the product;
+  - names of the people who built the project, and words that belong to its review setting;
+  - machine-specific values: absolute paths into a user's home folder or local app data.
 
 Exit code 0 means clean; 1 means at least one hit (each printed as path:line: reason).
 Usage: python scripts/public_check.py [--history] [--staged] [paths...]
@@ -44,6 +46,23 @@ INTERNAL_MARKERS = [
     ("review tool name", re.compile(r"\bCo" + r"dex\b")),
 ]
 
+# Built from parts so this file does not match itself. Git author metadata is never scanned;
+# the owner's account handle (letters followed directly by digits) is not a standalone name.
+PERSONAL_NAMES = [
+    ("team member name", re.compile(r"\b(?:" + "Swe" + "tha|" + "Bhunesh" + "wari|" + "Ana" + r"gha)\b")),
+]
+
+REVIEW_WORDS = [
+    ("review-setting word", re.compile(r"\bjur" + r"(?:y|ies|or|ors)\b", re.IGNORECASE)),
+]
+
+MACHINE_SPECIFIC = [
+    ("absolute user path", re.compile(r"\b[A-Za-z]:[\\/]+" + "Us" + r"ers[\\/]+[^\\/\s\"'<>]+", re.IGNORECASE)),
+    ("absolute user path", re.compile(r"(?<![\w.])/" + "ho" + r"me/[a-z_][\w.-]*/")),
+    ("absolute user path", re.compile(r"(?<![\w.:])/" + "Us" + r"ers/[A-Za-z][\w.-]*/")),
+    ("local app data path", re.compile(r"\b" + "App" + r"Data[\\/]+(?:Local|Roaming)\b", re.IGNORECASE)),
+]
+
 ENTROPY_TOKEN = re.compile(r"[A-Za-z0-9+/_\-]{32,}")
 ENTROPY_THRESHOLD = 4.5
 
@@ -79,6 +98,9 @@ def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str]
         for name, pattern in INTERNAL_MARKERS:
             if pattern.search(line):
                 hits.append(f"{where}: internal marker ({name})")
+        for name, pattern in PERSONAL_NAMES + REVIEW_WORDS + MACHINE_SPECIFIC:
+            if pattern.search(line):
+                hits.append(f"{where}: {name}")
         for handle, pattern in handle_patterns:
             if pattern.search(line):
                 hits.append(f"{where}: personal handle")

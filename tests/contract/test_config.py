@@ -103,5 +103,60 @@ def test_webhook_without_audience_warns() -> None:
 def test_example_file_loads(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[2]
     s = load_settings(env_file=root / ".env.example", environ={})
-    assert s.publish_target == "AnaghaP09/atlas-sandbox-target"
+    assert s.publish_target == "" and not s.publication_enabled
+    assert s.watch_repository == ""
+    assert any("ATLAS_PUBLISH_TARGET" in w for w in s.warnings)
     assert not s.anthropic_api_key
+    with pytest.raises(ConfigError, match="ATLAS_PUBLISH_TARGET"):
+        s.require_feature("publication")
+
+
+def test_model_provider_settings() -> None:
+    s = load_settings(env_file=None, environ={})
+    assert s.model_provider == "anthropic" and s.sandbox_runner == "local_docker"
+    assert not s.presence()["ATLAS_MODEL_API_KEY"]
+    with pytest.raises(ConfigError, match="ATLAS_MODEL_PROVIDER"):
+        load_settings(env_file=None, environ={"ATLAS_MODEL_PROVIDER": "other"})
+    with pytest.raises(ConfigError, match="ATLAS_MODEL_BASE_URL"):
+        load_settings(env_file=None, environ={"ATLAS_MODEL_PROVIDER": "openai_compatible"})
+
+
+def test_offline_self_hosted_model_must_be_on_internal_list() -> None:
+    base = {"ATLAS_MODE": "offline", "ATLAS_MODEL_PROVIDER": "openai_compatible",
+            "ATLAS_MODEL_BASE_URL": "http://models.example.internal:8000/v1"}
+    with pytest.raises(ConfigError, match="ATLAS_MODEL_INTERNAL_HOSTS"):
+        load_settings(env_file=None, environ=base)
+    s = load_settings(env_file=None, environ={**base, "ATLAS_MODEL_INTERNAL_HOSTS": "models.example.internal"})
+    assert "models.example.internal" in s.model_internal_hosts
+    assert s.presence()["ATLAS_MODEL_API_KEY"] is False
+
+
+def test_sandbox_runner_and_identity_modes() -> None:
+    with pytest.raises(ConfigError, match="ATLAS_SANDBOX_RUNNER"):
+        load_settings(env_file=None, environ={"ATLAS_SANDBOX_RUNNER": "vm"})
+    assert load_settings(env_file=None, environ={"ATLAS_SANDBOX_RUNNER": "none"}).sandbox_runner == "none"
+    assert load_settings(env_file=None, environ={"ATLAS_IDENTITY": "local"}).identity == "local"
+    with pytest.raises(ConfigError, match="not available"):
+        load_settings(env_file=None, environ={"ATLAS_IDENTITY": "oidc"})
+
+
+def test_tools_found_on_path_or_from_settings(tmp_path: Path) -> None:
+    fake = tmp_path / "docker-tool"
+    fake.write_text("", encoding="utf-8")
+    s = load_settings(env_file=None, environ={"ATLAS_DOCKER_BIN": str(fake)})
+    assert s.docker_bin == fake
+    with pytest.raises(ConfigError, match="ATLAS_GO_BIN"):
+        load_settings(env_file=None, environ={"ATLAS_GO_BIN": str(tmp_path / "missing")})
+
+
+def test_publish_target_must_differ_from_watched_repository() -> None:
+    with pytest.raises(ConfigError, match="watched"):
+        load_settings(env_file=None, environ={"ATLAS_PUBLISH_TARGET": "example/project",
+                                              "ATLAS_WATCH_REPOSITORY": "example/project"})
+
+
+def test_org_slug_and_image_cache_defaults() -> None:
+    s = load_settings(env_file=None, environ={})
+    assert s.org_slug == "demo" and s.image_cache == Path("data") / "local" / "images"
+    with pytest.raises(ConfigError, match="ATLAS_ORG_SLUG"):
+        load_settings(env_file=None, environ={"ATLAS_ORG_SLUG": "Bad Name"})

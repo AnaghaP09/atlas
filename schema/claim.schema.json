@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/AnaghaP09/atlas/schema/claim.schema.json",
+  "$id": "https://atlas.invalid/schema/claim.schema.json",
   "title": "Claim",
   "description": "One statement made by the investigator or a service, with the evidence it cites and the verifier's verdict.",
   "type": "object",

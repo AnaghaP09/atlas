@@ -84,6 +84,18 @@ class InMemoryStore:
         source = query.get("source")
         return [r for r in self._visible(ctx) if source is None or r.source == source]
 
+    def get_record(self, ctx: RunContext, record_id: str) -> Record | None:
+        for r in reversed(self._visible(ctx)):
+            if r.record_id == record_id:
+                return r
+        return None
+
+    def read_content(self, ctx: RunContext, record: Record) -> str:
+        """In the fake, ``content_ref`` holds the content itself; only visible records can be read."""
+        if self.get_record(ctx, record.record_id) is None:
+            raise PermissionError("record is not visible in this snapshot")
+        return record.content_ref
+
 
 @dataclass
 class RecordedModel:
