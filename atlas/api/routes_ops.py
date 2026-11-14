@@ -110,6 +110,8 @@ def _notification_action(request: Request, notification_id: str, action: str):
     def effect(key: str) -> tuple[int, dict[str, Any]]:
         if action == "ack":
             s.notifier.acknowledge(notification_id)
+        elif hasattr(s.notifier, "resolve"):
+            s.notifier.resolve(notification_id)
         s.audit.record(role, f"notification.{action}", notification_id, {})
         return 200, envelope(request, principal, {"notification_id": notification_id,
                                                   "status": "acknowledged" if action == "ack" else "resolved"})
@@ -163,7 +165,9 @@ def webhook_test(request: Request, body: dict[str, Any] | None = Body(None)):
             projected = s.projection.project({"required_scopes": [], "content": sample}, principal_for(d.audience))
             previews.append({"destination": d.name, "status": "preview", "audience": d.audience,
                              "payload": projected.get("content")})
-        return 200, staged(request, principal, "chat delivery has no workspace in the demo", previews=previews)
+        sent = s.notifier.test_send(sample) if hasattr(s.notifier, "test_send") and s.notifier.destinations else []
+        return 200, staged(request, principal, "chat delivery has no workspace in the demo", previews=previews,
+                           deliveries=sent)
 
     return idempotent(request, principal, body or {}, effect)
 
