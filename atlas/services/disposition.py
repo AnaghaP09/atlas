@@ -27,6 +27,11 @@ def apply_injection_disposition(artefact: Mapping[str, Any], injection_detected:
         out.setdefault("safety_disposition", "NONE")
         return out
     out["safety_disposition"] = "HOLD_FOR_HUMAN"
+    cls = dict(out.get("classification") or {})
+    if cls.get("value") is None:
+        # Nothing readable supports a classification: say so instead of leaving it empty.
+        out["classification"] = {"value": "UNKNOWN", "claim_ids": [],
+                                 "required_scopes": list(cls.get("required_scopes", ["public"]))}
     out["action"] = {"value": "REJECT", "claim_ids": [], "required_scopes": list((out.get("action") or {}).get("required_scopes", ["public"]))}
     for name in TASK_FIELDS:
         out.pop(name, None)

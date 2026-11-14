@@ -3,8 +3,11 @@ executed.
 
 Every claim carries a verdict. The transitive closure of rejected, contradicted and missing claims
 is computed over ``depends_on``, and every output field bound to any claim in that closure (through
-``claim_ids``) is removed: root cause, classification, action, options, findings, reasoning,
-forecast and allocation entries. A dangling claim reference fails the run.
+``claim_ids``) is removed: root cause, options, findings, reasoning, forecast and allocation entries.
+The classification follows a minimum-support rule: it stays while at least one of the claims it rests
+on is still supported, and is removed when none is. The action follows the classification, except
+that an action that would start code work needs every one of its claims and the root cause. A
+dangling claim reference fails the run.
 """
 
 from __future__ import annotations
@@ -16,6 +19,8 @@ from typing import Any, Iterable, Mapping
 BAD_VERDICTS = frozenset({"rejected", "contradicted", "missing"})
 LIST_FIELDS = ("items", "options", "findings", "reasoning", "insufficient_evidence")
 VALUE_FIELDS = ("classification", "action")
+MIN_SUPPORT = 1
+EXECUTABLE_ACTIONS = frozenset({"DELEGATE_TO_CODING_AGENT"})
 
 
 class DanglingReference(ValueError):
@@ -72,20 +77,61 @@ def build_verified(artefact: Mapping[str, Any]) -> PruneResult:
             if cid not in known:
                 raise DanglingReference(f"{path or 'field'} refers to unknown claim {cid}")
     removed = removal_closure(claims)
+    by_id = {c["id"]: c for c in claims}
     removed_fields: list[str] = []
 
     def bound_to_removed(obj: Mapping[str, Any]) -> bool:
         return any(cid in removed for cid in obj.get("claim_ids", []))
 
-    for name in VALUE_FIELDS:
-        field = out.get(name)
-        if isinstance(field, Mapping) and bound_to_removed(field):
-            out[name] = {"value": None, "claim_ids": [], "required_scopes": list(field.get("required_scopes", []))}
-            removed_fields.append(name)
+    # The root cause is a statement: it goes when any claim it rests on goes.
     rc = out.get("root_cause")
-    if isinstance(rc, Mapping) and bound_to_removed(rc):
+    root_cause_removed = isinstance(rc, Mapping) and bound_to_removed(rc)
+    if root_cause_removed:
         out["root_cause"] = None
         removed_fields.append("root_cause")
+
+    def surviving(field: Mapping[str, Any]) -> dict[str, Any] | None:
+        """The field resting only on its still-supported claims, or None when too few remain."""
+        kept_ids = [cid for cid in field.get("claim_ids", []) if cid not in removed]
+        if len(kept_ids) < MIN_SUPPORT:
+            return None
+        scopes: set[str] = set()
+        for cid in kept_ids:
+            scopes |= set(by_id[cid].get("required_scopes", ["internal"]))
+        return {**field, "claim_ids": kept_ids, "required_scopes": sorted(scopes or {"public"})}
+
+    def empty(field: Mapping[str, Any]) -> dict[str, Any]:
+        return {"value": None, "claim_ids": [], "required_scopes": list(field.get("required_scopes", []))}
+
+    # Minimum support: the classification stays while at least MIN_SUPPORT of the claims it rests on
+    # are still supported. Claims that depend on a removed claim are already in the removal closure.
+    cls = out.get("classification")
+    classification_removed = False
+    if isinstance(cls, Mapping) and bound_to_removed(cls):
+        kept = surviving(cls)
+        if kept is None:
+            out["classification"] = empty(cls)
+            removed_fields.append("classification")
+            classification_removed = True
+        else:
+            out["classification"] = kept
+    # The action follows the classification. An action that would start code work is stricter: it
+    # needs every claim it rests on and the root cause, so a rejected cause can never leave a coding
+    # task behind.
+    act = out.get("action")
+    if isinstance(act, Mapping):
+        touched = bound_to_removed(act)
+        executable = act.get("value") in EXECUTABLE_ACTIONS
+        if classification_removed or (executable and (touched or root_cause_removed)):
+            out["action"] = empty(act)
+            removed_fields.append("action")
+        elif touched:
+            kept = surviving(act)
+            if kept is None:
+                out["action"] = empty(act)
+                removed_fields.append("action")
+            else:
+                out["action"] = kept
     for name in LIST_FIELDS:
         entries = out.get(name)
         if isinstance(entries, list):

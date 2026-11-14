@@ -50,12 +50,15 @@ def freshness(record: Record, ctx: RunContext) -> Freshness:
     return Freshness(True, "fresh", age)
 
 
+QUARANTINE_REASON = "contains instruction-like text"
+
+
 @dataclass
 class ResolvedRecord:
     """A record as an agent sees it: data plus status, never instructions."""
 
     record: Record
-    status: str  # "available" | "unavailable"
+    status: str  # "available" | "unavailable" | "quarantined"
     reason: str
     content: str | None
     conflicts: tuple[str, ...]
@@ -109,6 +112,10 @@ class EvidenceResolver:
             status, reason = "available", f.reason
         content = self.content_of(record) if status == "available" else None
         flags = self.flagger(content) if (self.flagger and content) else []
+        if flags:
+            # Quarantine: the record stays stored as data, but its text is not handed to an agent
+            # and it cannot support a claim.
+            status, reason = "quarantined", QUARANTINE_REASON
         resolved = ResolvedRecord(
             record=record,
             status=status,

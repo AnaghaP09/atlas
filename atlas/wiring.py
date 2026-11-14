@@ -821,6 +821,7 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                                      tasks=disposition,
                                      content_of=data.store.content_of if data else (lambda r: r.content_ref),
                                      open_items_for=data.open_items.open_items_for if data else (lambda ctx: []),
+                                     use_classifier=(env.get("ATLAS_INJECTION_CLASSIFIER") or "on").lower() != "off",
                                      clock=clock), runs=runs)
 
     target = settings.publish_target if settings.publish_target and "<" not in settings.publish_target else None
