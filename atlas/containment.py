@@ -30,6 +30,7 @@ GENERIC_KINDS = frozenset({
 })
 # Kinds only a specific operation may produce, with the producer that must have made them.
 RESTRICTED_KINDS: dict[str, str] = {
+    "drill_acknowledged": "drill",
     "correction": "corrections",
     "regression_run": "harness",
     "eval_run": "harness",
@@ -70,6 +71,39 @@ RULES: dict[int, Rule] = {r.row: r for r in (
 )}
 
 
+# What people see for each switch: a stable id, a plain title and what it stops, in plain words.
+@dataclass(frozen=True)
+class SwitchInfo:
+    switch_id: str
+    title: str
+
+
+SWITCHES: dict[int, SwitchInfo] = {
+    1: SwitchInfo("write-outside-sandbox", "Write outside the sandbox branch"),
+    2: SwitchInfo("change-after-approval", "Change altered after approval"),
+    3: SwitchInfo("sandbox-rule-broken", "Sandbox rule broken"),
+    4: SwitchInfo("outside-connection-while-offline", "Outside connection attempted while offline"),
+    5: SwitchInfo("connection-outside-allowed-list", "Connection outside the allowed list"),
+    6: SwitchInfo("personal-data-outbound", "Personal data found in outgoing content"),
+    7: SwitchInfo("hidden-instruction-acted-on", "Hidden instruction acted on"),
+    8: SwitchInfo("unsupported-claim-published", "Unsupported claim published"),
+    9: SwitchInfo("restricted-content-disclosed", "Restricted content disclosed"),
+    10: SwitchInfo("example-number-published-as-measured", "Example number published as measured"),
+    11: SwitchInfo("quality-below-floor", "Quality dropped below the floor"),
+}
+ROW_BY_SWITCH_ID = {info.switch_id: row for row, info in SWITCHES.items()}
+
+BLOCKS_IN_WORDS = {
+    MODEL_CALLS: "Model calls (new runs by Scout and Sentinel)",
+    PREPARATION: "Preparing coding tasks",
+    PUBLICATION: "Publishing changes and corrections",
+    REPORT_DELIVERY: "Delivering reports",
+    EXECUTION: "Running coding tasks",
+    FULL_OUTPUT: "Full reports (only first-look output stays on)",
+}
+DRILL_PREREQUISITE = "drill_acknowledged"
+
+
 class ContainmentError(ValueError):
     pass
 
@@ -82,23 +116,53 @@ class ContainmentStore:
         self.db = db
         self.deployed_revision = deployed_revision
         self.on_void_approvals = on_void_approvals
+        with self.db.transaction() as conn:
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(incidents)").fetchall()}
+            if "drill" not in cols:
+                conn.execute("ALTER TABLE incidents ADD COLUMN drill INTEGER NOT NULL DEFAULT 0")
 
     # -- trips ---------------------------------------------------------------------------------
 
     def trip(self, row: int, *, producer: str, detail: Mapping[str, Any], now: datetime,
-             publication_id: str | None = None, offending_item_id: str | None = None) -> str:
+             publication_id: str | None = None, offending_item_id: str | None = None, drill: bool = False) -> str:
+        """Trip a switch. A drill takes this same path and really blocks the switch's consumers.
+
+        A drill cannot start while any incident is open on the switch. A real trip while a drill
+        is open turns that drill into a real incident (full prerequisites apply). A drill does
+        not void approvals: it must be safe to run at any time.
+        """
         rule = RULES[row]
+        if drill:
+            publication_id, offending_item_id = publication_id or "drill", offending_item_id or "drill"
         if row in (8, 10) and not (publication_id and offending_item_id):
             raise ContainmentError("rows 8 and 10 record the publication and the offending item")
         incident_id = new_id("inc")
         with self.db.transaction() as conn:
-            conn.execute(
-                "INSERT INTO incidents (incident_id, row, trigger, producer, detail_json, publication_id,"
-                " offending_item_id, status, tripped_at) VALUES (?,?,?,?,?,?,?,?,?)",
-                (incident_id, row, rule.trigger, producer, json.dumps(dict(detail), sort_keys=True, default=str),
-                 publication_id, offending_item_id, "tripped", iso(now)),
-            )
-            if rule.voids_pending_approvals:
+            open_here = [dict(r) for r in conn.execute(
+                "SELECT * FROM incidents WHERE row = ? AND status = 'tripped' ORDER BY tripped_at", (row,)).fetchall()]
+            if drill and open_here:
+                kind = "a drill" if all(r["drill"] for r in open_here) else "a real incident"
+                raise ContainmentError(f"{kind} is already open on this switch")
+            open_drill = next((r for r in open_here if r["drill"]), None)
+            if not drill and open_drill is not None:
+                # A real trip during a drill: the drill becomes a real incident.
+                incident_id = open_drill["incident_id"]
+                conn.execute(
+                    "UPDATE incidents SET drill = 0, producer = ?, detail_json = ?, publication_id = ?,"
+                    " offending_item_id = ? WHERE incident_id = ?",
+                    (producer, json.dumps(dict(detail, converted_from_drill=True), sort_keys=True, default=str),
+                     publication_id, offending_item_id, incident_id))
+                conn.execute("DELETE FROM prerequisites WHERE incident_id = ? AND kind = ?",
+                             (incident_id, DRILL_PREREQUISITE))
+            else:
+                conn.execute(
+                    "INSERT INTO incidents (incident_id, row, trigger, producer, detail_json, publication_id,"
+                    " offending_item_id, status, tripped_at, drill) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                    (incident_id, row, rule.trigger, producer,
+                     json.dumps(dict(detail), sort_keys=True, default=str),
+                     publication_id, offending_item_id, "tripped", iso(now), int(drill)),
+                )
+            if rule.voids_pending_approvals and not drill:
                 conn.execute(
                     "UPDATE approvals SET status = 'voided', voided_at = ?, void_reason = ? WHERE status = 'granted'",
                     (iso(now), f"containment incident {incident_id}"),
@@ -107,8 +171,13 @@ class ContainmentStore:
                     self.on_void_approvals(conn, incident_id, now)
             self.db.emit_event(conn, "containment.tripped", at=now, run_id=detail.get("run_id"), generation=None,
                                data={"incident_id": incident_id, "row": row, "trigger": rule.trigger,
-                                     "producer": producer, "blocks": list(rule.blocks)})
+                                     "switch_id": SWITCHES[row].switch_id, "title": SWITCHES[row].title,
+                                     "drill": bool(drill), "producer": producer, "blocks": list(rule.blocks)})
         return incident_id
+
+    def last_tripped(self, row: int) -> str | None:
+        r = self.db.one("SELECT MAX(tripped_at) AS at FROM incidents WHERE row = ?", (row,))
+        return r["at"] if r else None
 
     # -- consumers -----------------------------------------------------------------------------
 
@@ -119,7 +188,8 @@ class ContainmentStore:
         if consumer not in CONSUMERS:
             raise ContainmentError(f"unknown consumer {consumer}")
         reasons = tuple(
-            f"containment incident {r['incident_id']} ({r['trigger']}) blocks {consumer}"
+            (f"kill switch {SWITCHES[r['row']].title} (drill)" if r["drill"]
+             else f"containment incident {r['incident_id']} ({r['trigger']}) blocks {consumer}")
             for r in self.open_incidents() if consumer in RULES[r["row"]].blocks
         )
         return EligibilityResult(not reasons, reasons)
@@ -130,7 +200,8 @@ class ContainmentStore:
             raise KeyError(incident_id)
         out = dict(row)
         rule = RULES[row["row"]]
-        out["required_prerequisites"] = list(rule.prerequisites)
+        out["drill"] = bool(out.get("drill"))
+        out["required_prerequisites"] = [DRILL_PREREQUISITE] if out["drill"] else list(rule.prerequisites)
         out["blocks"] = list(rule.blocks)
         out["prerequisites"] = [
             dict(p) for p in self.db.query("SELECT * FROM prerequisites WHERE incident_id = ? ORDER BY created_at", (incident_id,))
@@ -175,6 +246,18 @@ class ContainmentStore:
         if inc["status"] != "tripped":
             raise ContainmentError("incident is not tripped")
         rule = RULES[inc["row"]]
+        if inc["drill"]:
+            # A drill ends on the audit role's confirmation alone; the acknowledgement is recorded.
+            with self.db.transaction() as conn:
+                ack = self.record_prerequisite(incident_id, DRILL_PREREQUISITE, produced_by="drill",
+                                               detail={"role": role}, now=now, conn=conn)
+                conn.execute("UPDATE incidents SET status = 'resumed', resumed_at = ? WHERE incident_id = ?",
+                             (iso(now), incident_id))
+                self.db.emit_event(conn, "containment.resumed", at=now, run_id=None, generation=None,
+                                   data={"incident_id": incident_id, "row": rule.row, "drill": True,
+                                         "switch_id": SWITCHES[rule.row].switch_id, "prerequisites": [ack],
+                                         "signed_off_by": "audit"})
+            return
         satisfied: set[str] = set()
         problems: list[str] = []
         for pid in prerequisite_ids:

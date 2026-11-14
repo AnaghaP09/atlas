@@ -52,7 +52,9 @@ def availability(trigger: ManualTrigger, principal: Principal, *, mode: Mode,
         allowed = permits("model_calls")
         if not getattr(allowed, "allowed", True):
             reasons = getattr(allowed, "reasons", ()) or ("containment",)
-            return False, "containment: " + "; ".join(reasons)
+            text = "; ".join(reasons)
+            # A drill names its kill switch directly; other reasons keep the containment prefix.
+            return False, text if text.startswith("kill switch ") else "containment: " + text
         if not model_configured:
             return False, "missing configuration: model key"
     return True, None

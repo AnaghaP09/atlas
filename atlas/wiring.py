@@ -30,7 +30,8 @@ from typing import Any, Callable, Mapping, Sequence
 from atlas.api.ports import NotWired, Refused
 from atlas.approvals import ApprovalError, ApprovalService
 from atlas.config import parse_env_file
-from atlas.containment import RULES, ContainmentError, ContainmentStore
+from atlas.containment import (BLOCKS_IN_WORDS, ROW_BY_SWITCH_ID, RULES, SWITCHES, ContainmentError,
+                               ContainmentStore)
 from atlas.feed import ProjectFeed
 from atlas.data_wiring import connect_data
 from atlas.projects import ProjectRegistry
@@ -558,16 +559,24 @@ SWITCH_ROWS = {rule.trigger: row for row, rule in RULES.items()}
 class ContainmentPortAdapter:
     """The API's containment port over the durable containment table."""
 
-    def __init__(self, store: ContainmentStore, clock: Callable[[], datetime] = _now) -> None:
+    def __init__(self, store: ContainmentStore, clock: Callable[[], datetime] = _now, notifier: Any = None) -> None:
         self.store = store
         self.clock = clock
+        self.notifier = notifier
 
     def permits(self, consumer: str) -> Any:
         return self.store.permits(consumer)
 
     def _incident(self, incident_id: str) -> dict[str, Any]:
         out = self.store.incident(incident_id)
-        out["switch"] = out["switch_id"] = str(out["row"])
+        info = SWITCHES[out["row"]]
+        out["switch"] = out["switch_id"] = info.switch_id
+        out["title"] = info.title
+        out["kind"] = "Drill" if out.get("drill") else "Incident"
+        detail = json.loads(out.get("detail_json") or "{}")
+        out["triggered_by"] = detail.get("triggered_by")
+        out["note"] = detail.get("note")
+        out["blocks_in_words"] = [BLOCKS_IN_WORDS[b] for b in out.get("blocks", [])]
         out["open"] = out["status"] == "tripped"
         out["state"] = "open" if out["open"] else "resumed"
         out["trigger_event"] = out.get("trigger")
@@ -579,10 +588,19 @@ class ContainmentPortAdapter:
 
     def state(self) -> Mapping[str, Any]:
         incidents = [self._incident(r["incident_id"]) for r in self.store.open_incidents()]
-        by_row = {i["row"]: i for i in incidents}
-        switches = [{"switch_id": str(row), "switch": str(row), "title": rule.trigger,
-                     "state": "tripped" if row in by_row else "ok", "blocks": list(rule.blocks),
-                     "incident": by_row.get(row)} for row, rule in sorted(RULES.items())]
+        by_row: dict[int, dict[str, Any]] = {}
+        for i in incidents:  # a real incident wins over a drill when both exist for one switch
+            if i["row"] not in by_row or not i["drill"]:
+                by_row[i["row"]] = i
+        switches = []
+        for row, rule in sorted(RULES.items()):
+            inc = by_row.get(row)
+            switches.append({
+                "switch_id": SWITCHES[row].switch_id, "switch": SWITCHES[row].switch_id,
+                "title": SWITCHES[row].title, "blocks": [BLOCKS_IN_WORDS[b] for b in rule.blocks],
+                "blocks_ids": list(rule.blocks),
+                "state": "ok" if inc is None else ("drill" if inc["drill"] else "tripped"),
+                "incident": inc, "last_tripped_at": self.store.last_tripped(row), "can_drill": inc is None})
         return {"switches": switches, "incidents": incidents}
 
     def switch(self, switch_id: str) -> Mapping[str, Any] | None:
@@ -590,12 +608,15 @@ class ContainmentPortAdapter:
         incidents = [self._incident(r["incident_id"]) for r in self.store.open_incidents() if r["row"] == row]
         if not incidents:
             return None
-        return {"switch": str(row), "trigger": RULES[row].trigger, "incidents": incidents}
+        return {"switch": SWITCHES[row].switch_id, "switch_id": SWITCHES[row].switch_id,
+                "title": SWITCHES[row].title, "trigger": RULES[row].trigger, "incidents": incidents}
 
     @staticmethod
     def _row(switch_id: str) -> int:
         if str(switch_id).isdigit() and int(switch_id) in RULES:
             return int(switch_id)
+        if switch_id in ROW_BY_SWITCH_ID:
+            return ROW_BY_SWITCH_ID[switch_id]
         if switch_id in SWITCH_ROWS:
             return SWITCH_ROWS[switch_id]
         raise Refused(f"unknown switch {switch_id}", 404)
@@ -604,6 +625,23 @@ class ContainmentPortAdapter:
         row = self._row(switch)
         extra = {"publication_id": "scenario-publication", "offending_item_id": "scenario-item"} if row in (8, 10) else {}
         return self.store.trip(row, producer="scenario", detail={"reason": reason}, now=self.clock(), **extra)
+
+    def drill(self, switch_id: str, note: str, principal_role: str, user: str | None = None) -> Mapping[str, Any]:
+        """Trip a switch as a drill, through the same path as a real trip, and tell people."""
+        row = self._row(switch_id)
+        try:
+            incident_id = self.store.trip(row, producer="drill", now=self.clock(), drill=True,
+                                          detail={"note": note, "triggered_by": {"role": principal_role, "user": user}})
+        except ContainmentError as exc:
+            raise Refused(str(exc), 409) from exc
+        if self.notifier is not None:
+            try:
+                self.notifier.emit("containment.tripped", incident_id, [incident_id], frozenset({"internal"}),
+                                   {"text": f"Drill: kill switch {SWITCHES[row].title} tripped", "drill": True,
+                                    "switch_id": SWITCHES[row].switch_id, "required_scopes": ["internal"]})
+            except Exception:
+                pass
+        return self._incident(incident_id)
 
     def record_prerequisite(self, incident_id: str, kind: str, reference: str, note: str,
                             principal_role: str) -> Mapping[str, Any]:
@@ -803,7 +841,7 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     services.orchestrator = orchestrator
     services.snapshots = snapshots
     services.tasks = TaskPortAdapter(w)
-    services.containment = ContainmentPortAdapter(containment, clock)
+    services.containment = ContainmentPortAdapter(containment, clock, notifier)
     services.spend = spend
     services.model_configured = provider is not None and bool(getattr(settings, "anthropic_api_key", "") or
                                                                settings.model_provider != "anthropic")
