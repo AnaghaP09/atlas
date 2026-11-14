@@ -396,8 +396,11 @@ class ProjectPoller:
     """
 
     def __init__(self, project_id: str, config: ProjectConfig, gateway: Gateway, registry: SnapshotRegistry,
-                 feed: Any, *, clock: Callable[[], datetime] = _now, max_enrich: int = 5) -> None:
+                 feed: Any, *, clock: Callable[[], datetime] = _now, max_enrich: int = 5,
+                 authenticated: bool = False) -> None:
         self.project_id = project_id
+        self.authenticated = authenticated
+        self.blocked_until: datetime | None = None
         self.config = config
         self.gateway = gateway
         self.registry = registry
@@ -416,17 +419,41 @@ class ProjectPoller:
     def _labels(self) -> list[str]:
         return [v for k, v in self.config.labels.items() if v and k in ("flaky", "bug", "critical", "regression")]
 
+    def _rate_limited(self) -> str | None:
+        now = self.clock()
+        if self.blocked_until is not None and now < self.blocked_until:
+            return f"rate limit reached; polling resumes at {self.blocked_until.isoformat(timespec='minutes')}"
+        self.blocked_until = None
+        for reader in (self.reader, self.actions):
+            if reader is not None and reader.rate_remaining is not None and reader.rate_remaining <= 3 and reader.rate_reset:
+                until = datetime.fromtimestamp(reader.rate_reset, tz=timezone.utc)
+                if now < until:
+                    self.blocked_until = until
+                    return f"rate limit nearly used up; polling resumes at {until.isoformat(timespec='minutes')}"
+        return None
+
     def poll_once(self) -> dict[str, Any]:
         with self._lock:
             if self.reader is None:
                 return {"polled": False, "reason": "the project has no repository configured"}
+            limited = self._rate_limited()
+            if limited:
+                self.last_error = limited
+                return {"polled": False, "reason": limited}
             stored: list[dict[str, Any]] = []
             try:
                 stored = self._poll_issues()
                 ci = self._poll_ci()
                 release = self._poll_release()
             except (GatewayRefused, SourceUnavailable, GitHubError) as exc:
+                self._rate_limited()
                 self.last_error = str(exc)
+                if stored:
+                    self.feed.record_poll(self.project_id, self.clock())
+                    for item in stored:
+                        self.feed.record_activity(self.project_id, item)
+                    self.feed.update_panels(self.project_id, {"open_issues": self._open_issue_panel()})
+                    self.feed.connected = True
                 return {"polled": False, "reason": f"poll failed: {exc}", "stored": len(stored)}
             self.last_error = None
             self.feed.record_poll(self.project_id, self.clock())
@@ -441,32 +468,44 @@ class ProjectPoller:
             return {"polled": True, "stored": len(stored), "ci_runs": len([r for r in ci if "run_id" in r])}
 
     def _poll_issues(self) -> list[dict[str, Any]]:
-        labels = self._labels()
-        params = {"state": "open", "sort": "updated", "direction": "desc", "per_page": 20}
-        result = self.reader.rest_conditional("/issues", params)
-        if result.validator_pending:
-            self.reader.commit_validator(result.url)
-        if result.unchanged and not result.pending_refresh:
-            return []
+        """Open issues with the project's bug and flaky-test labels, newest changes first.
+
+        One conditional list request per label. With a GitHub token, changed issues are enriched
+        with their full history (at most ``max_enrich`` per poll); without one, the REST content is
+        stored as a live record marked as having no edit history.
+        """
+        labels = self._labels() or [""]
         out: list[dict[str, Any]] = []
+        enriched = 0
         live_ctx = RunContext(run_id="poll", snapshot_id=LIVE_SNAPSHOT_ID, mode=RunMode.LIVE, release_or_case="live",
                               cutoff=self.clock(), alias_variant=None, evidence_clock=self.clock(),
                               project_id=self.project_id)
-        for issue in (result.body or []):
-            if "pull_request" in issue:
+        seen: set[int] = set()
+        for label in labels:
+            params: dict[str, Any] = {"state": "open", "sort": "updated", "direction": "desc", "per_page": 30}
+            if label:
+                params["labels"] = label
+            result = self.reader.rest_conditional("/issues", params)
+            if result.unchanged and not result.pending_refresh:
                 continue
-            names = {lab.get("name") for lab in issue.get("labels", []) if isinstance(lab, Mapping)}
-            if labels and not (names & set(labels)):
-                continue
-            current = self.store.current_live("issues", f"issue/{issue['number']}")
-            if current is not None and (_dt(issue.get("updated_at")) or self.clock()) <= current.observed_at:
-                continue
-            if len(out) >= self.max_enrich:
-                break
-            for rec in self.issues.fetch_live({"number": issue["number"]}, live_ctx):
-                out.append({"kind": "issue", "title": f"#{issue['number']} {issue.get('title', '')}",
-                            "record_id": rec.record_id, "content_version_id": rec.content_version_id,
-                            "source_revision": issue.get("updated_at"), "required_scopes": ["public"]})
+            for issue in (result.body or []):
+                if not isinstance(issue, Mapping) or "pull_request" in issue or issue.get("number") in seen:
+                    continue
+                seen.add(issue["number"])
+                current = self.store.current_live("issues", f"issue/{issue['number']}")
+                if current is not None and (_dt(issue.get("updated_at")) or self.clock()) <= current.observed_at:
+                    continue
+                if self.authenticated and enriched < self.max_enrich:
+                    enriched += 1
+                    records = self.issues.fetch_live({"number": issue["number"]}, live_ctx)
+                else:
+                    records = self.issues.store_rest_issue(issue, live_ctx)
+                for rec in records:
+                    out.append({"kind": "issue", "title": f"#{issue['number']} {issue.get('title', '')}",
+                                "record_id": rec.record_id, "content_version_id": rec.content_version_id,
+                                "source_revision": issue.get("updated_at"), "required_scopes": ["public"]})
+            if result.validator_pending:
+                self.reader.commit_validator(result.url)
         return out
 
     def _open_issue_panel(self) -> list[dict[str, Any]]:
@@ -611,9 +650,12 @@ def connect_data(settings: Any, env: Mapping[str, str], *, mode: Callable[[], Mo
     scanner = TargetScanner(security_connector, target_dir)
     reader = ActionSecurityReader(action_store, lambda ctx: scanner.module_path())
     open_items = SnapshotOpenItems(store, lambda pid: projects[pid].labels if pid in projects else {})
-    pollers = {pid: ProjectPoller(pid, cfg, gateway, registry, feed, clock=clock)
+    authenticated = bool(token.reveal() if hasattr(token, "reveal") else token)
+    pollers = {pid: ProjectPoller(pid, cfg, gateway, registry, feed, clock=clock, authenticated=authenticated)
                for pid, cfg in projects.items() if cfg.sources.repository}
-    poll_loop = PollLoop(pollers, mode, int(env.get("ATLAS_DASHBOARD_POLL_SECONDS") or 60))
+    # Without a token GitHub allows 60 requests an hour, so the default interval is longer.
+    default_interval = 60 if authenticated else 600
+    poll_loop = PollLoop(pollers, mode, int(env.get("ATLAS_DASHBOARD_POLL_SECONDS") or default_interval))
     snapshots = DataSnapshots(registry, pollers, default_project, clock)
     return DataLayer(registry, store, snapshots, action_store, reader, scanner, open_items, gateway, projects,
                      pollers, poll_loop)
