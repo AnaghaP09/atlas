@@ -1,0 +1,137 @@
+import { useState } from "react";
+import type { DemoManifest, ManifestCall, ManifestRow } from "../api/types";
+import { useApi, useApp } from "../app/context";
+import { DataModeBadge, ErrorView, Loading, Section } from "../components/common";
+import { newKey } from "../lib/idempotency";
+import { useRouter } from "../lib/router";
+
+/** Fills {placeholders} from configuration values and values saved by earlier steps. */
+export function fill(value: unknown, vars: Record<string, string>): unknown {
+  if (typeof value === "string") return value.replace(/\{([a-z0-9_]+)\}/gi, (m, k: string) => vars[k] ?? m);
+  if (Array.isArray(value)) return value.map((v) => fill(v, vars));
+  if (value && typeof value === "object") return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, fill(v, vars)]));
+  return value;
+}
+
+/** A peer server address is only used if it is a plain http(s) origin. */
+export function peerUrl(raw: string | undefined, rowId: string): string | null {
+  if (!raw) return null;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return null;
+    return `${u.origin}/demo?row=${encodeURIComponent(rowId)}`;
+  } catch {
+    return null;
+  }
+}
+
+interface StepResult {
+  call: string;
+  status: number | "no answer";
+  ok: boolean;
+}
+
+function RowCard({ row, thisServer, vars, setVars }: { row: ManifestRow; thisServer: string; vars: Record<string, string>; setVars: (v: Record<string, string>) => void }) {
+  const { identity } = useApp();
+  const [results, setResults] = useState<StepResult[]>([]);
+  const [keys] = useState(() => row.calls.map(() => newKey()));
+  const [running, setRunning] = useState(false);
+  const onOtherServer = row.server !== thisServer;
+  const peer = peerUrl(vars[`${row.server}_url`] ?? vars["peer_ui_url"], row.row_id);
+
+  async function run() {
+    const { epoch, signal } = identity.snapshot;
+    setRunning(true);
+    const out: StepResult[] = [];
+    const saved = { ...vars };
+    try {
+      // The page must be served by the row's server before any call runs.
+      const h = await fetch("/api/health", { signal, cache: "no-store" });
+      const health = (await h.json()) as { environment?: string };
+      if (health.environment !== row.server) {
+        out.push({ call: "check server", status: h.status, ok: false });
+        return;
+      }
+      for (const [i, call] of row.calls.entries()) {
+        const c = fill(call, saved) as ManifestCall & { save?: Record<string, string> };
+        const headers: Record<string, string> = { Accept: "application/json", ...identity.provider.requestHeaders(c.role ? { role: c.role as never } : identity.snapshot.principal) };
+        if (c.method !== "GET") {
+          headers["Content-Type"] = "application/json";
+          headers["Idempotency-Key"] = keys[i] ?? newKey();
+        }
+        let status: number | "no answer" = "no answer";
+        try {
+          const res = await fetch(c.path, { method: c.method, headers, body: c.method === "GET" ? undefined : JSON.stringify(c.body ?? {}), signal, cache: "no-store" });
+          status = res.status;
+          const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+          for (const [name, field] of Object.entries(c.save ?? {})) {
+            const v = body[field];
+            if (typeof v === "string") saved[name] = v;
+          }
+        } catch {
+          status = "no answer";
+        }
+        if (!identity.isCurrent(epoch)) return;
+        const ok = typeof status === "number" && (c.expect_status ?? [200]).includes(status);
+        out.push({ call: `${c.method} ${c.path}`, status, ok });
+        if (!ok) break;
+      }
+      setVars(saved);
+    } finally {
+      if (identity.isCurrent(epoch)) {
+        setResults(out);
+        setRunning(false);
+      }
+    }
+  }
+
+  return (
+    <article className="card" data-testid={`row-${row.row_id}`}>
+      <h3>
+        {row.row_id}. {row.title} <DataModeBadge mode={row.data_mode} />
+      </h3>
+      <p className="muted">Shows canvas box {row.canvas_box}. Runs on the {row.server} server.</p>
+      {onOtherServer ? (
+        peer ? (
+          <a href={peer} rel="noopener noreferrer" referrerPolicy="no-referrer">Continue on the {row.server} server</a>
+        ) : (
+          <p className="state state-staged">This step runs on the {row.server} server. Open that server's address to continue.</p>
+        )
+      ) : (
+        <button onClick={() => void run()} disabled={running}>{running ? "Running…" : "Run this step"}</button>
+      )}
+      <ul>
+        {results.map((r, i) => (
+          <li key={i} className={r.ok ? "pass" : "fail"}>
+            {r.call}: {String(r.status)} {r.ok ? "as expected" : "not as expected"}
+          </li>
+        ))}
+      </ul>
+    </article>
+  );
+}
+
+export function GuidedDemo() {
+  const data = useApi<DemoManifest>("/api/demo/manifest");
+  const { search } = useRouter();
+  const [vars, setVars] = useState<Record<string, string> | null>(null);
+  if (data.isLoading) return <Loading what="the demo steps" />;
+  if (data.error) return <ErrorView error={data.error} />;
+  const m = data.data;
+  if (!m) return null;
+  const v = vars ?? m.variables;
+  const focus = search.get("row");
+  const start = focus ? Math.max(0, m.manifest.rows.findIndex((r) => r.row_id === focus)) : 0;
+  const rows = m.manifest.rows.slice(start);
+  return (
+    <Section title={m.manifest.title}>
+      <p>
+        Walk through the demo one step at a time. Each step names what it shows and whether it uses real, synthetic or staged
+        data. Steps for the other server open that server's own page.
+      </p>
+      {rows.map((row) => (
+        <RowCard key={row.row_id} row={row} thisServer={m.this_server} vars={v} setVars={setVars} />
+      ))}
+    </Section>
+  );
+}
