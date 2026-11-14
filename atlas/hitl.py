@@ -34,6 +34,7 @@ TRIGGERS = frozenset(
         "scorecard_class_negative",
         "support_withdrawn",
         "run_unverified",
+        "access_request",
     }
 )
 

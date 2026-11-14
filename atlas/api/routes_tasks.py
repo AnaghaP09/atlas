@@ -10,6 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Body, Request
 
+from atlas.api import access_control as ac
 from atlas.api.identity import principal_of, require_role
 from atlas.api.ports import Refused
 from atlas.api.routes_runs import run_view
@@ -33,6 +34,24 @@ def task_view(raw: Any) -> dict[str, Any]:
 def _scope(principal: Any) -> str | None:
     """The project filter for list reads (None: a demo caller not limited to one project)."""
     return None if principal.project_id == ANY_PROJECT else principal.project_id
+
+
+def _readable(request: Request, principal: Any, object_type: str, id_field: str,
+              rows: Any) -> tuple[list[Any], list[dict[str, Any]]]:
+    """Split a list into the rows the caller may read and locked placeholders for the rest.
+
+    A locked placeholder carries the type, id and neutral label only, so the caller can ask for it."""
+    shown: list[Any] = []
+    locked: list[dict[str, Any]] = []
+    for row in rows:
+        entry = ac.access_of(request, principal, object_type, str(row[id_field]))
+        if entry is None:
+            continue
+        if entry["access"] == ac.OPEN:
+            shown.append(row)
+        else:
+            locked.append(entry)
+    return shown, locked
 
 
 def _refusal(exc: Refused) -> ApiError:
@@ -71,22 +90,32 @@ def create_task(request: Request, body: dict[str, Any] = Body(...)):
 def tasks(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
     items = services_of(request).tasks.list(project_id=_scope(principal))
-    return envelope(request, principal, {"tasks": [task_view(t) for t in items]})
+    shown, locked = _readable(request, principal, "task", "task_id", items)
+    return envelope(request, principal, {"tasks": [task_view(t) for t in shown], "locked_items": locked})
 
 
 @router.get("/tasks/{task_id}")
 def task(request: Request, task_id: str) -> dict[str, Any]:
     principal = principal_of(request)
-    t = check_project(request, principal, services_of(request).tasks.get(task_id), "task")
-    return envelope(request, principal, {"task": task_view(t)})
+    item, reader, grant = ac.reader_for(request, principal, "task", task_id)
+    return envelope(request, reader, {"task": task_view(item.obj), "read_only": grant is not None})
 
 
 @router.get("/approvals")
 def approvals(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
-    items = [dict(a, required_scopes=a.get("required_scopes", ["internal"]))
-             for a in services_of(request).tasks.approvals(project_id=_scope(principal))]
-    return envelope(request, principal, {"approvals": items})
+    rows = services_of(request).tasks.approvals(project_id=_scope(principal))
+    shown, locked = _readable(request, principal, "approval", "approval_id", rows)
+    items = [dict(a, required_scopes=a.get("required_scopes", ["internal"])) for a in shown]
+    return envelope(request, principal, {"approvals": items, "locked_items": locked})
+
+
+@router.get("/approvals/{approval_id}")
+def approval(request: Request, approval_id: str) -> dict[str, Any]:
+    principal = principal_of(request)
+    item, reader, grant = ac.reader_for(request, principal, "approval", approval_id)
+    return envelope(request, reader, {"approval": dict(item.obj, required_scopes=item.scopes),
+                                      "read_only": grant is not None})
 
 
 @router.post("/approvals/{approval_id}/decision")

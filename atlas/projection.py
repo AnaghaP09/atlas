@@ -51,6 +51,12 @@ def narrow(identity: Principal, requested_reader: str | None) -> Principal:
                      project_id=identity.project_id)
 
 
+def granted_principal(principal: Principal, object_scopes: Any) -> Principal:
+    """The reader for one granted object: the same person, plus exactly that object's own scopes."""
+    return Principal(role=principal.role, scopes=frozenset(principal.scopes) | frozenset(object_scopes),
+                     user=principal.user, project_id=principal.project_id)
+
+
 def _outside_project(value: Mapping[str, Any], principal: Principal) -> bool:
     """True when ``value`` belongs to a project other than the principal's.
 
@@ -126,7 +132,13 @@ class AuthorizationProjection:
             self._public_scan(projected)
         return ProjectionResult(projected, counter[0])
 
-    def project(self, artifact: Mapping[str, Any], principal: Principal) -> dict[str, Any]:
+    def project(self, artifact: Mapping[str, Any], principal: Principal, *,
+                grant: Mapping[str, Any] | None = None) -> dict[str, Any]:
+        """Project for ``principal``. With an active read-only ``grant`` for this one object, the
+        object's own scopes are honoured for this read; nothing else is widened, so content inside
+        it that needs a further scope (for example restricted security detail) stays withheld."""
+        if grant is not None:
+            principal = granted_principal(principal, grant.get("object_scopes") or ())
         return self.project_with_count(artifact, principal).artifact
 
     def project_for_audit_endpoint(self, artifact: Mapping[str, Any], principal: Principal) -> dict[str, Any]:
