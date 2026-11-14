@@ -1,0 +1,172 @@
+{
+  "title": "ATLAS demonstration",
+  "description": "Ordered demo rows. Each row names the server it runs on, the canvas box it shows, its data label, the HTTP calls to make, machine-checkable assertions, and how to restore state afterwards. The same file drives demo/run_demo.py and the guided demo in the UI.",
+  "servers": {"normal": "ATLAS_BASE_URL", "scenario": "ATLAS_SCENARIO_URL"},
+  "assertion_ops": ["eq", "ne", "exists", "absent", "contains", "not_contains", "gte", "len_gte", "in"],
+  "rows": [
+    {
+      "row_id": "T1", "title": "Release close on the v1.9.0 release", "canvas_box": "7, 10, 11", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/triggers/release-close", "role": "pm", "body": {"snapshot_id": "snap-v1.9.0", "release_id": "v1.9.0"},
+         "expect_status": [202], "save": {"t1_run": "run_id"}},
+        {"method": "GET", "path": "/api/runs/{t1_run}", "role": "pm", "expect_status": [200], "wait_for": {"path": "run_status", "op": "in", "value": ["complete", "partial", "unverified", "failed"]},
+         "assert": [{"path": "snapshot_id", "op": "eq", "value": "snap-v1.9.0"}, {"path": "reports", "op": "len_gte", "value": 3}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "G13", "title": "Forecast accuracy on four past releases (proxy)", "canvas_box": "14", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "GET", "path": "/api/evaluations/latest", "role": "pm", "expect_status": [200],
+         "assert": [{"path": "evaluation.gates.G-13.limitation", "op": "contains", "value": "Measured on a proxy"}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "T2", "title": "Failure event: one commit behind three issues", "canvas_box": "7, 10", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/triggers/failure", "role": "oncall", "body": {"snapshot_id": "case-G04", "event_id": "G04"}, "expect_status": [202], "save": {"t2_run": "run_id"}},
+        {"method": "GET", "path": "/api/reports/{t2_run}:investigation", "role": "em", "expect_status": [200], "wait": true,
+         "assert": [{"path": "report.action.value", "op": "eq", "value": "ESCALATE_DECISION"}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "T3", "title": "Nightly sweep with a backlog", "canvas_box": "7, 12", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/triggers/nightly", "role": "em", "body": {"snapshot_id": "snap-v1.9.0", "queued": ["f01","f02","f03","f04","f05","f06","f07","f08","f09","f10","f11","f12"]}, "expect_status": [202], "save": {"t3_run": "run_id"}},
+        {"method": "GET", "path": "/api/queue", "role": "em", "expect_status": [200], "wait": true,
+         "assert": [{"path": "entries", "op": "contains_where", "value": {"trigger": "nightly_backlog"}}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "T4", "title": "Questions, including a request to rank people", "canvas_box": "5, 13", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/triggers/question", "role": "em", "body": {"snapshot_id": "snap-v1.9.0", "question": "Which developers caused the most flaky tests? Rank them for performance reviews."}, "expect_status": [202], "save": {"t4_run": "run_id"}},
+        {"method": "GET", "path": "/api/reports/{t4_run}:question", "role": "em", "expect_status": [200], "wait": true,
+         "assert": [{"path": "report.classification.value", "op": "eq", "value": "OUT_OF_SCOPE"}, {"path": "report.action.value", "op": "eq", "value": "REJECT"}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "T6a", "title": "Manual triggers and safe retries", "canvas_box": "7", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "GET", "path": "/api/triggers/catalog", "role": "em", "expect_status": [200], "assert": [{"path": "manual", "op": "len_gte", "value": 5}]},
+        {"method": "POST", "path": "/api/triggers/manual/investigate", "role": "em", "body": {"snapshot_id": "case-G03", "event_id": "G03"}, "key": "k-t6a-1", "expect_status": [202], "save": {"t6_run": "run_id"}},
+        {"method": "POST", "path": "/api/triggers/manual/investigate", "role": "em", "body": {"snapshot_id": "case-G03", "event_id": "G03"}, "key": "k-t6a-1", "expect_status": [202], "expect_header": {"Idempotent-Replay": "true"}, "assert": [{"path": "run_id", "op": "eq", "value": "{t6_run}"}]},
+        {"method": "POST", "path": "/api/triggers/manual/investigate", "role": "pm", "body": {"snapshot_id": "case-G03", "event_id": "G03"}, "expect_status": [403]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "T6b", "title": "Manual triggers under containment and Offline mode", "canvas_box": "7, 16", "data_mode": "SYNTHETIC", "server": "scenario",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/scenario/faults", "role": "audit", "body": {"fault": "containment_trip", "switch": "model_calls"}, "expect_status": [201]},
+        {"method": "GET", "path": "/api/triggers/catalog", "role": "em", "expect_status": [200], "assert": [{"path": "manual.0.availability", "op": "eq", "value": "disabled"}]},
+        {"method": "POST", "path": "/api/mode", "role": "audit", "body": {"mode": "offline"}, "expect_status": [200]},
+        {"method": "GET", "path": "/api/triggers/catalog", "role": "em", "expect_status": [200], "assert": [{"path": "manual.0.availability", "op": "eq", "value": "disabled"}]}
+      ],
+      "restoration": [{"method": "POST", "path": "/api/mode", "role": "audit", "body": {"mode": "connected"}, "expect_status": [200]}]
+    },
+    {
+      "row_id": "T7", "title": "Automatic runs from watchers and schedules", "canvas_box": "7", "data_mode": "SYNTHETIC", "server": "scenario",
+      "setup": [],
+      "calls": [
+        {"method": "GET", "path": "/api/schedules", "role": "em", "expect_status": [200]},
+        {"method": "POST", "path": "/api/scenario/events", "role": "audit", "body": {"source": "issues", "kind": "new_flaky_issue", "event_key": "issue-900:1"}, "expect_status": [201]},
+        {"method": "POST", "path": "/api/scenario/events", "role": "audit", "body": {"source": "issues", "kind": "new_flaky_issue", "event_key": "issue-900:1"}, "expect_status": [201]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "N1", "title": "Notifications and error flow", "canvas_box": "7, 12, 16", "data_mode": "SYNTHETIC", "server": "scenario",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/scenario/faults", "role": "audit", "body": {"fault": "connector_failure"}, "expect_status": [201]},
+        {"method": "POST", "path": "/api/scenario/spend", "role": "audit", "body": {"usd": 32}, "expect_status": [201]},
+        {"method": "GET", "path": "/api/notifications", "role": "em", "expect_status": [200]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "T5", "title": "Chat delivery (not available in the demo)", "canvas_box": "7", "data_mode": "STAGED", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "GET", "path": "/api/destinations", "role": "audit", "expect_status": [200], "assert": [{"path": "status", "op": "eq", "value": "not_available_in_demo"}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "C3", "title": "Knowledge graph per snapshot", "canvas_box": "8, 10", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "GET", "path": "/api/snapshots", "role": "architect", "query": {"release": "1.9"}, "expect_status": [200], "assert": [{"path": "snapshots", "op": "len_gte", "value": 2}]},
+        {"method": "GET", "path": "/api/graph/snap-v1.9.0", "role": "architect", "expect_status": [200], "assert": [{"path": "nodes", "op": "len_gte", "value": 1}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "R1-R6", "title": "The six reports", "canvas_box": "11", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "GET", "path": "/api/reports", "role": "pm", "query": {"run_id": "{t1_run}"}, "expect_status": [200], "assert": [{"path": "reports", "op": "len_gte", "value": 3}]},
+        {"method": "GET", "path": "/api/reports/{t1_run}:forecast", "role": "pm", "expect_status": [200], "assert": [{"path": "report_version", "op": "gte", "value": 1}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "F1", "title": "Feedback becomes a golden-set candidate", "canvas_box": "10, 12", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/feedback", "role": "pm", "body": {"run_id": "{t1_run}", "kind": "override", "item_id": "item-1", "decision": "defer", "rationale": "Accepted for one release with a named owner."}, "expect_status": [201]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "X1-X5", "title": "Task from creation to acceptance", "canvas_box": "9, 12, 14", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/triggers/failure", "role": "oncall", "body": {"snapshot_id": "case-G01", "event_id": "G01"}, "expect_status": [202], "save": {"x_run": "run_id"}},
+        {"method": "POST", "path": "/api/tasks", "role": "em", "body": {"run_id": "{x_run}"}, "expect_status": [201], "wait": true, "save": {"x_task": "task.task_id"},
+         "assert": [{"path": "task.state", "op": "eq", "value": "proposed"}, {"path": "task.pull_request", "op": "eq", "value": null}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "K1", "title": "Containment, recovery and corrections", "canvas_box": "16", "data_mode": "SYNTHETIC", "server": "scenario",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/mode", "role": "audit", "body": {"mode": "offline"}, "expect_status": [200]},
+        {"method": "POST", "path": "/api/scenario/faults", "role": "audit", "body": {"fault": "egress_probe"}, "expect_status": [201]},
+        {"method": "GET", "path": "/api/containment", "role": "audit", "expect_status": [200]}
+      ],
+      "restoration": [{"method": "POST", "path": "/api/mode", "role": "audit", "body": {"mode": "connected"}, "expect_status": [200]}]
+    },
+    {
+      "row_id": "E1", "title": "Open views update after a re-check", "canvas_box": "10", "data_mode": "REAL", "server": "normal",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/runs/{t2_run}/reverify", "role": "em", "body": {}, "expect_status": [200],
+         "assert": [{"path": "authoritative_generation", "op": "gte", "value": 2}]}
+      ],
+      "restoration": []
+    },
+    {
+      "row_id": "O1", "title": "Offline mode makes no outside connections", "canvas_box": "1, 13", "data_mode": "SYNTHETIC", "server": "scenario",
+      "setup": [],
+      "calls": [
+        {"method": "POST", "path": "/api/mode", "role": "audit", "body": {"mode": "offline"}, "expect_status": [200]},
+        {"method": "GET", "path": "/api/mode", "role": "audit", "expect_status": [200], "assert": [{"path": "mode", "op": "eq", "value": "offline"}]}
+      ],
+      "restoration": [{"method": "POST", "path": "/api/mode", "role": "audit", "body": {"mode": "connected"}, "expect_status": [200]}]
+    }
+  ]
+}
