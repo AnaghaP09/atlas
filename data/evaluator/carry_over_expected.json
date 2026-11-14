@@ -1,0 +1,6 @@
+{
+  "description": "Expected carry-over forecast for the golden release close (golden case G08): issues that were open at the release and still open at the next checkpoint must be named; the quarantine tracker issues must not.",
+  "golden_case": "G08",
+  "required": ["18236", "18020", "15907"],
+  "excluded": ["17720", "17721", "17722", "17723"]
+}
