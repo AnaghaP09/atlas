@@ -7,6 +7,7 @@ import { ROLES, ROLE_LABELS, type Role } from "./identity/identity";
 import { Link, matchPath, useRouter } from "./lib/router";
 import { Approvals } from "./screens/Approvals";
 import { Containment } from "./screens/Containment";
+import { ActivityEvidence, Dashboard } from "./screens/Dashboard";
 import { Evaluation } from "./screens/Evaluation";
 import { Feedback } from "./screens/Feedback";
 import { Graph } from "./screens/Graph";
@@ -23,6 +24,7 @@ import { TaskDetail, TaskList } from "./screens/Tasks";
 
 const NAV: [string, string][] = [
   ["/", "Home"],
+  ["/dashboard", "Live dashboard"],
   ["/run-now", "Run now"],
   ["/schedules", "Automatic runs"],
   ["/runs", "Runs"],
@@ -41,6 +43,11 @@ const NAV: [string, string][] = [
 export function Route({ path, search }: { path: string; search: URLSearchParams }): ReactNode {
   const routes: [string, (p: Record<string, string>) => ReactNode][] = [
     ["/", () => <Home />],
+    ["/dashboard", () => <Dashboard />],
+    [
+      "/activity-evidence/:id",
+      (p) => <ActivityEvidence recordId={p.id ?? ""} project={search.get("project") ?? ""} version={search.get("version") ?? ""} />,
+    ],
     ["/run-now", () => <RunNow />],
     ["/schedules", () => <Schedules />],
     ["/runs", () => <RunList />],
@@ -64,6 +71,31 @@ export function Route({ path, search }: { path: string; search: URLSearchParams 
     if (params) return render(params);
   }
   return <p>Page not found. <Link to="/">Go home</Link></p>;
+}
+
+/** Demo identity: switch project with the same reset as a role switch. */
+function HeaderProjectSwitcher() {
+  const { identity } = useApp();
+  const { projectId } = useIdentity();
+  const list = useApi<{ projects: { id: string; name: string }[]; current: string | null }>(
+    identity.provider.mode === "header" ? "/api/projects" : null,
+  );
+  if (identity.provider.mode !== "header" || !list.data || list.data.projects.length < 2) return null;
+  const current = projectId ?? list.data.current ?? "";
+  return (
+    <label className="role-switcher">
+      <span className="muted">Project:</span>{" "}
+      <select
+        aria-label="Project"
+        value={current}
+        onChange={(e) => identity.transition({ projectId: e.target.value, principal: identity.snapshot.principal })}
+      >
+        {list.data.projects.map((p) => (
+          <option key={p.id} value={p.id}>{p.name || p.id}</option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 function RoleSwitcher() {
@@ -136,6 +168,7 @@ export function App() {
         <span className="muted">Agents: Scout investigates, Sentinel checks every claim.</span>
         <StatusLine />
         <RoleSwitcher />
+        <HeaderProjectSwitcher />
         <SessionBar />
       </header>
       <nav className="side" aria-label="Main">
