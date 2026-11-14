@@ -58,6 +58,10 @@ class DigestMismatch(RuntimeError):
 
 
 def default_cache_dir() -> Path:
+    """``ATLAS_IMAGE_CACHE`` if set (lets several checkouts share one cache), else data/local/images."""
+    shared = os.environ.get("ATLAS_IMAGE_CACHE")
+    if shared:
+        return Path(shared)
     return Path(os.environ.get("ATLAS_DATA_DIR", "data")) / "local" / "images"
 
 
