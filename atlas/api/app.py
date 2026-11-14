@@ -26,6 +26,9 @@ from atlas.scheduler import Dispatcher
 UI_DIST = Path(__file__).resolve().parents[2] / "ui" / "dist"
 CSP = ("default-src 'self'; connect-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; "
        "form-action 'none'; frame-ancestors 'none'; base-uri 'none'; object-src 'none'")
+# The sign-in page posts its form to this server, so only that page allows a same-origin form action.
+LOGIN_CSP = CSP.replace("form-action 'none'", "form-action 'self'")
+LOGIN_PATHS = ("/login", "/logout")
 
 
 def _error(status: int, error: str, reason: str, **extra: Any) -> JSONResponse:
@@ -77,7 +80,10 @@ def _work_allowed(services: Services):
     return check
 
 
-def create_app(services: Services) -> FastAPI:
+def create_app(services: Services, *, site: Any = None, sessions: Any = None,
+               extra_routers: tuple[Any, ...] = ()) -> FastAPI:
+    """Build the app. With ``site`` (sign-in mode) the site guard replaces the loopback host guard,
+    and ``extra_routers`` (the sign-in routes) are mounted before the UI fallback."""
     app = FastAPI(title="ATLAS API", version="1", openapi_url="/api/openapi.json", docs_url="/api/docs",
                   redoc_url=None)
     app.state.services = services
@@ -92,6 +98,9 @@ def create_app(services: Services) -> FastAPI:
     if services.is_scenario:
         api.include_router(routes_eval.scenario_router)
     app.include_router(api)
+    for extra in extra_routers:
+        app.include_router(extra)
+    app.state.sessions = sessions
 
     @app.exception_handler(IdentityError)
     async def _identity(_: Request, exc: IdentityError) -> JSONResponse:
@@ -127,7 +136,8 @@ def create_app(services: Services) -> FastAPI:
     async def _security_headers(request: Request, call_next: Any) -> Any:
         response = await call_next(request)
         if not request.url.path.startswith("/api"):
-            response.headers["Content-Security-Policy"] = CSP
+            path = request.url.path
+            response.headers["Content-Security-Policy"] = LOGIN_CSP if path in LOGIN_PATHS else CSP
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["Referrer-Policy"] = "no-referrer"
         return response
@@ -144,6 +154,11 @@ def create_app(services: Services) -> FastAPI:
             return FileResponse(index)
         return _error(404, "not_found", "the UI has not been built on this server")
 
+    if site is not None:
+        from atlas.site import SiteGuard
+
+        app.add_middleware(SiteGuard, site=site, sessions=sessions)
+        return app
     if services.ui_origins:
         app.add_middleware(CORSMiddleware, allow_origins=sorted(services.ui_origins), allow_methods=["GET", "POST"],
                            allow_headers=["X-Atlas-Role", "Idempotency-Key", "Last-Event-ID", "Content-Type"])

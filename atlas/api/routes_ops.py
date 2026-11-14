@@ -19,39 +19,78 @@ router = APIRouter()
 
 KEEPALIVE_SECONDS = 15.0
 POLL_SECONDS = 0.25
+SESSION_RECHECK_SECONDS = 15.0
 
 
 # ------------------------------------------------------------------ streams
 
+def _bind_session(request: Request) -> Any:
+    """In sign-in mode, bind the stream to the caller's session. Returns a handle or None.
+
+    The handle closes when the session signs out or expires; the stream then stops. Checking the
+    handle never extends the session's idle time."""
+    identity = getattr(request.app.state, "identity", None)
+    provider = getattr(identity, "provider", None)
+    sessions = getattr(request.app.state, "sessions", None)
+    if provider is None or sessions is None:
+        return None
+    session = provider.session_of(request, touch=False)
+    if session is None:
+        raise ApiError(401, "unauthorised", "sign-in required")
+    return sessions.bind_stream(session)
+
+
 async def _stream(request: Request, stream: str, last_event_id: str | None, run_id: str | None,
-                  follow: bool) -> AsyncIterator[str]:
+                  follow: bool, handle: Any = None) -> AsyncIterator[str]:
     principal = principal_of(request)
+
+    def alive() -> bool:
+        return handle is None or (not handle.closed and handle.still_valid())
+
     hub = services_of(request).hub
-    reset, events = hub.read(stream, principal, last_event_id, run_id)
-    if reset is not None:
-        yield encode(reset)
-    last = last_event_id if reset is None else None
-    for e in events:
-        yield encode(e)
-        last = e["event_id"]
-    if not follow:
-        return
-    since_keepalive = 0.0
-    seen_version = hub.version
-    while not await request.is_disconnected():
-        await asyncio.sleep(POLL_SECONDS)
-        since_keepalive += POLL_SECONDS
-        if hub.version != seen_version:
-            seen_version = hub.version
-            r, new = hub.read(stream, principal, last, run_id)
-            if r is not None:
-                yield encode(r)
-            for e in new:
-                yield encode(e)
-                last = e["event_id"]
-        if since_keepalive >= KEEPALIVE_SECONDS:
-            since_keepalive = 0.0
-            yield KEEPALIVE
+    try:
+        if not alive():
+            return
+        reset, events = hub.read(stream, principal, last_event_id, run_id)
+        if reset is not None:
+            yield encode(reset)
+        last = last_event_id if reset is None else None
+        for e in events:
+            if not alive():
+                return
+            yield encode(e)
+            last = e["event_id"]
+        if not follow:
+            return
+        since_keepalive = 0.0
+        since_recheck = 0.0
+        seen_version = hub.version
+        while not await request.is_disconnected():
+            await asyncio.sleep(POLL_SECONDS)
+            since_keepalive += POLL_SECONDS
+            since_recheck += POLL_SECONDS
+            if handle is not None and (handle.closed or since_recheck >= SESSION_RECHECK_SECONDS):
+                since_recheck = 0.0
+                if not alive():
+                    return
+            if hub.version != seen_version:
+                seen_version = hub.version
+                r, new = hub.read(stream, principal, last, run_id)
+                if r is not None:
+                    if not alive():
+                        return
+                    yield encode(r)
+                for e in new:
+                    if not alive():
+                        return
+                    yield encode(e)
+                    last = e["event_id"]
+            if since_keepalive >= KEEPALIVE_SECONDS:
+                since_keepalive = 0.0
+                yield KEEPALIVE
+    finally:
+        if handle is not None and not handle.closed:
+            handle.close()
 
 
 def _sse(gen: AsyncIterator[str]) -> StreamingResponse:
@@ -64,13 +103,13 @@ def run_stream(request: Request, run_id: str, follow: bool = Query(True),
                last_event_id: str | None = Header(None)):
     principal = principal_of(request)
     check_project(request, principal, run_view(request, run_id), "run")
-    return _sse(_stream(request, RUN_STREAM, last_event_id, run_id, follow))
+    return _sse(_stream(request, RUN_STREAM, last_event_id, run_id, follow, _bind_session(request)))
 
 
 @router.get("/notifications/stream")
 def notification_stream(request: Request, follow: bool = Query(True), last_event_id: str | None = Header(None)):
     principal_of(request)
-    return _sse(_stream(request, NOTIFICATION_STREAM, last_event_id, None, follow))
+    return _sse(_stream(request, NOTIFICATION_STREAM, last_event_id, None, follow, _bind_session(request)))
 
 
 # ------------------------------------------------------------------ notifications

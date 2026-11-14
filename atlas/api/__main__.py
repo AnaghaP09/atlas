@@ -22,7 +22,9 @@ from atlas.api.demo_vars import demo_variables
 from atlas.contracts import Mode
 
 
-def build_server(env_file: str, scenario: bool):
+def build_server(env_file: str, scenario: bool, *, site_identity: tuple | None = None):
+    """Build settings and the app. ``site_identity`` is ``(site, sessions, provider)`` for the HTTPS
+    site with built-in sign-in; without it the server uses the demo role header."""
     settings = load_settings(env_file)
     if scenario and not (settings.server_role == "scenario" and settings.demo_scenarios):
         raise ConfigError("the scenario server needs ATLAS_SERVER_ROLE=scenario and ATLAS_DEMO_SCENARIOS=on")
@@ -43,7 +45,15 @@ def build_server(env_file: str, scenario: bool):
         wiring.connect(services, settings)
     except ModuleNotFoundError:
         pass
-    return settings, create_app(services)
+    if site_identity is None:
+        return settings, create_app(services)
+    site, sessions, provider = site_identity
+    from atlas.identity import SessionResolver, login_router
+
+    services.identity = SessionResolver(provider)
+    return settings, create_app(services, site=site, sessions=sessions,
+                                extra_routers=(login_router(provider, note="Release data comes from public "
+                                                            "open-source projects."),))
 
 
 def main(argv: list[str] | None = None) -> int:
