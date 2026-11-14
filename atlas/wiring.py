@@ -419,6 +419,22 @@ class TaskPortAdapter:
         except KeyError:
             return None
 
+    def _approval_details(self, task: Any, generation: int | None = None) -> dict[str, Any]:
+        """What the approval screen shows: destination, base, generation, security decision and the
+        frozen change (hash and text) once the task is prepared."""
+        decision = (self.w.task_gate.revalidate(task.security_decision_id, self.w.clock())
+                    if task.security_decision_id else None)
+        artefact = dict(task.artefact or {})
+        return {"destination_repository": task.destination_repo, "base_ref": task.base_ref,
+                "base_commit": task.base_commit, "publication_ref": task.publication_ref,
+                "verification_generation": generation if generation is not None else task.generation,
+                "security_decision_id": task.security_decision_id,
+                "security_state": decision.state.value if decision else None,
+                "security_valid_until": decision.valid_until.isoformat() if decision and decision.valid_until else None,
+                "diff_hash": artefact.get("diff_sha256") or artefact.get("public_diff_sha256"),
+                "artefact_hash": artefact.get("tree_sha256") or artefact.get("artefact_sha256"),
+                "diff": artefact.get("public_diff") or artefact.get("diff")}
+
     def _pending(self) -> list[dict[str, Any]]:
         """Approvals a person can give now (one row per task waiting for Approval A or B)."""
         rows = []
@@ -428,7 +444,8 @@ class TaskPortAdapter:
             if kind:
                 rows.append({"approval_id": f"pending-{kind}-{t.task_id}", "task_id": t.task_id, "kind": kind,
                              "state": "requested", "generation": t.generation, "expires_at": None,
-                             "project_id": self._project(t.run_id), "required_scopes": ["internal"]})
+                             "project_id": self._project(t.run_id), "required_scopes": ["internal"],
+                             **self._approval_details(t)})
         return rows
 
     def approvals(self, project_id: str | None = None) -> list[Mapping[str, Any]]:
@@ -437,7 +454,8 @@ class TaskPortAdapter:
             for r in self.w.approvals.rows(t.task_id):
                 granted.append({"approval_id": r["approval_id"], "task_id": r["task_id"], "kind": r["kind"],
                                 "state": r["status"], "generation": r["generation"], "expires_at": r["expires_at"],
-                                "project_id": self._project(t.run_id), "required_scopes": ["internal"]})
+                                "project_id": self._project(t.run_id), "required_scopes": ["internal"],
+                                **self._approval_details(t, r["generation"])})
         rows = self._pending() + granted
         return [r for r in rows if project_id is None or r.get("project_id") == project_id]
 
@@ -503,8 +521,11 @@ class TaskPortAdapter:
         return {**out, "task": self._view(task_id)}
 
     def scorecard(self, project_id: str | None = None) -> Mapping[str, Any]:
-        return {"rows": self.w.scorecard.latest_rows(), "net_contribution": "unavailable",
-                "baseline": "SYNTHETIC", "required_scopes": ["internal"]}
+        rows = [{**dict(r), "net_contribution": dict(r).get("net_contribution", "unavailable"),
+                 "data_mode": dict(r).get("data_mode", "REAL"), "range": dict(r).get("range")}
+                for r in self.w.scorecard.latest_rows()]
+        return {"rows": rows, "net_contribution": "unavailable", "baseline": "SYNTHETIC",
+                "data_mode": "SYNTHETIC", "required_scopes": ["internal"]}
 
     def tasks_for_run(self, run_id: str) -> list[Mapping[str, Any]]:
         return self.w.disposition.tasks_for_run(run_id)
@@ -528,15 +549,23 @@ class ContainmentPortAdapter:
 
     def _incident(self, incident_id: str) -> dict[str, Any]:
         out = self.store.incident(incident_id)
-        out["switch"] = str(out["row"])
+        out["switch"] = out["switch_id"] = str(out["row"])
         out["open"] = out["status"] == "tripped"
+        out["state"] = "open" if out["open"] else "resumed"
+        out["trigger_event"] = out.get("trigger")
+        out["recorded_prerequisites"] = [
+            {"kind": p.get("kind"), "reference": json.loads(p.get("detail_json") or "{}").get("reference")}
+            for p in out.get("prerequisites", [])]
         out["required_scopes"] = ["internal"]
         return out
 
     def state(self) -> Mapping[str, Any]:
         incidents = [self._incident(r["incident_id"]) for r in self.store.open_incidents()]
-        return {"switches": [{"switch": str(i["row"]), "reason": i["trigger"], "blocks": i["blocks"]} for i in incidents],
-                "incidents": incidents}
+        by_row = {i["row"]: i for i in incidents}
+        switches = [{"switch_id": str(row), "switch": str(row), "title": rule.trigger,
+                     "state": "tripped" if row in by_row else "ok", "blocks": list(rule.blocks),
+                     "incident": by_row.get(row)} for row, rule in sorted(RULES.items())]
+        return {"switches": switches, "incidents": incidents}
 
     def switch(self, switch_id: str) -> Mapping[str, Any] | None:
         row = self._row(switch_id)
@@ -737,6 +766,14 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                                                                settings.model_provider != "anthropic")
     services.staged = tuple(services.staged) + (
         "evidence data (" + NOT_CONNECTED_DATA + ")", "publication and corrections (" + NOT_CONNECTED_PUBLICATION + ")")
+    variables = dict(getattr(services, "demo_variables", {}) or {})
+    if getattr(settings, "peer_ui_url", ""):
+        variables.setdefault("peer_ui_url", settings.peer_ui_url)
+    if getattr(settings, "scenario_url", ""):
+        variables.setdefault("scenario_url", settings.scenario_url)
+    if getattr(settings, "base_url", ""):
+        variables.setdefault("base_url", settings.base_url)
+    services.demo_variables = variables
     services.wiring = w
     return w
 

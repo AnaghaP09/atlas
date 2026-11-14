@@ -89,6 +89,13 @@ def notifications(request: Request, severity: str | None = Query(None), kind: st
     for n in s.notifier.in_app(principal):
         n = dict(n)
         n["status"] = "resolved" if n["id"] in resolved else n.get("status", "open")
+        content = n.get("content") if isinstance(n.get("content"), dict) else {}
+        subject = str(n.get("subject_id") or "")
+        n.update(notification_id=n["id"], state=n["status"], created_at=n.get("created"),
+                 message=str(content.get("text") or n.get("event_type")),
+                 acknowledged=n["status"] in ("acknowledged", "resolved"), resolved=n["status"] == "resolved",
+                 run_id=subject if subject.startswith("run-") else None,
+                 task_id=subject if subject.startswith("task-") else None)
         if severity and n["severity"] != severity or kind and n["kind"] != kind:
             continue
         if state and n["status"] != state or subject_id and n["subject_id"] != subject_id:

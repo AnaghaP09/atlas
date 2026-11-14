@@ -144,6 +144,8 @@ def test_health_catalog_question_notifications_and_task_path(tmp_path) -> None:
 
     pending_b = next(a for a in client.get("/api/approvals", headers=H("em")).json()["approvals"]
                      if a["task_id"] == task["task_id"] and a["kind"] == "B")
+    assert pending_b["diff_hash"] and pending_b["destination_repository"] == "example/target"
+    assert pending_b["verification_generation"] == 1 and pending_b["security_valid_until"]
     b = client.post(f"/api/approvals/{pending_b['approval_id']}/decision", json={"decision": "approve", "review_minutes": 3},
                     headers=H("em", "k-b"))
     assert b.status_code == 409, b.text

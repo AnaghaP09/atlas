@@ -19,7 +19,28 @@ def _evaluation_view(ev: dict[str, Any]) -> dict[str, Any]:
     """Evidence excerpts inside an evaluation keep their scopes, so projection withholds them per reader."""
     out = dict(ev)
     out.setdefault("required_scopes", ["internal"])
+    gates = out.get("gates")
+    if isinstance(gates, dict):
+        out["gates_by_id"] = gates
+        out["gates"] = [_gate_view(gid, g) for gid, g in gates.items()]
+        limits = [g.get("limitation") for g in gates.values() if isinstance(g, dict) and g.get("limitation")]
+        if limits:
+            out.setdefault("proxy_limitation", limits[0])
     return out
+
+
+def _gate_view(gate_id: str, g: Any) -> dict[str, Any]:
+    g = dict(g) if isinstance(g, dict) else {"status": str(g)}
+    view = {**g, "gate_id": gate_id, "status": g.get("status", "unevaluated")}
+    if g.get("failures"):
+        view["summary"] = "; ".join(str(f) for f in g["failures"])
+    if g.get("limitation"):
+        view["proxy_note"] = g["limitation"]
+    if isinstance(g.get("per_close"), list):
+        view["per_close"] = [{**c, "close": c.get("close", c.get("release"))} for c in g["per_close"]]
+    if "pooled" not in view and isinstance(g.get("counts"), dict) and "recall" in g["counts"]:
+        view["pooled"] = g["counts"]
+    return view
 
 
 @router.get("/evaluations")
