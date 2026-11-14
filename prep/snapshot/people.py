@@ -35,14 +35,19 @@ class People:
         if not salt_path.exists():
             salt_path.write_text(secrets.token_hex(16), encoding="utf-8")
         self.salt = salt_path.read_text(encoding="utf-8").strip()
-        self.handles: set[str] = set()
+        self.handles: set[str] = set()      # accounts seen as authors (real people)
+        self.mentioned: set[str] = set()    # names seen only after "@" in text
 
-    def pseudonym(self, handle: str | None) -> str | None:
+    def pseudonym(self, handle: str | None, *, mention: bool = False) -> str | None:
         if not handle:
             return handle
         if handle.lower() in NON_PERSON or handle.lower().endswith("[bot]"):
             return handle
-        self.handles.add(handle)
+        if mention:
+            if handle not in self.handles:
+                self.mentioned.add(handle)
+        else:
+            self.handles.add(handle)
         digest = hashlib.sha256(f"{self.salt}:{handle.lower()}".encode()).hexdigest()[:8]
         return f"person-{digest}"
 
@@ -63,7 +68,7 @@ class People:
             h = m.group(1)
             if h.lower() in NOT_HANDLES or h.lower() in NON_PERSON:
                 return m.group(0)
-            return "@" + (self.pseudonym(h) or h)
+            return "@" + (self.pseudonym(h, mention=True) or h)
 
         text = MENTION.sub(mention, text)
         for h in sorted(self.handles, key=len, reverse=True):
@@ -86,9 +91,6 @@ class People:
 
     def write_handles_file(self) -> Path:
         path = self.local / "handles.txt"
-        existing = set()
-        if path.exists():
-            existing = {h.strip() for h in path.read_text(encoding="utf-8").splitlines() if h.strip() and not h.startswith("#")}
-        allh = sorted((existing | self.handles) - {""}, key=str.lower)
+        allh = sorted(self.handles - {""}, key=str.lower)
         path.write_text("# Handles seen in raw data; used only by the public check. Never committed.\n" + "\n".join(allh) + "\n", encoding="utf-8")
         return path
