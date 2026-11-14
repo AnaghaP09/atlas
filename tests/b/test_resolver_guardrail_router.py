@@ -60,7 +60,8 @@ def test_flagged_record_stays_data(run_context) -> None:
     store.put(make_record("log1", "ci", text), "ci-adapter")
     res = EvidenceResolver(store, run_context, flagger=flag_instructions)
     r = res.get("ci", "log1")
-    assert r.flags and r.content == text  # flagged, still data
+    assert r.flags and r.content == text  # flagged, still data in the store
+    assert r.status == "quarantined" and r.as_data()["content"] is None  # not handed to an agent
 
 
 def test_injection_classifier_fails_closed() -> None:

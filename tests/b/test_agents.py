@@ -49,6 +49,37 @@ def test_rejected_cause_is_removed_from_every_bound_field() -> None:
     assert a["root_cause"] is not None  # input untouched
 
 
+def test_classification_keeps_minimum_support_when_one_supporting_claim_is_rejected() -> None:
+    a = artefact([claim("c1"), claim("c2", "rejected"), claim("c3"), claim("c4")])
+    a["classification"] = {"value": "CODE_DEFECT", "claim_ids": ["c1", "c2"], "required_scopes": ["public"]}
+    a["action"] = {"value": "ESCALATE_DECISION", "claim_ids": ["c1", "c2"], "required_scopes": ["public"]}
+    v = build_verified(a).artefact
+    assert v["classification"] == {"value": "CODE_DEFECT", "claim_ids": ["c1"], "required_scopes": ["public"]}
+    assert v["action"]["value"] == "ESCALATE_DECISION" and v["action"]["claim_ids"] == ["c1"]
+    assert v["root_cause"] is not None and v["findings"] == []  # the finding bound to c2 is gone
+
+
+def test_classification_is_removed_when_no_supporting_claim_is_left() -> None:
+    a = artefact([claim("c1", "rejected"), claim("c2", "contradicted"), claim("c3"), claim("c4")])
+    a["classification"] = {"value": "CODE_DEFECT", "claim_ids": ["c1", "c2"], "required_scopes": ["public"]}
+    a["action"] = {"value": "ASSIGN_DEVELOPER", "claim_ids": ["c3"], "required_scopes": ["public"]}
+    v = build_verified(a).artefact
+    assert v["classification"]["value"] is None
+    assert v["action"]["value"] is None  # the action follows the classification
+
+
+def test_coding_action_needs_every_claim_and_the_root_cause() -> None:
+    a = artefact([claim("c1"), claim("c2"), claim("c3", "rejected"), claim("c4")])
+    v = build_verified(a).artefact
+    assert v["classification"]["value"] == "DEPENDENCY"
+    assert v["action"]["value"] is None and v["evidence_recommendation"] is None
+    b = artefact([claim("c1"), claim("c2"), claim("c3"), claim("c5", "rejected"), claim("c4")])
+    b["root_cause"] = bound("cause", ["c5"])
+    w = build_verified(b).artefact
+    assert w["root_cause"] is None and w["classification"]["value"] == "DEPENDENCY"
+    assert w["action"]["value"] is None
+
+
 def test_three_hop_chain_pruned_even_when_later_claims_supported() -> None:
     claims = [claim("c1", "rejected"), claim("c2", deps=["c1"]), claim("c3", deps=["c2"]), claim("c4")]
     assert removal_closure(claims) == {"c1", "c2", "c3"}

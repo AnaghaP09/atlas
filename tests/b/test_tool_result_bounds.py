@@ -40,3 +40,43 @@ def test_scout_sees_a_cut_record_and_the_prompt_stays_small(run_context) -> None
     assert biggest < CONVERSATION_MAX_CHARS + RESULT_MAX_TOTAL_CHARS + 10_000
     assert r.status == "partial" and r.budget_exhausted in ("context", "steps", "tool_calls")
     assert "content cut" in json.dumps(out.calls[1][1]["messages"])
+
+
+def test_a_single_record_may_use_the_whole_result() -> None:
+    out, notes = bound_result([{"record_id": "r1", "content": "x" * 30_000}])
+    assert 20_000 <= len(out[0]["content"]) <= 24_000
+    assert any("read_record" in n for n in notes)
+    small, no_notes = bound_result([{"record_id": "r1", "content": "x" * 15_000}])
+    assert len(small[0]["content"]) == 15_000 and not no_notes
+
+
+def test_log_excerpt_filters_the_log_field_of_a_stored_job_record() -> None:
+    import json
+
+    from atlas.agents.investigator import _log_excerpt
+
+    log = "\n".join(["setup step ok"] * 500 + ["FAIL: [sig-network] test timed out"] + ["cleanup ok"] * 500)
+    doc = json.loads(_log_excerpt(json.dumps({"job": "lane-a", "result": "FAILURE", "log": log}), None))
+    assert doc["job"] == "lane-a" and doc["log_lines_total"] == 1001
+    assert doc["log_excerpt"] == "FAIL: [sig-network] test timed out" and "log" not in doc
+    only = json.loads(_log_excerpt(json.dumps({"job": "lane-a", "log": log}), "cleanup"))
+    assert only["log_excerpt"].startswith("cleanup ok")
+    assert _log_excerpt("plain\nFAIL here", None) == "FAIL here"
+
+
+def test_read_record_returns_a_later_part_of_a_record_already_read(run_context) -> None:
+    from atlas.agents.investigator import build_tools
+    from atlas.agents.resolver import EvidenceResolver
+    from tests.b.helpers import make_record
+    from tests.fakes import InMemoryStore
+
+    store = InMemoryStore()
+    store.snapshot_for_write = run_context.snapshot_id
+    store.put(make_record("log9", "ci", "a" * 100 + "TAIL"), "ci-adapter")
+    res = EvidenceResolver(store, run_context)
+    tools = build_tools()
+    assert tools["read_record"].fn(res, {"record_id": "log9", "offset": "100"}) == []  # not read yet
+    first = res.get("ci", "log9")
+    more = tools["read_record"].fn(res, {"record_id": first.record_id, "offset": "100"})
+    assert more[0].content.endswith("TAIL") and "from character 100" in more[0].content
+    assert res.by_id(first.record_id).content == "a" * 100 + "TAIL"  # the stored record is unchanged

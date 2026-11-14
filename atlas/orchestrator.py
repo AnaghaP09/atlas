@@ -24,7 +24,7 @@ from atlas.agents.investigator import Budget, Investigator, build_tools
 from atlas.agents.resolver import EvidenceResolver
 from atlas.agents.verifier import Verifier, VerifierFailed
 from atlas.contracts import RunContext, RunMode, StartedBy
-from atlas.guardrail import InjectionClassifier, flag_instructions, validate_trigger
+from atlas.guardrail import InjectionClassifier, InjectionJudge, validate_trigger
 from atlas.hitl import HumanQueue, triggers_for_run
 from atlas.outbound import PayloadWithheld
 from atlas.router import BACKLOG_ALERT, route
@@ -154,19 +154,16 @@ class Orchestrator:
         self.d = deps
         self.runs = runs or RunStore()
         self._run_project: dict[str, str] = {}
+        self._judge_cache: dict[str, dict[str, Any]] = {}  # classifier decisions by content hash
 
     # ------------------------------------------------------------------ helpers
 
     def _resolver(self, ctx: RunContext) -> EvidenceResolver:
         classifier = InjectionClassifier(self.d.outbound) if self.d.use_classifier else None
-
-        def flagger(text: str) -> list[str]:
-            flags = flag_instructions(text)
-            if not flags and classifier and classifier.is_instruction_like(text):
-                flags = ["classifier"]
-            return flags
-
-        return EvidenceResolver(self.d.store, ctx, content_of=self.d.content_of, flagger=flagger)
+        judge = InjectionJudge(classifier, self._judge_cache)
+        resolver = EvidenceResolver(self.d.store, ctx, content_of=self.d.content_of, flagger=judge.flagger)
+        resolver.judge = judge
+        return resolver
 
     def _event(self, name: str, run_id: str, gen: int = 1, agent: str | None = None, **payload: Any) -> None:
         self.d.events.emit(name, run_id=run_id, authoritative_generation=gen, agent=agent, payload=payload)

@@ -142,7 +142,9 @@ def test_injection_holds_for_human(run_context) -> None:
     orch, deps = build(run_context, s, records=r)
     out = orch.run("run-3", run_context, TRIGGER, ONCALL)
     assert out["injection_detected"] and out["action"]["value"] == "REJECT"
-    assert out["safety_disposition"] == "HOLD_FOR_HUMAN" and out["evidence_recommendation"] == "DELEGATE_TO_CODING_AGENT"
+    assert out["safety_disposition"] == "HOLD_FOR_HUMAN"
+    # The cause cites the quarantined record, so it cannot stand; nothing is recommended.
+    assert out["classification"]["value"] == "UNKNOWN" and out["evidence_recommendation"] is None
     assert any(e["trigger"] == "injection_detected" for e in deps.queue.entries())
     assert any(n["event_type"] == "injection.detected" for n in deps.notifier.records())
 
