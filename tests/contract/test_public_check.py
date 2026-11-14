@@ -149,3 +149,13 @@ def test_data_files_skip_entropy_and_label_checks_but_keep_personal_checks() -> 
 def test_numbers_are_not_matched_as_handles() -> None:
     assert not public_check.scan_text("see pull request #30787", "d", data=True, handles=["30787"])
     assert public_check.scan_text("thanks user30787", "d", data=True, handles=["user30787"])
+
+
+@pytest.mark.parametrize("text", ["as the " + "can" + "vas says", "see " + "bo" + "x 14 for the bar"])
+def test_planning_words_detected(text: str) -> None:
+    assert public_check.scan_text(text, "f")
+
+
+def test_planning_words_allowed_in_data_and_lock_files() -> None:
+    assert not public_check.scan_text("the " + "can" + "vas", "data/x", data=True)
+    assert not public_check.scan_text('"' + "can" + 'vas": "^3.0.0"', "package-lock.json", markers=False)

@@ -181,7 +181,7 @@ export function forceStep(st: ForceState, iterations: number) {
   }
 }
 
-/** Turns the force state into placed nodes. Linked components fill the canvas (scaled on the 3rd to 97th
+/** Turns the force state into placed nodes. Linked components fill the drawing area (scaled on the 3rd to 97th
  * percentile so a few stragglers cannot shrink the picture); components with no links sit in a row at the bottom. */
 export function forceResult(st: ForceState): Layout {
   const n = st.ids.length;
@@ -260,7 +260,7 @@ interface Box {
 
 type LinkMode = "key" | "all" | "none";
 
-function GraphCanvas({ nodes, edges, limitation, initialFocus }: { nodes: GNode[]; edges: GEdge[]; limitation?: string; initialFocus?: string | null }) {
+function GraphDrawing({ nodes, edges, limitation, initialFocus }: { nodes: GNode[]; edges: GEdge[]; limitation?: string; initialFocus?: string | null }) {
   const [layout, setLayout] = useState<Layout | null>(null);
   const [box, setBox] = useState<Box | null>(null);
   const [progress, setProgress] = useState(0);
@@ -601,7 +601,7 @@ function GraphPicture({ snapshotId, focus }: { snapshotId: string; focus: string
           { value: "issues", label: "Open issues", count: issues },
         ]}
       />
-      {view === "graph" ? <GraphCanvas nodes={data.nodes} edges={data.edges} limitation={g.data?.limitation} initialFocus={focus} /> : null}
+      {view === "graph" ? <GraphDrawing nodes={data.nodes} edges={data.edges} limitation={g.data?.limitation} initialFocus={focus} /> : null}
       {view === "components" ? <ComponentTable nodes={data.nodes} edges={data.edges} /> : null}
       {view === "issues" ? <IssueTable nodes={data.nodes} /> : null}
     </>

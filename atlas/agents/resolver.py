@@ -15,7 +15,7 @@ from typing import Any, Callable, Mapping
 
 from atlas.contracts import Record, RunContext, Store
 
-# Maximum evidence age per source (canvas: inputs and data). ``None`` means the source has no age
+# Maximum evidence age per source (inputs and data). ``None`` means the source has no age
 # limit for a frozen investigation (commits are immutable; CI runs are frozen per investigation).
 MAX_AGE: dict[str, timedelta | None] = {
     "issues": timedelta(hours=1),

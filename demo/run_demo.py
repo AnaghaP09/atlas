@@ -154,7 +154,7 @@ class Runner:
 
     def run_row(self, row: Mapping[str, Any]) -> None:
         server = row["server"]
-        self.log(f"[{row['row_id']}] {row['title']} (canvas box {row['canvas_box']}, {row['data_mode']}, {server} server)")
+        self.log(f"[{row['row_id']}] {row['title']} (shows: {row.get('shows', '')}; {row['data_mode']}, {server} server)")
         for call in list(row.get("setup", [])) + list(row.get("calls", [])):
             self._call(server, call)
         for call in row.get("restoration", []):

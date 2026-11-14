@@ -102,9 +102,9 @@ function RowCard({ row, thisServer, vars, setVars }: { row: ManifestRow; thisSer
   return (
     <article className="card" data-testid={`row-${row.row_id}`}>
       <h3>
-        {row.row_id}. {row.title} <DataModeBadge mode={row.data_mode} />
+        {row.title} <DataModeBadge mode={row.data_mode} />
       </h3>
-      <p className="muted">Shows canvas box {row.canvas_box}. Runs on the {row.server} server.</p>
+      <p className="muted">{row.shows}</p>
       {onOtherServer ? (
         peer ? (
           <a href={peer} rel="noopener noreferrer" referrerPolicy="no-referrer">Continue on the {row.server} server</a>

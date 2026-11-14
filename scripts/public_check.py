@@ -44,6 +44,8 @@ INTERNAL_MARKERS = [
     ("review finding id", re.compile(r"\b[A-Z]{1,2}[0-9]?-?R?[0-9]+-[0-9]{2}\b")),
     ("planning term", re.compile(r"\bsub" + r"-plan\b", re.IGNORECASE)),
     ("review tool name", re.compile(r"\bCo" + r"dex\b")),
+    ("planning document word", re.compile(r"\bcan" + r"vas\b", re.IGNORECASE)),
+    ("planning box reference", re.compile(r"\bbo" + r"x [0-9]+\b", re.IGNORECASE)),
 ]
 
 # Built from parts so this file does not match itself. Git author metadata is never scanned;
@@ -68,6 +70,8 @@ ENTROPY_THRESHOLD = 4.5
 
 # Lock files carry long hashes by design; they are checked for token formats only.
 ENTROPY_EXEMPT = {"requirements.txt", "requirements-dev.txt", "package-lock.json"}
+# Third-party lock files name other projects' packages; they are not checked for internal words.
+MARKER_EXEMPT = {"package-lock.json"}
 BINARY_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".ico", ".pdf", ".zip", ".gz", ".sqlite", ".woff", ".woff2"}
 
 
@@ -96,7 +100,7 @@ def is_data_path(rel: str) -> bool:
 
 
 def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str] | frozenset[str] | None = None,
-              data: bool = False) -> list[str]:
+              data: bool = False, markers: bool = True) -> list[str]:
     hits: list[str] = []
     handle_set = frozenset(h.casefold() for h in (handles or ()))
     person_checks = PERSONAL_NAMES + REVIEW_WORDS + ([] if data else MACHINE_SPECIFIC)
@@ -108,7 +112,7 @@ def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str]
         for match in EMAIL.finditer(line):
             if match.group(1).lower() not in ALLOWED_EMAIL_DOMAINS:
                 hits.append(f"{where}: email address")
-        if not data:
+        if not data and markers:
             for name, pattern in INTERNAL_MARKERS:
                 if pattern.search(line):
                     hits.append(f"{where}: internal marker ({name})")
@@ -151,7 +155,7 @@ def scan_paths(paths: list[Path]) -> list[str]:
             continue
         rel = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path)
         hits += scan_text(text, rel, entropy=path.name not in ENTROPY_EXEMPT, handles=handles,
-                          data=is_data_path(rel))
+                          data=is_data_path(rel), markers=path.name not in MARKER_EXEMPT)
     return hits
 
 

@@ -77,7 +77,7 @@ const INVALIDATING = new Set([
   "approval.voided",
 ]);
 
-/** The canvas limits for one investigation. */
+/** The limits for one investigation. */
 export const LIMITS = { steps: 30, tool_calls: 60, seconds: 15 * 60 };
 
 interface Cost {

@@ -11,18 +11,18 @@ const pct = (v?: number) => (typeof v === "number" ? `${Math.round(v * 100)}%` :
 /** What each check measures, in plain words. */
 const GATE_TITLES: Record<string, string> = {
   "G-1": "Golden examples",
-  "G-2": "Sentinel catches planted wrong findings",
-  "G-3": "Every published claim is supported",
-  "G-4": "Hidden instructions are caught",
-  "G-5": "Step, tool and time limits",
-  "G-6": "No unexpected outside connections",
-  "G-7": "Cost and time measured",
-  "G-8": "Next-release carry-over forecast",
-  "G-9": "One coding-agent fix verified",
+  "G-2": "Verifier catches planted errors",
+  "G-3": "Every claim supported",
+  "G-4": "Injection handling",
+  "G-5": "Loop limits and speed",
+  "G-6": "Outbound connections",
+  "G-7": "Cost measurement",
+  "G-8": "Carry-over forecast",
+  "G-9": "Coding task accepted",
   "G-10": "Stage proofs",
-  "G-11": "Restricted records stay restricted",
-  "G-12": "Kill switches trip and resume correctly",
-  "G-13": "Forecast accuracy over four releases",
+  "G-11": "Access control",
+  "G-12": "Kill switches",
+  "G-13": "Forecast accuracy (proxy blockers)",
 };
 
 function GateStatus({ gate }: { gate: Gate }) {
@@ -36,8 +36,7 @@ export function GateRow({ gate }: { gate: Gate }) {
   return (
     <article className={`gate ${gate.status}${isForecast ? " gate-wide" : ""}`} data-testid={`gate-${gate.gate_id}`}>
       <header className="gate-head">
-        <span className="gate-id">{gate.gate_id}</span>
-        <strong>{GATE_TITLES[gate.gate_id] ?? ""}</strong>
+        <strong>{GATE_TITLES[gate.gate_id] ?? "Quality check"}</strong>
         <span className="end"><GateStatus gate={gate} /></span>
       </header>
       {gate.summary ? <p className="muted">{gate.summary}</p> : null}
