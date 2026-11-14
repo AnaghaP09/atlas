@@ -1,33 +1,40 @@
 # Security policy
 
-## Reporting a vulnerability
+## Report a security problem
 
-Please report security problems privately through GitHub: open the repository's **Security**
-tab and choose **Report a vulnerability** to create a private security advisory. Do not open a
-public issue for a vulnerability.
+Report security problems privately through GitHub:
 
-Include what you found, how to reproduce it, and what an attacker could do with it. We will
-reply through the advisory.
+1. Open the repository's **Security** tab.
+2. Choose **Report a vulnerability**. This creates a private security advisory.
 
-## Security model
+Do not open a public issue for a security problem.
 
-ATLAS is still being built; these are the controls it is designed and tested to enforce.
+In your report, say what you found and how to repeat it. Also say what an attacker could do with
+it. We reply through the advisory.
 
-- **Local only.** In this build the server listens only on loopback addresses and refuses to
-  start on any other address while the demo role switcher is the identity.
-- **Host and Origin checks.** Requests whose `Host` header is not an exact loopback value, or
-  whose browser `Origin` is not on the allow-list, are rejected before routing. This blocks web
-  pages that try to reach the local server through DNS rebinding.
-- **Retrieved text is data.** Instructions found in logs, tickets or commit messages are never
-  followed; tool allow-lists are enforced in code, outside the model.
-- **Redaction.** One outbound boundary removes secrets, host names and personal data before any
-  model call and withholds a payload it cannot classify.
-- **Sandboxed execution.** The coding agent's changes are built and tested in a container with
-  no network, a read-only file system, no secrets and a non-root user.
-- **Approvals.** Every code change needs two approvals bound to the exact diff, the destination
-  and the security decision; both expire and are re-checked before every write.
-- **Containment.** Safety violations trip switches that stop model calls, preparation or
-  publication until incident-specific conditions are met.
-- **No secrets in the repository.** Configuration lives in a git-ignored `.env` file.
-  Dependencies are locked with hashes and audited, and a check for secrets and personal data
-  runs before every push.
+## How ATLAS protects itself
+
+ATLAS is still being built. This list describes the controls that ATLAS is designed and tested
+to enforce.
+
+- **Local only.** In this build, the server listens only on local addresses. It refuses to start
+  on any other address while the demo role switcher is in use.
+- **Host and Origin checks.** The server rejects a request unless its `Host` header is an exact
+  local address. It also rejects a browser `Origin` that is not on the allowed list. These checks
+  run before any other handling. They stop web pages that try to reach the local server through
+  DNS rebinding.
+- **Retrieved text is data.** ATLAS never follows instructions that it finds in logs, tickets or
+  commit messages. Code outside the AI model controls which tools an agent may use.
+- **Removal of sensitive data.** All data sent to an AI model passes one point. That point
+  removes secrets, server names and personal data. If it cannot classify part of a message, it
+  does not send the message.
+- **Isolated code changes.** ATLAS builds and tests a coding agent's change inside a container.
+  The container has no network, a read-only file system, no secrets and no administrator rights.
+- **Approvals.** Every code change needs two approvals. Each approval is tied to the exact
+  change, the target repository and the security decision. Approvals expire. ATLAS checks them
+  again before every write.
+- **Containment.** A safety violation trips a switch. The switch stops AI calls, change
+  preparation or publishing until the conditions for that incident are met.
+- **No secrets in the repository.** Settings live in a `.env` file that Git ignores. The
+  dependency files list exact versions with checksums, and ATLAS audits them for known flaws. A
+  check for secrets and personal data runs before every push.

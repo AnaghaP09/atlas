@@ -1,51 +1,64 @@
 # ATLAS
 
-ATLAS is an engineering control plane for teams that ship software on release trains. At the
-close of each release it forecasts which technical debt and open issues the next release will
-inherit, proposes who should take each item (a developer, a sandboxed coding agent, or a human
-decision), and investigates failures that happen mid-release, citing the evidence behind every
-claim it makes.
+ATLAS helps software teams plan their next release. Teams that ship on a fixed release schedule
+can use it.
 
-ATLAS recommends; people decide. It never sets scope, staffing or dates, never writes outside a
-sandbox branch, and never states anything without a citation.
+At the end of each release, ATLAS looks at the open problems. It lists the technical debt and
+issues that the next release is likely to inherit. Technical debt is work that a team put off
+and must do later. For each item, ATLAS suggests who should take it: a developer, a coding
+agent, or a person who must make a decision. A coding agent is a program that writes code
+changes.
 
-## Who it is for
+During a release, ATLAS also looks into failures. It finds the likely cause and shows the
+evidence for it.
 
-| Reader | Report ATLAS gives them | Decision it supports |
+ATLAS makes suggestions. People make the decisions. ATLAS never sets scope, staffing or dates.
+It never changes code outside a separate sandbox branch. It never states a fact without a
+citation. A citation is a link to the record that supports the fact.
+
+## Who uses it
+
+| Role | What ATLAS gives them | What they decide |
 |---|---|---|
-| Product manager | Next-release debt and risk forecast | Which debt enters the release, the debt budget, scope cuts and the date |
-| Engineering manager | Allocation plan across developers and coding agents; investigation assessments | What to delegate, what to assign, where to add people |
-| Solution architect | Architecture hotspots and debt-acceptance report | Which debt to accept with a recorded reason, and which to fix |
+| Product manager | A forecast of the debt and risks in the next release | Which debt goes into the release, how much time to spend on debt, what to cut, and the release date |
+| Engineering manager | A plan that splits the work between developers and coding agents, and reports on failures | What to hand to a coding agent, what to give to a developer, and where more people are needed |
+| Solution architect | A report on the parts of the system with the most debt | Which debt to accept, with a written reason, and which debt to fix |
 
-Security engineers, on-call engineers and component owners also receive security-gate reports,
-investigation hand-offs and notifications.
+Security engineers, on-call engineers and component owners also get reports and notifications.
 
 ## How it works
 
-1. **Triggers.** A run starts automatically (a new release tag, a new failure, a nightly sweep)
-   or manually from the UI. Both paths share the same guardrails, budgets and audit record.
-2. **Evidence.** Connectors read the issue tracker, git, CI, a security scanner, an architecture
-   graph and, in the demo, synthetic cluster, telemetry and capacity data. Every run reads one
-   frozen snapshot, so results can be reproduced.
-3. **Two AI agents, Scout and Sentinel.** These are software agents, not people.
-   - **Scout**, the investigator, reads the evidence, decides what to read next from what it has
-     just read, finds the likely cause of a failure, and builds the cited findings behind the
-     next-release debt forecast.
-   - **Sentinel**, the verifier, independently checks every claim against the records it cites
-     before anything is published. It never sees Scout's reasoning, so it cannot simply agree
-     with it.
+1. **A run starts.** A run is one piece of ATLAS work, such as one investigation. A run starts
+   on its own when a new release tag appears, when a new failure appears, or each night. A
+   person can also start a run from the user interface. Both kinds of run follow the same rules,
+   limits and audit record.
+2. **ATLAS collects evidence.** Connectors read the issue tracker, the Git history, the test
+   system, a security scanner and a map of the system's parts. A connector is a small program
+   that reads one source. In the demo, cluster events, error rates and staffing data are made-up
+   data. Each run reads one frozen copy of the data, called a snapshot. You can repeat a run and
+   get the same inputs.
+3. **Two AI agents do the reasoning.** An agent is a program that uses an AI model to decide
+   its next step. Scout and Sentinel are software agents, not people.
+   - **Scout** is the investigator. It reads the evidence and chooses what to read next. It
+     finds the likely cause of a failure. It writes the findings behind the debt forecast, and
+     cites a record for each one.
+   - **Sentinel** is the verifier. It checks each claim against the records that the claim
+     cites. It does this before anything is published. Sentinel never sees Scout's reasoning,
+     so it cannot simply agree with Scout.
 
-   Anything resting on a claim Sentinel rejects is removed before a report is published.
-4. **Calculation services.** Ranking the forecast, allocating work and the security gate are
-   ordinary code, not agents; they work from Scout's verified findings.
-5. **Approvals and the coding agent.** A task delegated to a coding agent needs two
-   engineering-manager approvals: one to prepare the change, and one on the exact diff. The
-   agent works in a container with no network access and no secrets. The result is opened as a
-   draft pull request on a separate sandbox repository,
-   [atlas-sandbox-target](https://github.com/AnaghaP09/atlas-sandbox-target), and is never
-   merged automatically.
-6. **Notifications.** Every error, approval request and safety event creates a notification,
-   routed by role, shown in the UI and optionally sent to a chat webhook.
+   If Sentinel rejects a claim, ATLAS removes that claim and everything that depends on it.
+4. **Ordinary code does the calculations.** Ranking the forecast, splitting the work and the
+   security check are plain code, not agents. They use only the findings that Sentinel accepted.
+5. **People approve every code change.** An engineering manager must approve a task twice
+   before a coding agent's change goes anywhere. The first approval lets the agent prepare the
+   change. The second approval covers the exact change. The coding agent works inside a
+   container with no network access and no secrets. A container is an isolated space on the
+   computer. ATLAS then opens a draft pull request on a separate repository,
+   [atlas-sandbox-target](https://github.com/AnaghaP09/atlas-sandbox-target). A pull request
+   is a proposed change that a person reviews. ATLAS never merges a change.
+6. **ATLAS tells people what happened.** Every error, approval request and safety event creates
+   a notification. ATLAS sends each notification to the roles that need it. Notifications appear
+   in the user interface. They can also go to a chat channel.
 
 More detail: [architecture](docs/architecture.md), [data sources](docs/data-sources.md),
 [configuration](docs/configuration.md), [deployment](docs/deployment.md),
@@ -53,35 +66,40 @@ More detail: [architecture](docs/architecture.md), [data sources](docs/data-sour
 
 ## Status
 
-ATLAS is being built. The shared data formats, interfaces and configuration are in place; the
-connectors, agents, execution path, HTTP API and web UI are in progress. This README will say
-when each part works. Until then, treat everything described here as the design.
+ATLAS is still being built. The shared data formats, interfaces and settings are done. The
+connectors, agents, code-change steps, the API and the user interface are in progress. The API
+is the set of web addresses that the user interface calls. This
+page will say when each part works. Until then, read everything here as the design.
 
-The demonstration labels every result with where its data came from:
+The demo labels each result with the source of its data:
 
 | Label | Meaning |
 |---|---|
-| `REAL` | Real public data and real model calls |
-| `SYNTHETIC` | Data the team built, marked as such and never scored as observed |
-| `STAGED` | The code path exists, but the real-world piece is outside this build (for example a self-hosted model for offline mode) |
-| `UNEVALUATED` | A quality bar this build cannot measure |
+| `REAL` | Real public data and real AI model calls. |
+| `SYNTHETIC` | Data that the team made up. ATLAS marks it and never counts it as a real result. |
+| `STAGED` | The code exists, but the real-world part is not in this build. One example is a self-hosted AI model for offline use. |
+| `UNEVALUATED` | A quality target that this build cannot measure. |
 
-ATLAS is domain-agnostic. Its reference ecosystem for the demo and the tests is the public
-[KubeVirt](https://github.com/kubevirt/kubevirt) project. KubeVirt does not record which issues
-blocked each release, so forecast accuracy is measured against a stated proxy definition of a
-release blocker (see [data sources](docs/data-sources.md)), and every result says so.
+ATLAS works with any software project. The demo and the tests use public data from
+[KubeVirt](https://github.com/kubevirt/kubevirt), an open-source project.
 
-Two extensions are in progress:
+KubeVirt does not record which issues blocked each release. So ATLAS measures its forecast
+accuracy against a substitute definition of a blocking issue. The
+[data sources](docs/data-sources.md) page gives the definition. Every accuracy result says that
+it uses this substitute.
 
-- **A second public project.** ATLAS is being extended to [Argo CD](https://github.com/argoproj/argo-cd)
-  to show that it is not tied to one code base. Argo CD appears in the live views only; the
-  evaluation gates are still measured on KubeVirt.
-- **Near-real-time dashboard.** The dashboard updates by polling GitHub at a fixed interval,
-  which is shown on screen, so what you see is as fresh as the last poll rather than instant.
+Two additions are in progress:
+
+- **A second public project.** ATLAS is being extended to
+  [Argo CD](https://github.com/argoproj/argo-cd). This shows that ATLAS is not tied to one
+  project. Argo CD appears only in the live views. The quality tests still use KubeVirt.
+- **A dashboard that refreshes itself.** The dashboard checks GitHub for changes at a fixed
+  interval. The screen shows the interval. The data is as recent as the last check, so it is
+  close to real time but not instant.
 
 ## Quick start
 
-Requirements: Python 3.14, Node.js 24 and Docker (Docker runs the coding agent's sandbox).
+You need Python 3.14, Node.js 24 and Docker. Docker runs the coding agent's container.
 
 ```
 git clone https://github.com/AnaghaP09/atlas.git
@@ -92,19 +110,20 @@ python -m venv .venv
 cp .env.example .env
 ```
 
-Open `.env` and fill in your own values; [configuration](docs/configuration.md) explains each
-setting. `.env` is git-ignored and must never be committed.
+Open `.env` and enter your own values. The [configuration](docs/configuration.md) page explains
+each setting. Git ignores `.env`. Never commit it.
 
-The command that starts the server will be added here once the server is built. When it runs,
-the UI is at <http://127.0.0.1:8000>. In this build ATLAS listens only on your own machine,
-because the demo identity is a role switcher rather than a real sign-in. How an organisation
-would run it on its own network is described in [deployment](docs/deployment.md).
+The command that starts the server does not exist yet. This page will show it when the server
+is built. The user interface will then be at <http://127.0.0.1:8000>. In this build, ATLAS
+accepts connections only from your own computer. The reason is that the demo has no real
+sign-in. It uses a role switcher instead. The [deployment](docs/deployment.md) page explains how
+an organisation would run ATLAS on its own network.
 
-To run the tests: install `requirements-dev.txt` the same way, then run `python -m pytest`.
+To run the tests, install `requirements-dev.txt` in the same way. Then run `python -m pytest`.
 
 ## About this project
 
-ATLAS was built as a team capstone project by Swetha, Bhuneshwari and Anagha.
+Swetha, Bhuneshwari and Anagha built ATLAS as a team capstone project.
 
 ## Licence
 
