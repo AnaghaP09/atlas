@@ -53,6 +53,45 @@ class ScriptedOutbound:
         return [r for r, _ in self.calls]
 
 
+def make_record(
+    record_id: str,
+    source: str = "issues",
+    content: str = "",
+    *,
+    source_id: str | None = None,
+    confirmed_through=None,
+    valid_from=None,
+    scopes=("public",),
+    conflicts=(),
+    superseded_by=None,
+    lineage=(),
+    provenance="observed",
+):
+    from datetime import datetime, timezone
+
+    from atlas.contracts import Provenance, Record
+
+    t = valid_from or datetime(2026, 7, 1, tzinfo=timezone.utc)
+    return Record(
+        record_id=record_id,
+        source=source,
+        source_id=source_id or record_id,
+        revision=1,
+        content_version_id=f"{record_id}@1",
+        valid_from=t,
+        observed_at=t,
+        confirmed_through=confirmed_through,
+        writer=f"{source}-adapter",
+        provenance=Provenance(provenance),
+        synthetic_ancestry=provenance == "synthetic",
+        access_scopes=frozenset(scopes),
+        lineage=tuple(lineage),
+        content_ref=content,
+        conflicts=tuple(conflicts),
+        superseded_by=superseded_by,
+    )
+
+
 class EventSink:
     def __init__(self) -> None:
         self.events: list[tuple[str, Mapping[str, Any]]] = []
