@@ -6,6 +6,9 @@ runs from that durable intent, is idempotent per run id and resumes after a cras
 cursor advances only after admission has committed, so a crash can neither lose an event nor start
 it twice. Events admitted while the spend ceiling or containment forbids work are kept as ``held``
 and dispatched once when released.
+
+Admissions, cursors and watcher state are partitioned by project: the same source event watched
+by two projects is two admissions (two runs), and each project's watcher keeps its own cursor.
 """
 
 from __future__ import annotations
@@ -45,6 +48,8 @@ CREATE TABLE IF NOT EXISTS watchers (
 );
 """
 
+COLUMNS = "event_key, run_id, snapshot_id, trigger, started_by, status, hold_reason, admitted_at, project_id"
+
 # Admission status values.
 ADMITTED, HELD, DISPATCHING, DISPATCHED = "admitted", "held", "dispatching", "dispatched"
 
@@ -59,6 +64,22 @@ class Admission:
     status: str
     created: bool
     hold_reason: str | None = None
+    project_id: str = ""
+
+
+_SEP = "\x1f"
+
+
+def _stored_key(project_id: str, event_key: str) -> str:
+    """The stored unique key: the project plus the event key."""
+    return f"{project_id}{_SEP}{event_key}" if project_id else event_key
+
+
+def _split_key(stored: str) -> tuple[str, str]:
+    if _SEP in stored:
+        project_id, event_key = stored.split(_SEP, 1)
+        return project_id, event_key
+    return "", stored
 
 
 class AdmissionStore:
@@ -67,6 +88,9 @@ class AdmissionStore:
     def __init__(self, path: str | Path = ":memory:") -> None:
         self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.executescript(SCHEMA)
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(admissions)").fetchall()}
+        if "project_id" not in cols:
+            self._db.execute("ALTER TABLE admissions ADD COLUMN project_id TEXT NOT NULL DEFAULT ''")
         self._lock = threading.Lock()
 
     def close(self) -> None:
@@ -81,49 +105,59 @@ class AdmissionStore:
         *,
         hold_reason: str | None = None,
         now: datetime | None = None,
+        project_id: str = "",
     ) -> Admission:
         """Record the event, its run and the dispatch intent in one transaction.
 
-        A repeated event key (duplicate delivery or a racing poller) returns the existing run.
+        A repeated event key in the same project (duplicate delivery or a racing poller) returns the
+        existing run; the same event key in another project is a separate admission.
         """
+        stored = _stored_key(project_id, event_key)
         sb = {"kind": str(started_by.kind), "role": str(started_by.role) if started_by.role else None,
               "watcher_id": started_by.watcher_id}
         with self._lock:
             cur = self._db.cursor()
             cur.execute("BEGIN IMMEDIATE")
             try:
-                row = cur.execute("SELECT * FROM admissions WHERE event_key = ?", (event_key,)).fetchone()
+                row = cur.execute(f"SELECT {COLUMNS} FROM admissions WHERE event_key = ?", (stored,)).fetchone()
                 if row:
                     cur.execute("COMMIT")
                     return self._row(row, created=False)
                 run_id = f"run-{uuid.uuid4().hex[:12]}"
                 status = HELD if hold_reason else ADMITTED
                 cur.execute(
-                    "INSERT INTO admissions VALUES (?,?,?,?,?,?,?,?)",
-                    (event_key, run_id, snapshot_id, json.dumps(dict(trigger), sort_keys=True, default=str),
-                     json.dumps(sb), status, hold_reason, (now or datetime.now(timezone.utc)).isoformat()),
+                    f"INSERT INTO admissions ({COLUMNS}) VALUES (?,?,?,?,?,?,?,?,?)",
+                    (stored, run_id, snapshot_id, json.dumps(dict(trigger), sort_keys=True, default=str),
+                     json.dumps(sb), status, hold_reason, (now or datetime.now(timezone.utc)).isoformat(), project_id),
                 )
                 cur.execute("COMMIT")
             except Exception:
                 cur.execute("ROLLBACK")
                 raise
-        return Admission(event_key, run_id, snapshot_id, dict(trigger), sb, status, True, hold_reason)
+        return Admission(event_key, run_id, snapshot_id, dict(trigger), sb, status, True, hold_reason, project_id)
 
     @staticmethod
     def _row(row: tuple, created: bool) -> Admission:
+        _, event_key = _split_key(row[0])
         return Admission(
-            event_key=row[0], run_id=row[1], snapshot_id=row[2], trigger=json.loads(row[3]),
+            event_key=event_key, run_id=row[1], snapshot_id=row[2], trigger=json.loads(row[3]),
             started_by=json.loads(row[4]), status=row[5], created=created, hold_reason=row[6],
+            project_id=row[8] or "",
         )
 
     def get(self, run_id: str) -> Admission | None:
-        row = self._db.execute("SELECT * FROM admissions WHERE run_id = ?", (run_id,)).fetchone()
+        row = self._db.execute(f"SELECT {COLUMNS} FROM admissions WHERE run_id = ?", (run_id,)).fetchone()
         return self._row(row, created=False) if row else None
+
+    def for_project(self, project_id: str) -> list[Admission]:
+        rows = self._db.execute(f"SELECT {COLUMNS} FROM admissions WHERE project_id = ? ORDER BY admitted_at",
+                                (project_id,)).fetchall()
+        return [self._row(r, created=False) for r in rows]
 
     def by_status(self, *statuses: str) -> list[Admission]:
         marks = ",".join("?" * len(statuses))
         rows = self._db.execute(
-            f"SELECT * FROM admissions WHERE status IN ({marks}) ORDER BY admitted_at", statuses
+            f"SELECT {COLUMNS} FROM admissions WHERE status IN ({marks}) ORDER BY admitted_at", statuses
         ).fetchall()
         return [self._row(r, created=False) for r in rows]
 
@@ -222,6 +256,12 @@ class Watcher:
     poll: Callable[[str | None], Iterable[ObservedEvent]]
     external: bool = True
     default_enabled: bool = True
+    project_id: str = ""
+
+    @property
+    def state_key(self) -> str:
+        """Cursor and state key: a project's watcher never shares a cursor with another project's."""
+        return f"{self.project_id}{_SEP}{self.watcher_id}" if self.project_id else self.watcher_id
 
 
 @dataclass
@@ -254,17 +294,20 @@ class Scheduler:
 
     def state(self, watcher_id: str) -> dict[str, Any]:
         w = self.watchers[watcher_id]
-        st = self.store.watcher_state(watcher_id, w.default_enabled)
+        st = {**self.store.watcher_state(w.state_key, w.default_enabled), "watcher_id": watcher_id,
+              "project_id": w.project_id or None}
         if w.external and self.mode() == Mode.OFFLINE:
             st = {**st, "paused_reason": "offline: external sources are not reachable"}
         return st
 
     def enable(self, watcher_id: str) -> None:
-        st = self.store.watcher_state(watcher_id, self.watchers[watcher_id].default_enabled)
+        w = self.watchers[watcher_id]
+        st = self.store.watcher_state(w.state_key, w.default_enabled)
         self.store.save_watcher({**st, "enabled": True, "paused_reason": None})
 
     def pause(self, watcher_id: str, reason: str = "paused by a person") -> None:
-        st = self.store.watcher_state(watcher_id, self.watchers[watcher_id].default_enabled)
+        w = self.watchers[watcher_id]
+        st = self.store.watcher_state(w.state_key, w.default_enabled)
         self.store.save_watcher({**st, "enabled": False, "paused_reason": reason})
 
     def tick(self, only: str | None = None, run_once: bool = False,
@@ -289,7 +332,7 @@ class Scheduler:
         return result
 
     def _poll(self, watcher: Watcher, result: SchedulerResult, origin: StartedBy | None = None) -> None:
-        cursor = self.store.cursor(watcher.watcher_id)
+        cursor = self.store.cursor(watcher.state_key)
         last_event = None
         for ev in watcher.poll(cursor):
             hold = self.hold_reason()
@@ -297,7 +340,8 @@ class Scheduler:
                 kind=StartedByKind.SCHEDULE if watcher.kind in {"nightly", "digest"} else StartedByKind.WATCHER,
                 watcher_id=watcher.watcher_id,
             )
-            adm = self.store.admit(ev.key, ev.trigger, ev.snapshot_id, started_by, hold_reason=hold, now=self.clock())
+            adm = self.store.admit(ev.key, ev.trigger, ev.snapshot_id, started_by, hold_reason=hold, now=self.clock(),
+                                   project_id=watcher.project_id)
             if not adm.created:
                 result.duplicates.append(adm.run_id)
             elif adm.status == HELD:
@@ -305,9 +349,9 @@ class Scheduler:
             else:
                 result.admitted.append(adm.run_id)
             # The cursor moves only after the admission above has committed.
-            self.store.set_cursor(watcher.watcher_id, ev.position)
+            self.store.set_cursor(watcher.state_key, ev.position)
             last_event = ev.key
-        st = self.store.watcher_state(watcher.watcher_id, watcher.default_enabled)
+        st = self.store.watcher_state(watcher.state_key, watcher.default_enabled)
         self.store.save_watcher({**st, "last_run": self.clock().isoformat(), "last_event": last_event or st.get("last_event")})
 
 
@@ -322,6 +366,8 @@ def nightly_due(now: datetime, nightly_time: str, last_run: str | None) -> bool:
 
 
 def manual_admission(store: AdmissionStore, idempotency_key: str, trigger: Mapping[str, Any],
-                     snapshot_id: str, started_by: StartedBy, hold_reason: str | None = None) -> Admission:
+                     snapshot_id: str, started_by: StartedBy, hold_reason: str | None = None,
+                     project_id: str = "") -> Admission:
     """Manual triggers use the same admission; the client's idempotency key is the event key."""
-    return store.admit(f"manual:{idempotency_key}", trigger, snapshot_id, started_by, hold_reason=hold_reason)
+    return store.admit(f"manual:{idempotency_key}", trigger, snapshot_id, started_by, hold_reason=hold_reason,
+                       project_id=project_id)

@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 
 from atlas.api.idempotency import IdempotencyError, request_hash, validate_key
 from atlas.contracts import Principal
+from atlas.projects import ANY_PROJECT
 
 DATA_MODES = {"REAL", "SYNTHETIC", "STAGED", "UNEVALUATED"}
 
@@ -61,30 +62,37 @@ def staged(request: Request, principal: Principal, reason: str, **extra: Any) ->
 
 
 def check_project(request: Request, principal: Principal, obj: Mapping[str, Any] | None, what: str) -> Mapping[str, Any]:
-    """Resolve first, then authorise: the object must exist and belong to a project the caller may use.
+    """Resolve first, then authorise, before any effect.
 
-    In header mode every demo role may use every project; the session mode adds membership here.
+    The object must exist and its STORED ``project_id`` must be the project the caller acts in (the
+    caller's role is their role in that project). A ``project_id`` sent in the request body is never
+    used for this check. An object of another project answers exactly like a missing one, so its
+    existence is not revealed. Objects with no project (installation-wide items) are allowed.
     """
     if obj is None:
         raise ApiError(404, "not_found", f"{what} not found")
-    resolver = services_of(request).identity
-    allowed = getattr(resolver, "may_use_project", None)
-    project_id = obj.get("project_id")
-    if allowed is not None and project_id is not None and not allowed(principal, project_id):
+    owner = obj.get("project_id")
+    if owner not in (None, "") and principal.project_id != ANY_PROJECT and owner != principal.project_id:
         raise ApiError(404, "not_found", f"{what} not found")
     return obj
+
+
+def scoped_key(principal: Principal, key: str) -> str:
+    """Idempotency keys are partitioned by project: the same key in two projects is two requests."""
+    return f"{principal.project_id or '-'}::{key}"
 
 
 def idempotent(request: Request, principal: Principal, body: Any,
                effect: Callable[[str], tuple[int, dict[str, Any]]]) -> JSONResponse:
     """Run a manual mutation once per Idempotency-Key; repeats return the stored outcome."""
-    key = validate_key(request.headers.get("idempotency-key"))
+    key = scoped_key(principal, validate_key(request.headers.get("idempotency-key")))
     services = services_of(request)
-    who = principal.role.value if principal.role else "public"
+    who = f"{principal.project_id or '-'}:{principal.role.value if principal.role else 'public'}"
     h = request_hash(request.method, request.url.path, body)
     outcome = services.idempotency.run(key, who, h, lambda: effect(key))
     headers = {"Idempotent-Replay": "true"} if outcome.replay else {}
     return JSONResponse(outcome.body, status_code=outcome.status, headers=headers)
 
 
-__all__ = ["ApiError", "IdempotencyError", "check_project", "envelope", "idempotent", "services_of", "staged"]
+__all__ = ["ApiError", "IdempotencyError", "check_project", "envelope", "idempotent", "scoped_key", "services_of",
+           "staged"]

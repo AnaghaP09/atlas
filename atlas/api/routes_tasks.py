@@ -14,6 +14,7 @@ from atlas.api.identity import principal_of, require_role
 from atlas.api.ports import Refused
 from atlas.api.routes_runs import run_view
 from atlas.api.support import ApiError, check_project, envelope, idempotent, services_of
+from atlas.projects import ANY_PROJECT
 
 router = APIRouter()
 
@@ -27,6 +28,11 @@ def task_view(raw: Any) -> dict[str, Any]:
         view.setdefault(name, None)
     view.setdefault("required_scopes", ["internal"])
     return view
+
+
+def _scope(principal: Any) -> str | None:
+    """The project filter for list reads (None: a demo caller not limited to one project)."""
+    return None if principal.project_id == ANY_PROJECT else principal.project_id
 
 
 def _refusal(exc: Refused) -> ApiError:
@@ -64,7 +70,8 @@ def create_task(request: Request, body: dict[str, Any] = Body(...)):
 @router.get("/tasks")
 def tasks(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
-    return envelope(request, principal, {"tasks": [task_view(t) for t in services_of(request).tasks.list()]})
+    items = services_of(request).tasks.list(project_id=_scope(principal))
+    return envelope(request, principal, {"tasks": [task_view(t) for t in items]})
 
 
 @router.get("/tasks/{task_id}")
@@ -77,7 +84,8 @@ def task(request: Request, task_id: str) -> dict[str, Any]:
 @router.get("/approvals")
 def approvals(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
-    items = [dict(a, required_scopes=a.get("required_scopes", ["internal"])) for a in services_of(request).tasks.approvals()]
+    items = [dict(a, required_scopes=a.get("required_scopes", ["internal"]))
+             for a in services_of(request).tasks.approvals(project_id=_scope(principal))]
     return envelope(request, principal, {"approvals": items})
 
 
@@ -152,5 +160,5 @@ def security_refresh(request: Request, task_id: str, body: dict[str, Any] | None
 @router.get("/scorecard")
 def scorecard(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
-    card = dict(services_of(request).tasks.scorecard())
+    card = dict(services_of(request).tasks.scorecard(project_id=_scope(principal)))
     return envelope(request, principal, card, data_mode=card.get("data_mode", "SYNTHETIC"))

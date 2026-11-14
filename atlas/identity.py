@@ -246,7 +246,7 @@ class LocalIdentity:
         role = self.users.role_in(session.user, project)
         if role is None:
             raise SignInRefused(403, "you have no role in this project")
-        return principal_for(role.value)
+        return principal_for(role.value, project_id=project, user=session.user)
 
     # -- sign-in and sign-out -----------------------------------------------------------------
 

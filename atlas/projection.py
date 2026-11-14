@@ -1,6 +1,7 @@
 """Authorization projection: the only path by which content leaves the backend.
 
-Every scope-bearing object is kept only if the principal holds all of its ``required_scopes``.
+Every scope-bearing object is kept only if the principal holds all of its ``required_scopes``, and
+every object that names a ``project_id`` is kept only for a principal acting in that project.
 Objects whose scopes are unknown are withheld from everyone on every surface except the audit
 endpoint. A caller-supplied reader can only narrow the principal, never widen it. Content projected
 for the ``public`` principal is also scanned for secrets and personal data; any hit fails the step
@@ -14,6 +15,7 @@ from typing import Any, Mapping, Protocol
 
 from atlas.contracts import PUBLIC_PRINCIPAL, Principal, Role
 from atlas.outbound import Redactor
+from atlas.projects import ANY_PROJECT
 
 # Scopes each demo role holds. ``restricted:security`` covers scanner details.
 ROLE_SCOPES: dict[str, frozenset[str]] = {
@@ -29,18 +31,36 @@ PUBLIC = Principal(role=None, scopes=frozenset({"public"}))
 UNKNOWN = object()
 
 
-def principal_for(role: str | None) -> Principal:
+def principal_for(role: str | None, project_id: str | None = None, user: str | None = None) -> Principal:
+    """The principal for ``role`` acting in ``project_id``.
+
+    The public principal is bound to a project too when it receives one project's content
+    (publication); its export grant is checked by the caller before projecting.
+    """
     if role is None or role == PUBLIC_PRINCIPAL:
-        return PUBLIC
-    return Principal(role=Role(role), scopes=ROLE_SCOPES[role])
+        return PUBLIC if project_id is None else Principal(role=None, scopes=PUBLIC.scopes, project_id=project_id)
+    return Principal(role=Role(role), scopes=ROLE_SCOPES[role], user=user, project_id=project_id)
 
 
 def narrow(identity: Principal, requested_reader: str | None) -> Principal:
-    """A caller may view as a narrower reader, never a wider one."""
+    """A caller may view as a narrower reader, never a wider one, and never in another project."""
     if requested_reader is None:
         return identity
     other = principal_for(requested_reader)
-    return Principal(role=other.role, scopes=identity.scopes & other.scopes)
+    return Principal(role=other.role, scopes=identity.scopes & other.scopes, user=identity.user,
+                     project_id=identity.project_id)
+
+
+def _outside_project(value: Mapping[str, Any], principal: Principal) -> bool:
+    """True when ``value`` belongs to a project other than the principal's.
+
+    Objects with no ``project_id`` (installation-wide items such as the kill switches) stay visible.
+    A principal with no project sees only installation-wide items and objects of no project.
+    """
+    owner = value.get("project_id")
+    if owner in (None, "") or principal.project_id == ANY_PROJECT:
+        return False
+    return owner != principal.project_id
 
 
 class DisclosureBlocked(RuntimeError):
@@ -64,6 +84,9 @@ class AuthorizationProjection:
 
     def _walk(self, value: Any, principal: Principal, audit_endpoint: bool, counter: list[int]) -> Any:
         if isinstance(value, Mapping):
+            if _outside_project(value, principal):
+                counter[0] += 1
+                return UNKNOWN
             if "required_scopes" in value or "access_scopes" in value:
                 scopes = value.get("required_scopes", value.get("access_scopes"))
                 if scopes is None:
@@ -91,6 +114,8 @@ class AuthorizationProjection:
         counter = [0]
         top = dict(artifact)
         top_scopes = top.get("required_scopes", [])
+        if _outside_project(top, principal):
+            return ProjectionResult({"restricted_items": 1, "withheld": True}, 1)
         if top_scopes is not None and not set(top_scopes) <= set(principal.scopes):
             return ProjectionResult({"restricted_items": 1, "withheld": True}, 1)
         projected = self._walk({k: v for k, v in top.items()}, principal, audit_endpoint, counter)

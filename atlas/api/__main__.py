@@ -16,7 +16,9 @@ import sys
 from pathlib import Path
 
 from atlas.api.app import create_app
+from atlas.api.identity import HeaderIdentity
 from atlas.api.services import build_core
+from atlas.projects import ProjectRegistry, default_projects_path
 from atlas.config import ConfigError, load_settings, parse_env_file
 from atlas.api.demo_vars import demo_variables
 from atlas.contracts import Mode
@@ -37,6 +39,9 @@ def build_server(env_file: str, scenario: bool, *, site_identity: tuple | None =
     env = parse_env_file(Path(env_file))
     env.update({k: v for k, v in os.environ.items() if k.startswith("ATLAS_")})
     services.default_project_id = env.get("ATLAS_DEFAULT_PROJECT") or None
+    projects_file = env.get("ATLAS_PROJECTS_FILE") or default_projects_path(settings.data_dir)
+    services.projects = ProjectRegistry.load(projects_file)
+    services.identity = HeaderIdentity(projects=services.projects, default_project=services.default_project_id)
     services.demo_variables = demo_variables(env)
     services.config_presence = settings.presence()
     services.model_configured = bool(settings.anthropic_api_key)

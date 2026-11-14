@@ -8,13 +8,14 @@ No query parameter or body field can name another principal.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from fastapi import Request
 
 from atlas.contracts import Principal, Role
 from atlas.projection import principal_for
+from atlas.projects import ANY_PROJECT, ProjectRegistry
 
 ROLE_HEADER = "x-atlas-role"
 
@@ -33,9 +34,31 @@ class IdentityResolver(Protocol):
         """The caller's principal, or None when the request carries no identity."""
 
 
+def requested_project(request: Request) -> str | None:
+    """The project a request acts in: the ``project_id`` path parameter, else the query parameter."""
+    path_params = getattr(request, "path_params", None) or {}
+    value = path_params.get("project_id") or request.query_params.get("project_id")
+    return str(value) if value else None
+
+
 @dataclass
 class HeaderIdentity:
+    """Demo identity: one role, valid in every configured project (header mode only)."""
+
     mode: str = "header"
+    projects: ProjectRegistry = field(default_factory=ProjectRegistry)
+    default_project: str | None = None
+
+    def project_for(self, request: Request) -> str | None:
+        requested = requested_project(request)
+        if requested is not None:
+            if not self.projects.exists(requested):
+                raise IdentityError(404, "unknown project")
+            return requested
+        if self.default_project and self.projects.exists(self.default_project):
+            return self.default_project
+        ids = self.projects.ids()
+        return ids[0] if ids else ANY_PROJECT
 
     def resolve(self, request: Request) -> Principal | None:
         raw = request.headers.get(ROLE_HEADER)
@@ -44,7 +67,12 @@ class HeaderIdentity:
         value = raw.strip().lower()
         if value not in {r.value for r in Role}:
             raise IdentityError(401, "unknown role in the X-Atlas-Role header")
-        return principal_for(value)
+        return principal_for(value, project_id=self.project_for(request))
+
+    def may_use_project(self, principal: Principal, project_id: str) -> bool:
+        if principal.project_id == ANY_PROJECT:
+            return True
+        return self.projects.exists(project_id) and principal.project_id == project_id
 
 
 def principal_of(request: Request) -> Principal:

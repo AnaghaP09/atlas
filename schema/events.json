@@ -2,8 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://atlas.invalid/schema/events.json",
   "title": "Live event",
-  "description": "Every event on /api/runs/{id}/stream and /api/notifications/stream. Producers, the API stream and the UI use exactly these names and fields.",
-  "streams": ["/api/runs/{id}/stream", "/api/notifications/stream"],
+  "description": "Every event on /api/runs/{id}/stream, /api/notifications/stream and /api/projects/{project_id}/stream. Producers, the API stream and the UI use exactly these names and fields. project.activity data: {project_id, kind, title, record_id, content_version_id, source_revision, link}. project.dashboard_changed data: {project_id, dashboard_version, changed_panels}.",
+  "streams": [
+    "/api/runs/{id}/stream",
+    "/api/notifications/stream",
+    "/api/projects/{project_id}/stream"
+  ],
   "event_names": [
     "run.progress",
     "run.status_changed",
@@ -16,37 +20,110 @@
     "notification.created",
     "containment.tripped",
     "containment.resumed",
+    "project.activity",
+    "project.dashboard_changed",
     "stream.reset"
   ],
   "type": "object",
   "additionalProperties": false,
-  "required": ["event", "event_id", "emitted_at", "run_id", "authoritative_generation", "report_version", "correction_version", "data"],
+  "required": [
+    "event",
+    "event_id",
+    "emitted_at",
+    "run_id",
+    "authoritative_generation",
+    "report_version",
+    "correction_version",
+    "data"
+  ],
   "properties": {
-    "event": {"enum": [
-      "run.progress", "run.status_changed", "run.generation_changed", "report.superseded",
-      "report.corrected", "report.withdrawn", "task.state_changed", "approval.voided",
-      "notification.created", "containment.tripped", "containment.resumed", "stream.reset"
-    ]},
-    "event_id": {"type": "string", "minLength": 1},
-    "emitted_at": {"type": "string", "format": "date-time"},
-    "run_id": {"type": ["string", "null"]},
-    "authoritative_generation": {"type": ["integer", "null"], "minimum": 1},
-    "report_version": {"type": ["integer", "null"], "minimum": 1},
-    "correction_version": {"type": ["integer", "null"], "minimum": 0},
-    "data": {"type": "object", "description": "Event-specific body. Producers must use this field name (data)."}
+    "event": {
+      "enum": [
+        "run.progress",
+        "run.status_changed",
+        "run.generation_changed",
+        "report.superseded",
+        "report.corrected",
+        "report.withdrawn",
+        "task.state_changed",
+        "approval.voided",
+        "notification.created",
+        "containment.tripped",
+        "containment.resumed",
+        "project.activity",
+        "project.dashboard_changed",
+        "stream.reset"
+      ]
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "emitted_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "authoritative_generation": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "report_version": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "correction_version": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "data": {
+      "type": "object",
+      "description": "Event-specific body. Producers must use this field name (data)."
+    }
   },
   "allOf": [
     {
-      "if": {"properties": {"event": {"const": "stream.reset"}}},
+      "if": {
+        "properties": {
+          "event": {
+            "const": "stream.reset"
+          }
+        }
+      },
       "then": {
         "properties": {
           "data": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["reason", "resume_from"],
+            "required": [
+              "reason",
+              "resume_from"
+            ],
             "properties": {
-              "reason": {"type": "string"},
-              "resume_from": {"type": ["string", "null"], "description": "Event id from which the stream continues after the client has refetched."}
+              "reason": {
+                "type": "string"
+              },
+              "resume_from": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Event id from which the stream continues after the client has refetched."
+              }
             }
           }
         }

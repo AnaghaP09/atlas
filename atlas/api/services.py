@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 
 from atlas.api.identity import HeaderIdentity, IdentityResolver
+from atlas.projects import ProjectRegistry
 from atlas.api.idempotency import IdempotencyStore
 from atlas.api.ports import Unwired
 from atlas.api.streams import StreamHub
@@ -145,6 +146,8 @@ class Services:
     ui_origins: frozenset[str] = frozenset()
     default_project_id: str | None = None
     demo_variables: dict[str, str] = field(default_factory=dict)
+    projects: ProjectRegistry = field(default_factory=ProjectRegistry)
+    feed: Any = None
 
     @property
     def is_scenario(self) -> bool:
