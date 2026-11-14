@@ -223,7 +223,8 @@ class Orchestrator:
         resolver = self._resolver(ctx)
         self._event("run.status_changed", run_id, agent=SCOUT, status="investigating")
         task = trigger.get("question") or f"Investigate failure event {trigger.get('event_id')} ({trigger.get('summary', '')})"
-        scout = Investigator(self.d.outbound, resolver, build_tools(), clock=self.d.clock, budget=self.d.budget_factory())
+        scout = Investigator(self.d.outbound, resolver, build_tools(), clock=self.d.clock, budget=self.d.budget_factory(),
+                             on_step=lambda info: self._event("run.progress", run_id, agent=SCOUT, **info))
         try:
             inv = scout.run(task)
         except PayloadWithheld:

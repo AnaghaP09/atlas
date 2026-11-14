@@ -381,6 +381,48 @@ class OutboundBoundary:
         return ModelResponse(content={"status": status}, stop_reason="delivered", input_tokens=0, output_tokens=0, model="webhook")
 
 
+class SpendMeter:
+    """Hard spend ceiling for model calls. Notifies at 80% and 100%; refuses calls at the ceiling.
+
+    Pass ``meter.add`` as the boundary's ``spend`` callback and ``meter.hold_reason`` to the
+    scheduler so automatic work is held, not dropped, once the ceiling is reached.
+    """
+
+    def __init__(self, ceiling_usd: float, notify: Callable[[str, float], None] | None = None) -> None:
+        self.ceiling = float(ceiling_usd)
+        self.spent = 0.0
+        self.notify = notify
+        self._sent: set[str] = set()
+        self._lock = threading.Lock()
+
+    def add(self, usd: float) -> None:
+        with self._lock:
+            self.spent += usd
+            for mark, event in ((1.0, "spend.100"), (0.8, "spend.80")):
+                if self.spent >= mark * self.ceiling and event not in self._sent:
+                    self._sent.add(event)
+                    if self.notify:
+                        self.notify(event, self.spent)
+
+    def hold_reason(self) -> str | None:
+        return "spend ceiling reached" if self.spent >= self.ceiling else None
+
+
+class CeilingGate:
+    """Containment-style gate that refuses model calls once the spend ceiling is reached."""
+
+    def __init__(self, meter: SpendMeter, inner: ContainmentGate | None = None) -> None:
+        self.meter = meter
+        self.inner = inner
+
+    def permits(self, consumer: str) -> Any:
+        from atlas.contracts import EligibilityResult
+
+        if consumer == "model_calls" and self.meter.hold_reason():
+            return EligibilityResult(False, ("spend ceiling reached",))
+        return self.inner.permits(consumer) if self.inner else EligibilityResult(True)
+
+
 def parse_json_content(response: ModelResponse) -> Any:
     """Return the structured JSON of a response; content may already be parsed (fakes)."""
     content = response.content

@@ -225,12 +225,14 @@ class Investigator:
         tools: Mapping[str, ToolSpec] | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
         budget: Budget | None = None,
+        on_step: Callable[[Mapping[str, Any]], None] | None = None,
     ) -> None:
         self.outbound = outbound
         self.resolver = resolver
         self.tools = dict(tools or build_tools())
         self.clock = clock
         self.budget = budget or Budget()
+        self.on_step = on_step or (lambda info: None)
 
     def _tool_catalog(self) -> str:
         return "\n".join(f"- {t.name}({', '.join(t.params)}): {t.description}" for t in self.tools.values())
@@ -269,6 +271,8 @@ class Investigator:
                 continue  # loop head ends the run as partial; the tool is not called
             self.budget.tool_calls += 1
             results = self.tools[name].fn(self.resolver, args)
+            self.on_step({"step": self.budget.steps, "tool_calls": self.budget.tool_calls, "tool": name,
+                          "records": len(results)})
             for r in results:
                 read.append(r.record_id)
                 if r.flags:
