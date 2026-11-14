@@ -596,3 +596,13 @@ label.check input { width: auto; margin: 0; }
 .containment-banner.drill { background: var(--warn); color: #1b1300; }
 .containment-banner:hover { color: #fff; filter: brightness(1.05); }
 .blocked-note { display: inline-flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--muted); }
+
+/* Live numbers */
+.live-num { display: inline-flex; align-items: baseline; gap: 6px; border-radius: 6px; transition: background 600ms ease; }
+.live-num.flash { background: var(--accent-soft); }
+.live-num .unit { font-size: 0.6em; color: var(--muted); font-weight: 600; }
+.delta { font-size: 0.5em; font-weight: 800; }
+.delta.up { color: var(--serious); }
+.delta.down { color: var(--good); }
+.kpi-updated { font-size: 0.72rem; color: var(--muted); margin: var(--s-1) 0 0; }
+.nav-count.danger { background: #ff8f8f; }

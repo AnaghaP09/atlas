@@ -344,6 +344,7 @@ export function KpiTile({
   icon,
   tone = "accent",
   small = false,
+  updated,
 }: {
   label: string;
   value: ReactNode;
@@ -351,12 +352,14 @@ export function KpiTile({
   icon: IconName;
   tone?: "accent" | "teal" | "warn" | "critical" | "good";
   small?: boolean;
+  updated?: string | null;
 }) {
   return (
     <div className={`kpi tone-${tone}`}>
       <div className="kpi-label"><Icon name={icon} size={16} /> {label}</div>
       <p className={`kpi-value${small ? " small" : ""}`}>{value}</p>
       {hint ? <p className="kpi-hint">{hint}</p> : null}
+      {updated ? <p className="kpi-updated">updated <Time iso={updated} short /></p> : null}
     </div>
   );
 }

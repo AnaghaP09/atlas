@@ -178,6 +178,7 @@ EVENT_NAMES: tuple[str, ...] = (
     "containment.resumed",
     "project.activity",
     "project.dashboard_changed",
+    "project.metrics_changed",
     "stream.reset",
 )
 """Live event names; must match ``schema/events.json`` exactly."""

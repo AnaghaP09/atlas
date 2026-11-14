@@ -18,6 +18,7 @@ export const EVENT_NAMES = [
   "containment.resumed",
   "project.activity",
   "project.dashboard_changed",
+  "project.metrics_changed",
   "stream.reset",
 ] as const;
 export type EventName = (typeof EVENT_NAMES)[number];

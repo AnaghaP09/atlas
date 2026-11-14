@@ -1,8 +1,9 @@
-import type { ContainmentView, Envelope, Health, Notification, QueueEntry, RunView } from "../api/types";
+import type { Envelope, Health, RunView } from "../api/types";
 import { useApi } from "../app/context";
 import { DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Time } from "../components/common";
 import { Link } from "../lib/router";
 import { useCurrentProject, type ActivityItem } from "./Dashboard";
+import { LiveNumber, useMetrics } from "../lib/metrics";
 import { DATASET_GROUPS, kindOf, visibleDatasets } from "../components/dataset";
 
 export interface SnapshotItem {
@@ -87,16 +88,12 @@ function ActivityFeed({ project }: { project: string }) {
 
 export function Home() {
   const project = useCurrentProject();
+  const m = useMetrics();
   const health = useApi<Health>("/api/health");
   const runs = useApi<{ runs: RunView[] } & Envelope>("/api/runs");
-  const notes = useApi<{ notifications: Notification[] }>("/api/notifications");
-  const queue = useApi<{ entries: QueueEntry[] }>("/api/queue");
-  const containment = useApi<ContainmentView>("/api/containment");
   const snaps = useApi<{ snapshots: SnapshotItem[] }>("/api/snapshots");
 
   const runList = runs.data?.runs ?? [];
-  const tripped = (containment.data?.switches ?? []).filter((s) => s.state !== "ok").length;
-  const unread = (notes.data?.notifications ?? []).filter((n) => !n.acknowledged).length;
   const visible = visibleDatasets(snaps.data?.snapshots ?? []);
   const releaseSnaps = visible.filter((s) => kindOf(s) === "release");
   const latest = releaseSnaps.slice().sort((a, b) => String(b.as_of ?? "").localeCompare(String(a.as_of ?? "")))[0];
@@ -105,10 +102,10 @@ export function Home() {
     <>
       <div className="kpis">
         <KpiTile icon="database" label="Open issues at latest release" value={latest && typeof latest.open_issues === "number" ? latest.open_issues : "—"} hint={latest ? `${latest.title} · ${latest.as_of_label}` : undefined} />
-        <KpiTile icon="list" tone="teal" label="Runs" value={runs.data ? runList.length : "—"} hint={runs.data ? `${runList.filter((r) => r.run_status === "complete").length} done` : undefined} />
-        <KpiTile icon="hand" tone={queue.data && queue.data.entries.length ? "warn" : "good"} label="Needs a person" value={queue.data ? queue.data.entries.length : "—"} hint="waiting for a decision" />
-        <KpiTile icon="power" tone={tripped ? "critical" : "good"} label="Kill switches tripped" value={containment.data ? tripped : "—"} hint={containment.error ? "not visible to your role" : `of ${containment.data?.switches.length ?? 0} switches`} />
-        <KpiTile icon="bell" tone={unread ? "warn" : "good"} label="Unread notifications" value={notes.data ? unread : "—"} hint={<Link to="/notifications">Inbox</Link>} />
+        <KpiTile icon="list" tone="teal" label="Runs" value={<LiveNumber value={m.data?.runs_total} />} hint={m.data?.runs_by_status ? `${m.data.runs_by_status.complete ?? 0} done` : undefined} updated={m.data?.computed_at} />
+        <KpiTile icon="hand" tone={m.data?.needs_a_person ? "warn" : "good"} label="Needs a person" value={<LiveNumber value={m.data?.needs_a_person} />} updated={m.data?.computed_at} />
+        <KpiTile icon="power" tone={m.data?.kill_switches_tripped ? "critical" : "good"} label="Kill switches tripped" value={<LiveNumber value={m.data?.kill_switches_tripped} />} hint={typeof m.data?.kill_switches_total === "number" ? `of ${m.data.kill_switches_total}` : undefined} updated={m.data?.computed_at} />
+        <KpiTile icon="bell" tone={m.data?.unread_notifications ? "warn" : "good"} label="Unread notifications" value={<LiveNumber value={m.data?.unread_notifications} />} hint={<Link to="/notifications">Inbox</Link>} updated={m.data?.computed_at} />
       </div>
 
       <div className="grid-2">

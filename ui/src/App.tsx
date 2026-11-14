@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { Health, Notification } from "./api/types";
+import type { Health } from "./api/types";
 import { useApi, useApp, useIdentity } from "./app/context";
 import { AgentName, ButtonLink, PageHead } from "./components/common";
 import { BrandMark, Icon, type IconName } from "./components/icons";
@@ -7,6 +7,7 @@ import { LatestReport } from "./screens/LatestReport";
 import { LockedChip } from "./components/access";
 import { AccessRequests } from "./screens/AccessRequests";
 import { ContainmentBanner } from "./screens/Containment";
+import { MetricsSync, useMetrics } from "./lib/metrics";
 import { SystemScreen } from "./screens/System";
 import { signOut } from "./identity/bootstrap";
 import { ROLES, ROLE_LABELS, type Role } from "./identity/identity";
@@ -238,22 +239,23 @@ function ModeBadge() {
 }
 
 function SpendMeter() {
-  const health = useApi<HealthWithSpend>("/api/health");
-  const spend = health.data?.spend;
-  if (!spend || typeof spend.used_usd !== "number" || typeof spend.ceiling_usd !== "number") return null;
+  const m = useMetrics();
+  const used = m.data?.spend_used_usd;
+  const ceiling = m.data?.spend_ceiling_usd;
+  if (typeof used !== "number" || typeof ceiling !== "number") return null;
   return (
-    <span className="spend" title="Model spend against the configured ceiling">
+    <span className="spend" title="Model spend">
       <span>
-        Spend <span className="num">${spend.used_usd.toFixed(2)}</span> of ${spend.ceiling_usd.toFixed(0)}
+        Spend <span className="num">${used.toFixed(2)}</span> of ${ceiling.toFixed(0)}
       </span>
-      <progress className={`bar thin${spend.used_usd / Math.max(spend.ceiling_usd, 1) >= 0.8 ? " hot" : ""}`} max={Math.max(spend.ceiling_usd, 1)} value={Math.min(spend.used_usd, spend.ceiling_usd)} />
+      <progress className={`bar thin${used / Math.max(ceiling, 1) >= 0.8 ? " hot" : ""}`} max={Math.max(ceiling, 1)} value={Math.min(used, ceiling)} />
     </span>
   );
 }
 
 function Bell() {
-  const notes = useApi<{ notifications: Notification[] }>("/api/notifications");
-  const unread = (notes.data?.notifications ?? []).filter((n) => !n.acknowledged).length;
+  const m = useMetrics();
+  const unread = m.data?.unread_notifications ?? 0;
   return (
     <Link to="/notifications" className="bell" aria-label={`Notifications, ${unread} unread`}>
       <Icon name="bell" size={18} />
@@ -282,6 +284,14 @@ function ThemeToggle() {
       <Icon name={theme === "dark" ? "sun" : "moon"} size={18} />
     </button>
   );
+}
+
+function NavBadge({ pageId }: { pageId: string }) {
+  const m = useMetrics();
+  const n =
+    pageId === "queue" ? m.data?.needs_a_person : pageId === "approvals" ? m.data?.approvals_pending : pageId === "notifications" ? m.data?.unread_notifications : pageId === "containment" ? m.data?.kill_switches_tripped : null;
+  if (!n) return null;
+  return <span className={`nav-count num${pageId === "containment" ? " danger" : ""}`}>{n > 99 ? "99+" : n}</span>;
 }
 
 function isActive(to: string, path: string) {
@@ -320,6 +330,7 @@ export function App() {
                       <Link to={item.path} className={`nav-link${isActive(item.path, path) ? " active" : ""}`} title={item.for}>
                         <Icon name={PAGE_ICON[item.page_id] ?? "list"} size={18} />
                         <span className="nav-label">{item.title}</span>
+                        <NavBadge pageId={item.page_id} />
                       </Link>
                     </li>
                   ))}
@@ -364,6 +375,7 @@ export function App() {
         <ThemeToggle />
       </header>
       {/* Keyed by the identity epoch: a role or project switch remounts every screen and drops its state. */}
+      <MetricsSync />
       <main key={epoch} className="main">
         <ContainmentBanner />
         <Route path={path} search={search} nav={nav.data} />
