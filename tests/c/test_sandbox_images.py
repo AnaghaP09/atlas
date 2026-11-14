@@ -111,6 +111,16 @@ def test_engine_image_without_pinned_digest_refused(tmp_path):
         ImageCache(tmp_path, runner).ensure("go")
 
 
+def test_image_cache_setting_overrides_location(tmp_path, monkeypatch):
+    from atlas.execution.images import default_cache_dir
+
+    monkeypatch.setenv("ATLAS_IMAGE_CACHE", str(tmp_path / "shared"))
+    assert default_cache_dir() == tmp_path / "shared"
+    monkeypatch.delenv("ATLAS_IMAGE_CACHE")
+    monkeypatch.setenv("ATLAS_DATA_DIR", str(tmp_path))
+    assert default_cache_dir() == tmp_path / "local" / "images"
+
+
 def test_cache_for_other_digest_refused(tmp_path):
     (tmp_path / "go.tar").write_bytes(b"image")
     (tmp_path / "manifest.json").write_text(json.dumps({"go": {"manifest_digest": "sha256:" + "1" * 64,
@@ -156,7 +166,14 @@ def _docker_ready() -> bool:
         return False
 
 
-@pytest.mark.skipif(not _docker_ready(), reason="container engine or cached sandbox image not available")
+def _cache_prepared() -> bool:
+    cache = ImageCache()
+    return "go" in cache.manifest() and cache.tar_path(IMAGES["go"]).exists() and _docker_ready()
+
+
+@pytest.mark.skipif(not _cache_prepared(),
+                    reason="sandbox image cache not prepared; run `python -m prep.images.fetch_images` "
+                           "(or set ATLAS_IMAGE_CACHE to a prepared cache)")
 def test_save_load_round_trip_keeps_recorded_image_id(tmp_path):
     cache = ImageCache()
     recorded = cache.manifest()["go"]
