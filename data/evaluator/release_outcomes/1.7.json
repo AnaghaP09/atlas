@@ -1,0 +1,775 @@
+{
+ "backports": [
+  {
+   "backport_pr": 16216,
+   "linked_issues": [],
+   "merged_at": "2025-11-25T22:44:06Z",
+   "origin_pr": 15981,
+   "title": "[release-1.7] virt-launcher, device-metadata: Process net ifaces only when relevant"
+  },
+  {
+   "backport_pr": 16199,
+   "linked_issues": [],
+   "merged_at": "2025-11-24T16:52:05Z",
+   "origin_pr": 16159,
+   "title": "[release-1.7] Hotplug Volume Status Fix"
+  },
+  {
+   "backport_pr": 16198,
+   "linked_issues": [],
+   "merged_at": "2025-11-21T22:48:01Z",
+   "origin_pr": 16050,
+   "title": "[release-1.7] Fix Operator tag"
+  },
+  {
+   "backport_pr": 16171,
+   "linked_issues": [],
+   "merged_at": "2025-11-21T09:44:02Z",
+   "origin_pr": 16164,
+   "title": "[release-1.7] e2e(migration): Relax failure check"
+  },
+  {
+   "backport_pr": 16168,
+   "linked_issues": [],
+   "merged_at": "2025-11-22T23:34:02Z",
+   "origin_pr": 15949,
+   "title": "[release-1.7] Migration cert"
+  },
+  {
+   "backport_pr": 16150,
+   "linked_issues": [],
+   "merged_at": "2025-11-20T12:16:36Z",
+   "origin_pr": 16049,
+   "title": "[release-1.7] fix(ksm): re-introduce time based ksm handler"
+  },
+  {
+   "backport_pr": 16135,
+   "linked_issues": [],
+   "merged_at": "2025-11-18T14:36:35Z",
+   "origin_pr": 15888,
+   "title": "[release-1.7] fix: ensure startTimestamp is always set"
+  },
+  {
+   "backport_pr": 16129,
+   "linked_issues": [],
+   "merged_at": "2025-11-17T23:00:34Z",
+   "origin_pr": 15969,
+   "title": "[release-1.7] Fix Detaching of CD-ROMs"
+  },
+  {
+   "backport_pr": 16108,
+   "linked_issues": [],
+   "merged_at": "2025-11-17T18:28:33Z",
+   "origin_pr": 15694,
+   "title": "[release-1.7] migration bugfix: relax host-model check to allow known models"
+  },
+  {
+   "backport_pr": 16101,
+   "linked_issues": [],
+   "merged_at": "2025-11-13T22:25:17Z",
+   "origin_pr": 16061,
+   "title": "[release-1.7] e2e, net, passt: Add dedicated label to passt"
+  },
+  {
+   "backport_pr": 16097,
+   "linked_issues": [
+    9585
+   ],
+   "merged_at": "2025-11-13T11:35:17Z",
+   "origin_pr": 15957,
+   "title": "[release-1.7] Introduce evacuatecancel subresource and virtctl subcommand"
+  },
+  {
+   "backport_pr": 16089,
+   "linked_issues": [],
+   "merged_at": "2025-11-14T18:04:29Z",
+   "origin_pr": 15716,
+   "title": "[release-1.7] Propagate decentralized migration failures to the source and target VMIs"
+  },
+  {
+   "backport_pr": 16076,
+   "linked_issues": [],
+   "merged_at": "2025-11-11T20:59:16Z",
+   "origin_pr": 15374,
+   "title": "[release-1.7] NodeRestriction: Implement source check"
+  },
+  {
+   "backport_pr": 16072,
+   "linked_issues": [
+    15886
+   ],
+   "merged_at": "2025-11-11T10:51:17Z",
+   "origin_pr": 15955,
+   "title": "[release-1.7] e2e, net, vmi_networking: Adjust IPv6 tests to fedora 39"
+  },
+  {
+   "backport_pr": 16066,
+   "linked_issues": [],
+   "merged_at": "2025-11-10T20:23:21Z",
+   "origin_pr": null,
+   "title": "[release-1.7]  bugFix: Clean up old install strategy ConfigMaps before creating new one"
+  },
+  {
+   "backport_pr": 16063,
+   "linked_issues": [
+    15952
+   ],
+   "merged_at": "2025-11-10T20:23:14Z",
+   "origin_pr": 15947,
+   "title": "[release-1.7] virt-handler, isolation: Allow pinning maxMemory+overheads"
+  },
+  {
+   "backport_pr": 16051,
+   "linked_issues": [],
+   "merged_at": "2025-11-07T15:47:13Z",
+   "origin_pr": 15166,
+   "title": "[release-1.7] VMPool: Introduce v1beta1 version"
+  },
+  {
+   "backport_pr": 16045,
+   "linked_issues": [],
+   "merged_at": "2025-11-07T21:53:33Z",
+   "origin_pr": 16035,
+   "title": "[release-1.7] fix(np): install provided np"
+  },
+  {
+   "backport_pr": 16044,
+   "linked_issues": [],
+   "merged_at": "2025-11-06T12:17:12Z",
+   "origin_pr": 15988,
+   "title": "[release-1.7] Fix infra tests Prometheus port lookup"
+  },
+  {
+   "backport_pr": 16042,
+   "linked_issues": [],
+   "merged_at": "2025-11-07T21:53:26Z",
+   "origin_pr": 15963,
+   "title": "[release-1.7] Expose CPU load metrics in domstats"
+  },
+  {
+   "backport_pr": 16041,
+   "linked_issues": [],
+   "merged_at": "2025-11-07T21:53:19Z",
+   "origin_pr": 15970,
+   "title": "[release-1.7] feature gates: graduate KubevirtSeccompProfile to Beta"
+  },
+  {
+   "backport_pr": 16039,
+   "linked_issues": [],
+   "merged_at": "2025-11-07T21:53:12Z",
+   "origin_pr": 15934,
+   "title": "[release-1.7] Promote SecureExecution FG: Alpha -> Beta"
+  },
+  {
+   "backport_pr": 16034,
+   "linked_issues": [
+    15973
+   ],
+   "merged_at": "2025-11-05T22:07:11Z",
+   "origin_pr": 15978,
+   "title": "[release-1.7] fix(fuzz): switch to randfill fuzzer"
+  },
+  {
+   "backport_pr": 16033,
+   "linked_issues": [],
+   "merged_at": "2025-11-10T12:11:16Z",
+   "origin_pr": null,
+   "title": "[release-1.7] add SourceIndications field with VMsnapshot Indications and description"
+  },
+  {
+   "backport_pr": 16032,
+   "linked_issues": [
+    15901
+   ],
+   "merged_at": "2025-11-06T15:43:20Z",
+   "origin_pr": 15896,
+   "title": "[release-1.7] virt-controller: move remaining memory request code to resource renderer"
+  },
+  {
+   "backport_pr": 16027,
+   "linked_issues": [
+    15637
+   ],
+   "merged_at": "2025-11-07T04:31:11Z",
+   "origin_pr": 15638,
+   "title": "[release-1.7] VMPool: Add support for auto-healing startegy"
+  },
+  {
+   "backport_pr": 16026,
+   "linked_issues": [],
+   "merged_at": "2025-11-05T11:25:11Z",
+   "origin_pr": null,
+   "title": "[release-1.7] feat: bump code-generator to v0.32.5 and adjust mockgen command"
+  },
+  {
+   "backport_pr": 16022,
+   "linked_issues": [],
+   "merged_at": "2025-11-06T03:49:10Z",
+   "origin_pr": 16004,
+   "title": "[release-1.7] virt-handler: Fix Potenial panic"
+  },
+  {
+   "backport_pr": 16020,
+   "linked_issues": [],
+   "merged_at": "2025-11-03T17:25:09Z",
+   "origin_pr": 15982,
+   "title": "[release-1.7] build: refresh test tooling images with oci compatible manifests"
+  },
+  {
+   "backport_pr": 16011,
+   "linked_issues": [],
+   "merged_at": "2025-11-06T15:43:13Z",
+   "origin_pr": 15767,
+   "title": "[release-1.7] Properly count decentralized migrations for the migration limits"
+  },
+  {
+   "backport_pr": 16005,
+   "linked_issues": [],
+   "merged_at": "2025-11-04T22:07:18Z",
+   "origin_pr": 15960,
+   "title": "[release-1.7] Promote ImageVolume FG: Alpha -> Beta"
+  },
+  {
+   "backport_pr": 16000,
+   "linked_issues": [],
+   "merged_at": "2025-11-04T14:39:19Z",
+   "origin_pr": 15195,
+   "title": "[release-1.7] Add --dump-network-policies option to csv-generator"
+  },
+  {
+   "backport_pr": 15999,
+   "linked_issues": [
+    15545
+   ],
+   "merged_at": "2025-11-04T22:07:10Z",
+   "origin_pr": 15604,
+   "title": "[release-1.7] VMpool: Add Scale-in strategy support with Proactive, opportunistic modes and statePreservation"
+  },
+  {
+   "backport_pr": 15998,
+   "linked_issues": [],
+   "merged_at": "2025-11-04T14:39:11Z",
+   "origin_pr": 15954,
+   "title": "[release-1.7] Run go run ./robots/cmd/uploader -workspace /home/prow/go/src/github.com/kubevirt/project-infra/../kubevirt/WORKSPACE -dry-run=false"
+  }
+ ],
+ "candidates": [
+  {
+   "created_at": "2023-04-06T16:25:45Z",
+   "issue": 9585,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "backport_pr": 16097,
+     "kind": "backport",
+     "origin_pr": 15957
+    }
+   ]
+  },
+  {
+   "created_at": "2024-10-30T10:39:25Z",
+   "issue": 13142,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-05T15:04:43Z",
+   "issue": 14122,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-12T10:33:50Z",
+   "issue": 14212,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-07T07:57:30Z",
+   "issue": 15091,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T14:46:59Z",
+   "issue": 15135,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T14:59:21Z",
+   "issue": 15136,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:06:29Z",
+   "issue": 15138,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:09:11Z",
+   "issue": 15139,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:14:54Z",
+   "issue": 15140,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-25T08:43:13Z",
+   "issue": 15281,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-08-05T16:33:05Z",
+   "issue": 15378,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-08-27T08:34:16Z",
+   "issue": 15526,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-08-27T08:37:35Z",
+   "issue": 15527,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-08-29T11:28:36Z",
+   "issue": 15545,
+   "kinds_now": [
+    "kind/enhancement"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 15999,
+     "kind": "backport",
+     "origin_pr": 15604
+    }
+   ]
+  },
+  {
+   "created_at": "2025-09-09T13:08:30Z",
+   "issue": 15637,
+   "kinds_now": [
+    "kind/enhancement"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 16027,
+     "kind": "backport",
+     "origin_pr": 15638
+    }
+   ]
+  },
+  {
+   "created_at": "2025-09-17T09:09:19Z",
+   "issue": 15687,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-09-24T09:37:09Z",
+   "issue": 15724,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-09-24T09:42:56Z",
+   "issue": 15725,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-01T08:36:50Z",
+   "issue": 15790,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-01T08:45:57Z",
+   "issue": 15791,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-01T08:51:13Z",
+   "issue": 15792,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-08T08:19:45Z",
+   "issue": 15839,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-08T08:24:03Z",
+   "issue": 15840,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-08T08:27:06Z",
+   "issue": 15841,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-15T10:15:29Z",
+   "issue": 15886,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 16072,
+     "kind": "backport",
+     "origin_pr": 15955
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-17T13:20:32Z",
+   "issue": 15901,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 16032,
+     "kind": "backport",
+     "origin_pr": 15896
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-20T08:27:50Z",
+   "issue": 15905,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-20T08:52:57Z",
+   "issue": 15907,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-26T12:57:52Z",
+   "issue": 15952,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 16063,
+     "kind": "backport",
+     "origin_pr": 15947
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-29T09:09:24Z",
+   "issue": 15973,
+   "kinds_now": [],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 16034,
+     "kind": "backport",
+     "origin_pr": 15978
+    }
+   ]
+  },
+  {
+   "created_at": "2025-10-29T09:40:24Z",
+   "issue": 15974,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-11-03T10:13:56Z",
+   "issue": 16017,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-11-05T09:29:37Z",
+   "issue": 16036,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-11-12T10:17:28Z",
+   "issue": 16082,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-11-12T10:22:53Z",
+   "issue": 16084,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-11-12T10:26:54Z",
+   "issue": 16085,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-11-19T10:10:49Z",
+   "issue": 16148,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  }
+ ],
+ "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: two people adjudicate every candidate (features and chores are excluded).",
+ "limitation": "The project does not record release blockers, so this proxy is used.",
+ "release": "1.7",
+ "window": {
+  "forecast_cutoff": "2025-07-30T18:23:13+00:00",
+  "from_beta": "2025-10-07T09:08:38+00:00",
+  "to_final": "2025-11-27T10:16:02+00:00"
+ }
+}

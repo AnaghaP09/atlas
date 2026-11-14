@@ -1,0 +1,25 @@
+{
+ "alias_variant": null,
+ "counts": {
+  "architecture": 1049,
+  "excluded_label": 1,
+  "excluded_not_open": 8,
+  "issues": 120,
+  "synthetic": 7,
+  "unknown_state": 0
+ },
+ "cutoff": "2025-11-27T10:16:02+00:00",
+ "cutoff_rule": "the release tag time",
+ "data_modes": {
+  "architecture": "REAL",
+  "capacity": "SYNTHETIC",
+  "issues": "REAL"
+ },
+ "notes": [
+  "Open bug and flaky-test issues as they stood at the release tag; capacity is synthetic."
+ ],
+ "records": 1176,
+ "records_sha256": "998d0475bc0b407a52a677d211cbcf97570b9c83fbdb6433b488bc72c366b7b9",
+ "release_or_case": "release close v1.7.0",
+ "snapshot_id": "release-close-v1.7.0"
+}

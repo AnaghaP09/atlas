@@ -1,0 +1,597 @@
+{
+ "backports": [
+  {
+   "backport_pr": 15312,
+   "linked_issues": [],
+   "merged_at": "2025-07-30T13:35:48Z",
+   "origin_pr": 15309,
+   "title": "[release-1.6] Fix wrong timestamp being copied"
+  },
+  {
+   "backport_pr": 15264,
+   "linked_issues": [],
+   "merged_at": "2025-07-24T19:23:44Z",
+   "origin_pr": null,
+   "title": "[release-1.6] Quarantine decentralized lm test"
+  },
+  {
+   "backport_pr": 15256,
+   "linked_issues": [],
+   "merged_at": "2025-07-24T11:31:44Z",
+   "origin_pr": 15253,
+   "title": "[release-1.6] chore(deps): Bump common-instancetypes to v1.4.0"
+  },
+  {
+   "backport_pr": 15246,
+   "linked_issues": [],
+   "merged_at": "2025-07-23T17:47:51Z",
+   "origin_pr": 15209,
+   "title": "[release-1.6] net, e2e: Fix flaky multi-NIC hotplug test"
+  },
+  {
+   "backport_pr": 15231,
+   "linked_issues": [],
+   "merged_at": "2025-07-21T20:31:49Z",
+   "origin_pr": 15223,
+   "title": "[release-1.6] Fix decentralized live migration not honoring restore-runstrategy annotation"
+  },
+  {
+   "backport_pr": 15230,
+   "linked_issues": [],
+   "merged_at": "2025-07-20T18:35:41Z",
+   "origin_pr": 15224,
+   "title": "[release-1.6] Ignore completed migration in sync controller"
+  },
+  {
+   "backport_pr": 15226,
+   "linked_issues": [],
+   "merged_at": "2025-07-22T06:59:42Z",
+   "origin_pr": 15206,
+   "title": "[release-1.6] virt-handler, migration-src: Add netStat, call UpdateStatus"
+  },
+  {
+   "backport_pr": 15225,
+   "linked_issues": [],
+   "merged_at": "2025-07-18T15:41:39Z",
+   "origin_pr": 15216,
+   "title": "[release-1.6] Fix IsRunning function on migration type"
+  },
+  {
+   "backport_pr": 15214,
+   "linked_issues": [],
+   "merged_at": "2025-07-21T20:31:42Z",
+   "origin_pr": null,
+   "title": "q(1.6,sig-compute): quarantine flaky persistent TPM"
+  },
+  {
+   "backport_pr": 15208,
+   "linked_issues": [
+    14979
+   ],
+   "merged_at": "2025-07-17T23:49:45Z",
+   "origin_pr": 15159,
+   "title": "[release-1.6] migration: Use the VMIs MigrationState to double check SourceNode"
+  },
+  {
+   "backport_pr": 15202,
+   "linked_issues": [],
+   "merged_at": "2025-07-17T07:01:38Z",
+   "origin_pr": 15182,
+   "title": "[release-1.6] export: address additional naming convention issues"
+  },
+  {
+   "backport_pr": 15201,
+   "linked_issues": [],
+   "merged_at": "2025-07-16T17:15:37Z",
+   "origin_pr": null,
+   "title": "[release-1.6] Un-quarantine should not migrate more than two VMIs at the same time from a node"
+  },
+  {
+   "backport_pr": 15191,
+   "linked_issues": [],
+   "merged_at": "2025-07-17T23:49:38Z",
+   "origin_pr": 15118,
+   "title": "[release-1.6] vmi-create-admitter: drop firmware.serial validation"
+  },
+  {
+   "backport_pr": 15178,
+   "linked_issues": [],
+   "merged_at": "2025-07-16T08:11:36Z",
+   "origin_pr": 15016,
+   "title": "[release-1.6] Fix multifd compatibility with postcopy"
+  },
+  {
+   "backport_pr": 15171,
+   "linked_issues": [],
+   "merged_at": "2025-07-13T13:07:34Z",
+   "origin_pr": 15099,
+   "title": "[release-1.6] export: ensure service name is dns1035 label"
+  },
+  {
+   "backport_pr": 15169,
+   "linked_issues": [],
+   "merged_at": "2025-07-12T20:33:33Z",
+   "origin_pr": 15164,
+   "title": "[release-1.6] Introduce dummy dra informers when FG disabled"
+  },
+  {
+   "backport_pr": 15158,
+   "linked_issues": [
+    15148
+   ],
+   "merged_at": "2025-07-11T16:25:33Z",
+   "origin_pr": 15149,
+   "title": "[release-1.6] tests: Always check InstancetypeRef and ControllerRevisionRef are not nil"
+  },
+  {
+   "backport_pr": 15155,
+   "linked_issues": [],
+   "merged_at": "2025-07-10T18:24:55Z",
+   "origin_pr": 15044,
+   "title": "[release-1.6] e2e,sriov: Quarantine flaky SRIOV network migration test"
+  },
+  {
+   "backport_pr": 15153,
+   "linked_issues": [],
+   "merged_at": "2025-07-24T03:51:43Z",
+   "origin_pr": 15089,
+   "title": "[release-1.6] tests/storage: cover CDI minimumSupportedPvcSize"
+  },
+  {
+   "backport_pr": 15129,
+   "linked_issues": [],
+   "merged_at": "2025-07-09T23:58:59Z",
+   "origin_pr": 14998,
+   "title": "[release-1.6] bugfix: Better synchronization of volume unplug machinery"
+  },
+  {
+   "backport_pr": 15127,
+   "linked_issues": [],
+   "merged_at": "2025-07-15T23:45:36Z",
+   "origin_pr": 15010,
+   "title": "[release-1.6] Restore: include meaningful status message when target not ready"
+  },
+  {
+   "backport_pr": 15119,
+   "linked_issues": [],
+   "merged_at": "2025-07-09T23:58:53Z",
+   "origin_pr": null,
+   "title": "[release-1.6] bump kubevirtci"
+  },
+  {
+   "backport_pr": 15114,
+   "linked_issues": [],
+   "merged_at": "2025-07-23T17:47:44Z",
+   "origin_pr": 15067,
+   "title": "[release-1.6] Image upload: Label PVCs to add support for rendering webhook "
+  },
+  {
+   "backport_pr": 15104,
+   "linked_issues": [],
+   "merged_at": "2025-07-08T14:48:52Z",
+   "origin_pr": 15057,
+   "title": "[release-1.6] tests: remove test_id:1684 as it's already covered by unit tests"
+  },
+  {
+   "backport_pr": 15102,
+   "linked_issues": [],
+   "merged_at": "2025-07-11T13:09:32Z",
+   "origin_pr": null,
+   "title": "fix(deps): update module golang.org/x/net to v0.38.0 [security] (release-1.6)"
+  },
+  {
+   "backport_pr": 15101,
+   "linked_issues": [],
+   "merged_at": "2025-07-09T12:39:01Z",
+   "origin_pr": null,
+   "title": "chore(deps): update module golang.org/x/oauth2 to v0.27.0 [security] (release-1.6)"
+  },
+  {
+   "backport_pr": 15085,
+   "linked_issues": [],
+   "merged_at": "2025-07-08T18:12:52Z",
+   "origin_pr": 15035,
+   "title": "[release-1.6] tests: set image providers readOnlyRootFilesystem to false"
+  },
+  {
+   "backport_pr": 15080,
+   "linked_issues": [],
+   "merged_at": "2025-07-06T17:28:50Z",
+   "origin_pr": 15022,
+   "title": "[release-1.6] Use migration network IP adress in synchronization controller"
+  },
+  {
+   "backport_pr": 15075,
+   "linked_issues": [],
+   "merged_at": "2025-07-09T12:38:54Z",
+   "origin_pr": 15060,
+   "title": "[release-1.6] Restore isMigrationSource to original"
+  },
+  {
+   "backport_pr": 15074,
+   "linked_issues": [],
+   "merged_at": "2025-07-04T00:10:15Z",
+   "origin_pr": null,
+   "title": "[release-1.6] Add synchronizationAddress to migration resource status"
+  },
+  {
+   "backport_pr": 15068,
+   "linked_issues": [],
+   "merged_at": "2025-07-03T17:14:15Z",
+   "origin_pr": 15049,
+   "title": "[release-1.6] chore: upgrade libvirt.org/go/libvirt to v1.11"
+  },
+  {
+   "backport_pr": 15050,
+   "linked_issues": [],
+   "merged_at": "2025-07-02T00:08:13Z",
+   "origin_pr": 14999,
+   "title": "[release-1.6] Bump kubevirtci"
+  },
+  {
+   "backport_pr": 15047,
+   "linked_issues": [],
+   "merged_at": "2025-07-02T16:58:16Z",
+   "origin_pr": 14964,
+   "title": "[release-1.6] Beta: NodeRestriction"
+  },
+  {
+   "backport_pr": 15046,
+   "linked_issues": [],
+   "merged_at": "2025-07-02T11:36:13Z",
+   "origin_pr": 15013,
+   "title": "[release-1.6] Run go run ./robots/cmd/uploader -workspace /home/prow/go/src/github.com/kubevirt/project-infra/../kubevirt/WORKSPACE -dry-run=false"
+  },
+  {
+   "backport_pr": 15042,
+   "linked_issues": [],
+   "merged_at": "2025-07-01T13:42:14Z",
+   "origin_pr": 15019,
+   "title": "[release-1.6] virt-handler, migration tests: Expect passt handler call"
+  },
+  {
+   "backport_pr": 15041,
+   "linked_issues": [],
+   "merged_at": "2025-07-01T09:36:13Z",
+   "origin_pr": 15033,
+   "title": "[release-1.6] Skip the ImageVolume e2e test if K8s < 1.35"
+  },
+  {
+   "backport_pr": 15039,
+   "linked_issues": [],
+   "merged_at": "2025-07-01T18:24:21Z",
+   "origin_pr": null,
+   "title": "[release-1.6] VEP-10: Add support for DRA devices in VMI "
+  },
+  {
+   "backport_pr": 15023,
+   "linked_issues": [],
+   "merged_at": "2025-07-03T02:28:15Z",
+   "origin_pr": null,
+   "title": "[release-1.6] Decentralized live migration core functionality."
+  },
+  {
+   "backport_pr": 15020,
+   "linked_issues": [],
+   "merged_at": "2025-07-01T18:24:14Z",
+   "origin_pr": 14986,
+   "title": "[release-1.6] allow external CA to be trusted by operator."
+  },
+  {
+   "backport_pr": 15014,
+   "linked_issues": [],
+   "merged_at": "2025-06-30T21:08:13Z",
+   "origin_pr": 14875,
+   "title": "[release-1.6] virt-handler, vm: Seamless TCP migration with passt"
+  }
+ ],
+ "candidates": [
+  {
+   "created_at": "2024-09-25T12:51:46Z",
+   "issue": 12932,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2024-10-30T10:39:25Z",
+   "issue": 13142,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-01-06T09:27:08Z",
+   "issue": 13633,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-03T13:04:40Z",
+   "issue": 14093,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-05T15:04:43Z",
+   "issue": 14122,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-05T15:12:33Z",
+   "issue": 14123,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-12T10:33:50Z",
+   "issue": 14212,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-03-13T14:48:26Z",
+   "issue": 14231,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-04-30T11:33:46Z",
+   "issue": 14608,
+   "kinds_now": [
+    "kind/failing-test",
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-06-23T08:58:02Z",
+   "issue": 14979,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 15208,
+     "kind": "backport",
+     "origin_pr": 15159
+    }
+   ]
+  },
+  {
+   "created_at": "2025-06-24T14:11:44Z",
+   "issue": 14995,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-07T07:57:30Z",
+   "issue": 15091,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T14:46:59Z",
+   "issue": 15135,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T14:59:21Z",
+   "issue": 15136,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:03:31Z",
+   "issue": 15137,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:06:29Z",
+   "issue": 15138,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:09:11Z",
+   "issue": 15139,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-09T15:14:54Z",
+   "issue": 15140,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-10T08:13:18Z",
+   "issue": 15148,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 15158,
+     "kind": "backport",
+     "origin_pr": 15149
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-10T08:49:34Z",
+   "issue": 15150,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-25T08:43:13Z",
+   "issue": 15281,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-07-28T08:50:52Z",
+   "issue": 15293,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  }
+ ],
+ "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: two people adjudicate every candidate (features and chores are excluded).",
+ "limitation": "The project does not record release blockers, so this proxy is used.",
+ "release": "1.6",
+ "window": {
+  "forecast_cutoff": "2025-03-13T18:01:18+00:00",
+  "from_beta": "2025-05-21T15:18:14+00:00",
+  "to_final": "2025-07-30T18:23:13+00:00"
+ }
+}

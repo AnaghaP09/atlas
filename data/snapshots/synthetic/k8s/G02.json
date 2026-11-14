@@ -1,0 +1,7 @@
+{
+  "description": "Synthetic cluster events on the Kubernetes 1.36 lane during volume migration.",
+  "events": [
+    {"minutes_before": 30, "namespace": "kubevirt-test-default1", "kind": "Pod", "reason": "FailedMount", "message": "hotplug volume not yet attached on target node when migration started"},
+    {"minutes_before": 25, "namespace": "kubevirt-test-default1", "kind": "VirtualMachineInstanceMigration", "reason": "Failed", "message": "target pod could not access migrated disk"}
+  ]
+}

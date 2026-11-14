@@ -1,0 +1,7 @@
+{
+  "description": "Synthetic aggregate error rates for the affected test lanes; aggregates only, no raw logs or end-user data.",
+  "series": [
+    {"minutes_before": 5, "metric": "lane_failure_rate", "unit": "fraction", "window_minutes": 1440, "value": 0.21},
+    {"minutes_before": 5, "metric": "suite_flake_rate", "unit": "fraction", "window_minutes": 10080, "value": 0.04}
+  ]
+}

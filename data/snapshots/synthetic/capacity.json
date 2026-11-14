@@ -1,0 +1,13 @@
+{
+  "description": "Synthetic team capacity for the demo. Role ids and skill tags only; no names, ratings or individual measures.",
+  "days_before": 2,
+  "roles": [
+    {"role_id": "role-storage-dev", "team": "sig-storage", "skills": ["go", "storage", "hotplug", "migration"], "available_points": 13, "allocated_points": 8},
+    {"role_id": "role-compute-dev", "team": "sig-compute", "skills": ["go", "virt-handler", "virt-controller", "migration"], "available_points": 21, "allocated_points": 15},
+    {"role_id": "role-network-dev", "team": "sig-network", "skills": ["go", "networking", "passt", "ipv6"], "available_points": 8, "allocated_points": 6},
+    {"role_id": "role-operator-dev", "team": "sig-operator", "skills": ["go", "upgrade", "operator"], "available_points": 8, "allocated_points": 7},
+    {"role_id": "role-ci-infra", "team": "sig-ci", "skills": ["prow", "clusters", "s390x", "cni"], "available_points": 13, "allocated_points": 5},
+    {"role_id": "role-release-decider", "team": "release", "skills": ["release-management", "risk"], "available_points": 5, "allocated_points": 2},
+    {"role_id": "coding-agent", "team": "agents", "skills": ["dependency-bump", "test-adjustment", "bounded-change"], "available_points": 20, "allocated_points": 4}
+  ]
+}

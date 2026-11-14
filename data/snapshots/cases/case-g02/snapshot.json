@@ -1,0 +1,30 @@
+{
+ "alias_variant": null,
+ "counts": {
+  "architecture_tag": "v1.8.0",
+  "ci_jobs": 1,
+  "commits": 54,
+  "issues": 21,
+  "missing_fields": {},
+  "pull_requests": 54,
+  "synthetic": 11
+ },
+ "cutoff": "2026-05-06T15:03:51+00:00",
+ "cutoff_rule": "latest case issue creation time plus a 60 minute triage window, ending one second before the first outcome record if that comes sooner",
+ "data_modes": {
+  "capacity": "SYNTHETIC",
+  "ci": "REAL",
+  "git": "REAL",
+  "issues": "REAL",
+  "kubernetes": "SYNTHETIC",
+  "security": "not captured for historical cases; investigation security checks return not_run",
+  "telemetry": "SYNTHETIC"
+ },
+ "notes": [
+  "Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the case outcome; the case is scored with that limitation reported."
+ ],
+ "records": 1235,
+ "records_sha256": "c10bc2a5449d273e6ce4a131efbd57946bccd09f78f6b20df9075891d3b9fc52",
+ "release_or_case": "G02",
+ "snapshot_id": "case-g02"
+}

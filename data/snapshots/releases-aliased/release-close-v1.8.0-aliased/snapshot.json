@@ -1,0 +1,24 @@
+{
+ "alias_variant": "aliased",
+ "counts": {
+  "architecture": 1094,
+  "excluded_label": 0,
+  "excluded_not_open": 6,
+  "issues": 153,
+  "synthetic": 7,
+  "unknown_state": 0
+ },
+ "cutoff": "2026-03-24T14:09:37+00:00",
+ "data_modes": {
+  "architecture": "REAL",
+  "capacity": "SYNTHETIC",
+  "issues": "REAL"
+ },
+ "notes": [
+  "Identifiers are aliased; provenance holds opaque references only."
+ ],
+ "records": 1254,
+ "records_sha256": "1104165eb5b14671a1e093a6b6ce07eb2b4a3aedb5950cb81ceb07cfef760eee",
+ "release_or_case": "aliased",
+ "snapshot_id": "release-close-v1.8.0-aliased"
+}

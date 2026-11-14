@@ -124,3 +124,28 @@ def test_relative_and_example_paths_allowed() -> None:
     for text in ("ATLAS_DATA_DIR=data", "data/local/images", "https://atlas.invalid/schema/x.json",
                  "ATLAS_PUBLISH_TARGET=<owner>/<repo>"):
         assert not public_check.scan_text(text, "f", entropy=False)
+
+
+def test_handles_match_in_one_pass_and_ignore_case() -> None:
+    handles = frozenset(f"user-{i}" for i in range(400)) | {"Octo-Dev"}
+    assert public_check.scan_text("thanks octo-dev!", "f", handles=handles)
+    assert not public_check.scan_text("octo-developer and pre-octo-dev", "f", handles=handles)
+
+
+def test_data_files_skip_entropy_and_label_checks_but_keep_personal_checks() -> None:
+    token = "".join(chr(65 + (i * 7) % 26) + chr(97 + (i * 11) % 26) + str(i % 10) for i in range(14))
+    url_line = "https://storage.example.com/logs/" + token + "/build.log # " + "round" + " 1"
+    assert public_check.scan_text(url_line, "src/module.py")
+    assert not public_check.scan_text(url_line, "data/snapshots/x.jsonl", data=True)
+    assert public_check.is_data_path("data/snapshots/case/records.jsonl")
+    assert public_check.is_data_path("data/evaluator/expected.csv")
+    assert not public_check.is_data_path("atlas/store.py")
+    # Secrets, emails and handles are still blocked in data files.
+    assert public_check.scan_text("contact someone" + "@" + "corp-mail.org", "d", data=True)
+    assert public_check.scan_text("token ghp_" + "a" * 36, "d", data=True)
+    assert public_check.scan_text("fixed by @octo-dev", "d", data=True, handles=["octo-dev"])
+
+
+def test_numbers_are_not_matched_as_handles() -> None:
+    assert not public_check.scan_text("see pull request #30787", "d", data=True, handles=["30787"])
+    assert public_check.scan_text("thanks user30787", "d", data=True, handles=["user30787"])

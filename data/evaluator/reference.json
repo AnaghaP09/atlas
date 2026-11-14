@@ -1,0 +1,37 @@
+{
+ "description": "Definition of the reference evaluation dataset: which public project it is built from, the golden cases, the outcome records that must never appear in a case snapshot, and the release-history windows. Data, not code: preparation reads it, and nothing in the backend depends on it.",
+ "project": {
+  "project_id": "reference",
+  "repository": "kubevirt/kubevirt",
+  "go_module": "kubevirt.io/kubevirt",
+  "source_url": "https://github.com/kubevirt/kubevirt.git",
+  "ci": {
+   "artifact_base": "https://storage.googleapis.com/kubevirt-prow",
+   "view_hosts": ["prow.ci.kubevirt.io"],
+   "view_prefix": "/view/gs/kubevirt-prow"
+  },
+  "bot_accounts": ["kubevirt-bot", "kubevirt-prow", "kubevirt-prow[bot]", "kubevirt-commenter-bot"],
+  "alias_words": [["kubevirt.io", "proj.example"], ["KubeVirt", "Proj"], ["Kubevirt", "Proj"], ["kubevirt", "proj"]],
+  "job_name_pattern": "(?:pull|periodic|ci)-kubevirt-[A-Za-z0-9._-]+",
+  "ticket_prefixes": ["CNV"]
+ },
+ "golden_cases": {
+  "G01": {"issues": [18234], "prohibited_prs": [18235]},
+  "G02": {"issues": [17724], "prohibited_prs": [17825], "notes": ["Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the case outcome; the case is scored with that limitation reported."]},
+  "G03": {"issues": [17388], "prohibited_prs": [17475]},
+  "G04": {"issues": [18465, 18396, 18336], "context": [18333], "prohibited_prs": [18718]},
+  "G05": {"issues": [15886], "context_prs": [13322], "prohibited_prs": [15955]},
+  "G06": {"issues": [17371], "prohibited_prs": [], "notes": ["Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the case outcome; the case is scored with that limitation reported."]},
+  "G07": {"issues": [17022], "context": [17019], "prohibited_prs": []},
+  "G08": {"release": "v1.9.0", "prohibited_prs": []}
+ },
+ "windows": {"triage_minutes": 60, "background_days": 90, "merged_pr_days": 14, "background_label": "kind/flake", "main_branch": "main"},
+ "releases": {
+  "tags": ["v1.5.0", "v1.6.0-beta.0", "v1.6.0", "v1.7.0-beta.0", "v1.7.0", "v1.8.0-beta.0", "v1.8.0", "v1.9.0-beta.0", "v1.9.0"],
+  "minors": [6, 7, 8, 9],
+  "major": 1,
+  "branch_pattern": "release-{major}.{minor}",
+  "candidate_labels": "kind/bug,kind/flake",
+  "architecture_tags": ["v1.5.0", "v1.6.0", "v1.7.0", "v1.8.0", "v1.9.0"]
+ }
+}

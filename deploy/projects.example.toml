@@ -14,6 +14,15 @@ release_tag_pattern = "^v[0-9]+\\.[0-9]+\\.0$"
 security_inventory = "go.mod"
 evaluation = true            # the golden set and quality gates run on this project
 
+# Optional source details used by the data connectors (example values for this public project).
+[projects.kubevirt.sources]
+go_module = "kubevirt.io/kubevirt"
+
+[projects.kubevirt.sources.ci]
+artifact_base = "https://storage.googleapis.com/kubevirt-prow"
+view_hosts = ["prow.ci.kubevirt.io"]
+view_prefix = "/view/gs/kubevirt-prow"
+
 [projects.kubevirt.labels]
 flaky = "kind/flake"
 bug = "kind/bug"

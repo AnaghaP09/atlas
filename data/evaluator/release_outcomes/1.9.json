@@ -1,0 +1,485 @@
+{
+ "backports": [
+  {
+   "backport_pr": 18598,
+   "linked_issues": [],
+   "merged_at": "2026-07-27T15:21:18Z",
+   "origin_pr": 18428,
+   "title": "[release-1.9] test, namespace: Fix cleanup failures in env with  external ns labels "
+  },
+  {
+   "backport_pr": 18580,
+   "linked_issues": [],
+   "merged_at": "2026-07-26T18:33:14Z",
+   "origin_pr": null,
+   "title": "[release-1.9] net, e2e: Remove report podIP tests"
+  },
+  {
+   "backport_pr": 18578,
+   "linked_issues": [],
+   "merged_at": "2026-07-26T09:09:14Z",
+   "origin_pr": 18530,
+   "title": "[release-1.9] net, e2e: Ping ref VMI instead of ref pod in migration tests"
+  },
+  {
+   "backport_pr": 18567,
+   "linked_issues": [],
+   "merged_at": "2026-07-23T14:21:30Z",
+   "origin_pr": 18300,
+   "title": "[release-1.9] Expose VFIO cdev devices to virt-launcher for IOMMUFD passthrough"
+  },
+  {
+   "backport_pr": 18565,
+   "linked_issues": [],
+   "merged_at": "2026-07-23T14:21:21Z",
+   "origin_pr": 18523,
+   "title": "[release-1.9] tests: enable plugins gate at lane setup to avoid rollouts"
+  },
+  {
+   "backport_pr": 18557,
+   "linked_issues": [],
+   "merged_at": "2026-07-23T07:11:15Z",
+   "origin_pr": 18538,
+   "title": "[release-1.9] Console: Use JoinNoFollow for console socket path"
+  },
+  {
+   "backport_pr": 18552,
+   "linked_issues": [],
+   "merged_at": "2026-07-23T01:43:14Z",
+   "origin_pr": 18529,
+   "title": "[release-1.9] hotfix: Protect unprotected stall detector code paths"
+  },
+  {
+   "backport_pr": 18539,
+   "linked_issues": [],
+   "merged_at": "2026-07-21T19:09:14Z",
+   "origin_pr": 18045,
+   "title": "[release-1.9] Fix cleanupAttachmentPods fallback keeping useless old pods"
+  },
+  {
+   "backport_pr": 18532,
+   "linked_issues": [],
+   "merged_at": "2026-07-22T06:01:13Z",
+   "origin_pr": 17707,
+   "title": "[release-1.9] migration controller: cleanup old virt-launcher pods along with migration objects"
+  },
+  {
+   "backport_pr": 18509,
+   "linked_issues": [],
+   "merged_at": "2026-07-21T01:42:34Z",
+   "origin_pr": 18492,
+   "title": "[release-1.9] Safepath: Make sure the whole path doesn't have symlink"
+  },
+  {
+   "backport_pr": 18507,
+   "linked_issues": [],
+   "merged_at": "2026-07-20T11:20:34Z",
+   "origin_pr": 18374,
+   "title": "[release-1.9] network admitter: Reject interfaces without exactly one binding"
+  },
+  {
+   "backport_pr": 18476,
+   "linked_issues": [],
+   "merged_at": "2026-07-16T21:24:32Z",
+   "origin_pr": 18457,
+   "title": "[release-1.9] VEP 190: Guard plugin ValidatingAdmissionPolicies behind Plugins feature gate"
+  },
+  {
+   "backport_pr": 18466,
+   "linked_issues": [
+    18419
+   ],
+   "merged_at": "2026-07-16T10:14:36Z",
+   "origin_pr": 18435,
+   "title": "[release-1.9] Pass network binding plugin name to sidecar containers"
+  },
+  {
+   "backport_pr": 18461,
+   "linked_issues": [],
+   "merged_at": "2026-07-15T18:34:33Z",
+   "origin_pr": 18376,
+   "title": "[release-1.9] Add fg report to release artifacts"
+  },
+  {
+   "backport_pr": 18447,
+   "linked_issues": [
+    18302
+   ],
+   "merged_at": "2026-07-14T10:24:32Z",
+   "origin_pr": 18217,
+   "title": "[release-1.9] Unquarantine decentralized live migration cancel tests"
+  },
+  {
+   "backport_pr": 18446,
+   "linked_issues": [],
+   "merged_at": "2026-07-14T19:22:33Z",
+   "origin_pr": 18247,
+   "title": "[release-1.9] vep-10: move GPUsWithDRA and HostDevicesWithDRA feature gates to beta"
+  },
+  {
+   "backport_pr": 18445,
+   "linked_issues": [],
+   "merged_at": "2026-07-13T20:46:31Z",
+   "origin_pr": 18061,
+   "title": "[release-1.9] Add e2e tests for DRA support"
+  },
+  {
+   "backport_pr": 18442,
+   "linked_issues": [],
+   "merged_at": "2026-07-15T08:54:51Z",
+   "origin_pr": null,
+   "title": "[release-1.9] kubecli: apply rest config hooks to K8s clientset"
+  },
+  {
+   "backport_pr": 18438,
+   "linked_issues": [],
+   "merged_at": "2026-07-15T08:54:43Z",
+   "origin_pr": null,
+   "title": "[release-1.9] Fix VMs restarting during NFS failover"
+  },
+  {
+   "backport_pr": 18433,
+   "linked_issues": [],
+   "merged_at": "2026-07-13T07:54:29Z",
+   "origin_pr": 18021,
+   "title": "[release-1.9] Allow network conformance tests to use a binding plugin"
+  },
+  {
+   "backport_pr": 18412,
+   "linked_issues": [],
+   "merged_at": "2026-07-10T08:50:29Z",
+   "origin_pr": 18316,
+   "title": "[release-1.9] VEP-199: set Grace SMMUv3 address capabilities"
+  },
+  {
+   "backport_pr": 18406,
+   "linked_issues": [],
+   "merged_at": "2026-07-15T08:54:36Z",
+   "origin_pr": 18353,
+   "title": "[release-1.9] Gate KubeVirt readiness on virt-template rollout for TLS config changes"
+  },
+  {
+   "backport_pr": 18405,
+   "linked_issues": [],
+   "merged_at": "2026-07-09T08:47:35Z",
+   "origin_pr": 18392,
+   "title": "[release-1.9] plugin VAP: use objectSelector instead of matchConditions for label filtering"
+  },
+  {
+   "backport_pr": 18404,
+   "linked_issues": [],
+   "merged_at": "2026-07-09T14:59:46Z",
+   "origin_pr": 18370,
+   "title": "[release-1.9] emit panic metric with \"isa\" driver too"
+  },
+  {
+   "backport_pr": 18386,
+   "linked_issues": [],
+   "merged_at": "2026-07-09T14:59:38Z",
+   "origin_pr": 18329,
+   "title": "[release-1.9] validator: fix incorrect path for maxDowntimeMs field validation"
+  },
+  {
+   "backport_pr": 18373,
+   "linked_issues": [],
+   "merged_at": "2026-07-08T06:51:41Z",
+   "origin_pr": 18348,
+   "title": "[release-1.9] fix: use BUILD_ARCH to derive architecture in virt-template push-images"
+  },
+  {
+   "backport_pr": 18372,
+   "linked_issues": [],
+   "merged_at": "2026-07-08T06:51:33Z",
+   "origin_pr": 18292,
+   "title": "[release-1.9] tests: decorate kvm-pit emulator thread test with RequiresAMD64"
+  },
+  {
+   "backport_pr": 18371,
+   "linked_issues": [],
+   "merged_at": "2026-07-08T01:15:41Z",
+   "origin_pr": 18043,
+   "title": "[release-1.9] tests: stop pinning VMI to nodes.Items[0] in lifecycle logging tests"
+  },
+  {
+   "backport_pr": 18369,
+   "linked_issues": [],
+   "merged_at": "2026-07-08T01:15:34Z",
+   "origin_pr": 18038,
+   "title": "[release-1.9] tests: remove taint/toleration and affinity scheduling e2e tests"
+  },
+  {
+   "backport_pr": 18356,
+   "linked_issues": [],
+   "merged_at": "2026-07-07T10:17:35Z",
+   "origin_pr": 18337,
+   "title": "[release-1.9] Support inferFromVolume for VolumeSnapshot-backed sources"
+  },
+  {
+   "backport_pr": 18354,
+   "linked_issues": [],
+   "merged_at": "2026-07-06T22:49:34Z",
+   "origin_pr": 18264,
+   "title": "[release-1.9] Run go run ./robots/uploader -workspace /home/prow/go/src/github.com/kubevirt/project-infra/../kubevirt/WORKSPACE -dry-run=false"
+  },
+  {
+   "backport_pr": 18343,
+   "linked_issues": [
+    18305
+   ],
+   "merged_at": "2026-07-06T13:11:36Z",
+   "origin_pr": 18314,
+   "title": "[release-1.9] preference: Create panic device when PreferredPanicDeviceModel is set"
+  },
+  {
+   "backport_pr": 18331,
+   "linked_issues": [],
+   "merged_at": "2026-07-08T21:45:35Z",
+   "origin_pr": 17509,
+   "title": "[release-1.9] migration compression"
+  },
+  {
+   "backport_pr": 18321,
+   "linked_issues": [],
+   "merged_at": "2026-07-02T13:44:27Z",
+   "origin_pr": 18240,
+   "title": "[release-1.9] VEP 248: Experimental Options Wiring | Part 3"
+  }
+ ],
+ "candidates": [
+  {
+   "created_at": "2025-10-20T08:52:57Z",
+   "issue": 15907,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2025-12-19T15:02:59Z",
+   "issue": 16386,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-02-25T10:18:20Z",
+   "issue": 16936,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-03-04T10:42:02Z",
+   "issue": 17022,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-03-13T10:36:11Z",
+   "issue": 17147,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": true,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-03-25T07:11:09Z",
+   "issue": 17279,
+   "kinds_now": [
+    "kind/cleanup",
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-04-01T08:24:40Z",
+   "issue": 17371,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-04-08T13:07:58Z",
+   "issue": 17420,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-05-06T08:38:57Z",
+   "issue": 17714,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-05-26T07:34:37Z",
+   "issue": 17906,
+   "kinds_now": [
+    "kind/bug",
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-06-24T08:29:57Z",
+   "issue": 18236,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-07-01T09:25:59Z",
+   "issue": 18302,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 18447,
+     "kind": "backport",
+     "origin_pr": 18217
+    }
+   ]
+  },
+  {
+   "created_at": "2026-07-01T10:09:28Z",
+   "issue": 18305,
+   "kinds_now": [],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 18343,
+     "kind": "backport",
+     "origin_pr": 18314
+    }
+   ]
+  },
+  {
+   "created_at": "2026-07-03T11:38:26Z",
+   "issue": 18336,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-07-10T05:37:03Z",
+   "issue": 18419,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "backport_pr": 18466,
+     "kind": "backport",
+     "origin_pr": 18435
+    }
+   ]
+  },
+  {
+   "created_at": "2026-07-15T09:05:44Z",
+   "issue": 18465,
+   "kinds_now": [
+    "kind/flake"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  },
+  {
+   "created_at": "2026-07-17T09:51:08Z",
+   "issue": 18490,
+   "kinds_now": [
+    "kind/bug"
+   ],
+   "open_at_previous_close": false,
+   "reasons": [
+    {
+     "kind": "critical_open_at_final_tag"
+    }
+   ]
+  }
+ ],
+ "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: two people adjudicate every candidate (features and chores are excluded).",
+ "limitation": "The project does not record release blockers, so this proxy is used.",
+ "release": "1.9",
+ "window": {
+  "forecast_cutoff": "2026-03-24T14:09:37+00:00",
+  "from_beta": "2026-05-21T16:15:04+00:00",
+  "to_final": "2026-07-30T12:39:35+00:00"
+ }
+}

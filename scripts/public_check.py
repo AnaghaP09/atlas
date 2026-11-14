@@ -84,9 +84,22 @@ def load_handles() -> list[str]:
     return [h.strip() for h in path.read_text(encoding="utf-8").splitlines() if h.strip() and not h.startswith("#")]
 
 
-def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str] | None = None) -> list[str]:
+HANDLE_TOKEN = re.compile(r"[\w-]+")
+# Published evidence data (sanitised snapshots and evaluator files) contains public URLs, encoded
+# payloads and log text: secrets, emails, handles and personal names are still checked there, but
+# the entropy, internal-label and machine-path checks (meant for code and docs) are not.
+DATA_PREFIXES = ("data/snapshots/", "data/evaluator/")
+
+
+def is_data_path(rel: str) -> bool:
+    return rel.startswith(DATA_PREFIXES)
+
+
+def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str] | frozenset[str] | None = None,
+              data: bool = False) -> list[str]:
     hits: list[str] = []
-    handle_patterns = [(h, re.compile(r"(?<![\w-])@?" + re.escape(h) + r"(?![\w-])")) for h in (handles or [])]
+    handle_set = frozenset(h.casefold() for h in (handles or ()))
+    person_checks = PERSONAL_NAMES + REVIEW_WORDS + ([] if data else MACHINE_SPECIFIC)
     for number, line in enumerate(text.splitlines(), 1):
         where = f"{label}:{number}"
         for name, pattern in SECRET_PATTERNS:
@@ -95,16 +108,21 @@ def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str]
         for match in EMAIL.finditer(line):
             if match.group(1).lower() not in ALLOWED_EMAIL_DOMAINS:
                 hits.append(f"{where}: email address")
-        for name, pattern in INTERNAL_MARKERS:
-            if pattern.search(line):
-                hits.append(f"{where}: internal marker ({name})")
-        for name, pattern in PERSONAL_NAMES + REVIEW_WORDS + MACHINE_SPECIFIC:
+        if not data:
+            for name, pattern in INTERNAL_MARKERS:
+                if pattern.search(line):
+                    hits.append(f"{where}: internal marker ({name})")
+        for name, pattern in person_checks:
             if pattern.search(line):
                 hits.append(f"{where}: {name}")
-        for handle, pattern in handle_patterns:
-            if pattern.search(line):
-                hits.append(f"{where}: personal handle")
-        if entropy:
+        if handle_set:
+            # One pass: split the line into handle-shaped tokens and look each up in the set.
+            # Digits-only tokens are issue, pull request and run numbers, not handles.
+            for token in HANDLE_TOKEN.findall(line):
+                if not token.isdigit() and token.casefold() in handle_set:
+                    hits.append(f"{where}: personal handle")
+                    break
+        if entropy and not data:
             for token in ENTROPY_TOKEN.findall(line):
                 if shannon_entropy(token) >= ENTROPY_THRESHOLD:
                     hits.append(f"{where}: high-entropy string")
@@ -122,7 +140,7 @@ def tracked_files(staged: bool) -> list[Path]:
 
 
 def scan_paths(paths: list[Path]) -> list[str]:
-    handles = load_handles()
+    handles = frozenset(load_handles())
     hits: list[str] = []
     for path in paths:
         if not path.is_file() or path.suffix.lower() in BINARY_SUFFIXES:
@@ -132,19 +150,21 @@ def scan_paths(paths: list[Path]) -> list[str]:
         except UnicodeDecodeError:
             continue
         rel = path.relative_to(ROOT).as_posix() if path.is_relative_to(ROOT) else str(path)
-        hits += scan_text(text, rel, entropy=path.name not in ENTROPY_EXEMPT, handles=handles)
+        hits += scan_text(text, rel, entropy=path.name not in ENTROPY_EXEMPT, handles=handles,
+                          data=is_data_path(rel))
     return hits
 
 
 def scan_history() -> list[str]:
     hits: list[str] = []
+    handles = frozenset(load_handles())
     log = git("log", "--format=%H%x00%B%x1e")
     for entry in log.split("\x1e"):
         entry = entry.strip()
         if not entry:
             continue
         sha, _, message = entry.partition("\x00")
-        hits += scan_text(message, f"commit {sha[:10]}", handles=load_handles())
+        hits += scan_text(message, f"commit {sha[:10]}", handles=handles)
     return hits
 
 

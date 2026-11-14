@@ -1,0 +1,29 @@
+{
+ "alias_variant": "aliased",
+ "counts": {
+  "architecture_tag": "v1.6.0",
+  "ci_jobs": 0,
+  "commits": 34,
+  "issues": 29,
+  "missing_fields": {},
+  "pull_requests": 34,
+  "synthetic": 9
+ },
+ "cutoff": "2025-10-15T11:15:29+00:00",
+ "data_modes": {
+  "capacity": "SYNTHETIC",
+  "ci": "REAL",
+  "git": "REAL",
+  "issues": "REAL",
+  "kubernetes": "SYNTHETIC",
+  "security": "not captured for historical cases; investigation security checks return not_run",
+  "telemetry": "SYNTHETIC"
+ },
+ "notes": [
+  "Identifiers are aliased; provenance holds opaque references only."
+ ],
+ "records": 1140,
+ "records_sha256": "370b56a68f40823f6ee0bdbd6d89a35e12cdb1de15bfc213c9f986c8eb180aae",
+ "release_or_case": "aliased",
+ "snapshot_id": "case-g05-aliased"
+}
