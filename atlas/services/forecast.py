@@ -54,6 +54,7 @@ def forecast(items: Sequence[OpenItem], at: datetime, top: int = 10, threshold: 
         out_items.append({
             "id": f"item-{i.issue_id}",
             "issue_id": i.issue_id,
+            "title": i.title,
             "component": i.component,
             "kind": "carry_over",
             "probability_range": "illustrative",

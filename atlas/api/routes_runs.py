@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Body, Query, Request
 
 from atlas.api import catalog as cat
+from atlas.api.snapshot_labels import describe
 from atlas.api.identity import principal_of, require_role
 from atlas.api.ports import NotWired, Refused
 from atlas.api.support import ApiError, check_project, envelope, idempotent, services_of
@@ -279,7 +280,16 @@ def freeze(request: Request, body: dict[str, Any] = Body(...)):
 def snapshots(request: Request, release: str | None = Query(None)) -> dict[str, Any]:
     principal = principal_of(request)
     pid = None if principal.project_id == ANY_PROJECT else principal.project_id
-    items = [dict(x) for x in services_of(request).snapshots.list(release=release, project_id=pid)]
+    s = services_of(request)
+    items = [dict(x) for x in s.snapshots.list(release=release, project_id=pid)]
+    names = {}
+    projects = getattr(s, "projects", None)
+    for it in items:
+        p_id = it.get("project_id")
+        if p_id and p_id not in names:
+            cfg = projects.get(p_id) if projects is not None and hasattr(projects, "get") else None
+            names[p_id] = getattr(cfg, "name", None) or str(p_id).replace("-", " ").title()
+    items = [describe(s.snapshots, it, names.get(it.get("project_id"))) for it in items]
     return envelope(request, principal, {"snapshots": items})
 
 

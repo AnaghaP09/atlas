@@ -159,6 +159,9 @@ def _notification_action(request: Request, notification_id: str, action: str):
         elif hasattr(s.notifier, "resolve"):
             s.notifier.resolve(notification_id)
         s.audit.record(role, f"notification.{action}", notification_id, {})
+        clock = getattr(s, "metrics", None)
+        if clock is not None:
+            clock.changed(principal.project_id if principal.project_id != "*" else None, ("unread_notifications",))
         return 200, envelope(request, principal, {"notification_id": notification_id,
                                                   "status": "acknowledged" if action == "ack" else "resolved"})
 

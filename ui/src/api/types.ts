@@ -233,7 +233,7 @@ export interface ManifestCall {
 export interface ManifestRow {
   row_id: string;
   title: string;
-  canvas_box: string;
+  shows: string;
   data_mode: DataMode;
   server: "normal" | "scenario" | string;
   calls: ManifestCall[];

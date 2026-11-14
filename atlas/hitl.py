@@ -98,7 +98,7 @@ class HumanQueue:
 
 def triggers_for_run(output: Mapping[str, Any], *, budget_exhausted: str | None = None,
                      payload_withheld: bool = False) -> list[tuple[str, str]]:
-    """Box 12 triggers raised by one run's output: (trigger, reason)."""
+    """Human-review triggers raised by one run's output: (trigger, reason)."""
     found: list[tuple[str, str]] = []
     conf = output.get("confidence")
     if isinstance(conf, (int, float)) and conf < CONFIDENCE_THRESHOLD:

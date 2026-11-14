@@ -26,9 +26,9 @@ function renderWith(ui: React.ReactNode, routes: Record<string, Handler>, identi
 describe("honest labels", () => {
   it.each([
     ["REAL", "Real data"],
-    ["SYNTHETIC", "Synthetic data"],
-    ["STAGED", "Not available in this demo"],
-    ["UNEVALUATED", "Not evaluated"],
+    ["SYNTHETIC", "Sample data"],
+    ["STAGED", "Not in this demo"],
+    ["UNEVALUATED", "Not measured"],
   ])("%s shows as %s with its reason", (mode, text) => {
     render(<DataModeBadge mode={mode} reason="no GPU" />);
     expect(screen.getByTestId("data-mode").textContent).toContain(text);
@@ -39,7 +39,7 @@ describe("honest labels", () => {
 describe("Evaluation", () => {
   it("always shows the proxy note, even before any evaluation exists", async () => {
     renderWith(<Evaluation />, { "/api/evaluations/latest": () => json({ error: "not_found", reason: "no completed evaluation yet" }, 404) });
-    expect(await screen.findByText("No evaluation has finished yet.")).toBeTruthy();
+    expect(await screen.findByText(/No evaluation has finished yet\./)).toBeTruthy();
     expect(screen.getByTestId("proxy-note-always").textContent).toMatch(/stand-in definition of a release blocker/);
   });
 
@@ -56,7 +56,7 @@ describe("Evaluation", () => {
         }),
     });
     const g5 = await screen.findByTestId("gate-G-5");
-    expect(g5.textContent).toContain("Not evaluated");
+    expect(g5.textContent).toContain("Not measured");
     expect(g5.textContent).not.toContain("Passed");
     expect(screen.getByTestId("g13-proxy").textContent).toMatch(/stand-in definition/);
     expect(screen.getByTestId("gate-G-13").textContent).toContain("60%");

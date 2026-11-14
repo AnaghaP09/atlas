@@ -200,7 +200,7 @@ def test_log_cap_and_filter() -> None:
     assert "log cut" in out and "FAIL: test_x" in out and "line 5" not in out
 
 
-def test_tools_cover_canvas_list() -> None:
+def test_tools_cover_the_planned_list() -> None:
     names = set(build_tools())
     assert {"get_release_issues", "get_changed_components", "get_failed_pipeline_jobs", "get_cluster_events",
             "get_blocking_vulnerabilities", "get_error_rate", "trace_dependency_impact", "get_issue",

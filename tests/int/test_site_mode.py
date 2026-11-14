@@ -222,5 +222,5 @@ def test_demo_runner_signs_in_per_role_with_csrf_and_origin(site):
         assert status != 401 and data.get("error") not in {"csrf_failed", "origin_required", "unauthorised"}, data
     assert len(made) == 2  # one signed-in client (cookie jar) per role on this server
     runner = Runner(send, {"normal": ORIGIN}, log=lambda _: None)
-    runner.run_row({"row_id": "X", "title": "health", "canvas_box": 1, "data_mode": "REAL", "server": "normal",
+    runner.run_row({"row_id": "X", "title": "health", "shows": "health", "data_mode": "REAL", "server": "normal",
                     "calls": [{"method": "GET", "path": "/api/health", "role": "pm"}]})

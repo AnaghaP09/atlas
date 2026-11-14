@@ -4,7 +4,7 @@ import type { LiveEvent } from "../api/stream";
 import type { Notification } from "../api/types";
 import { useAction, useApi, useIdentity, useLiveStream } from "../app/context";
 import { ActionResult, ErrorView, Loading, Section, Time } from "../components/common";
-import { Link } from "../lib/router";
+import { EntityLink } from "../components/related";
 
 const SEVERITIES = ["all", "critical", "high", "warning", "info"] as const;
 
@@ -14,8 +14,8 @@ function Row({ n }: { n: Notification }) {
   return (
     <li className={`note sev-border-${n.severity}`}>
       <span className={`sev sev-${n.severity}`}>{n.severity}</span> {n.kind === "reminder" ? <em>reminder</em> : null} {n.message}{" "}
-      <Time iso={n.created_at} /> {n.run_id ? <Link to={`/runs/${encodeURIComponent(n.run_id)}`}>run</Link> : null}{" "}
-      {n.task_id ? <Link to={`/tasks/${encodeURIComponent(n.task_id)}`}>task</Link> : null}{" "}
+      <Time iso={n.created_at} short /> {n.run_id ? <EntityLink entity="run" id={n.run_id}>Run</EntityLink> : null}{" "}
+      {n.task_id ? <EntityLink entity="task" id={n.task_id}>Task</EntityLink> : null}{" "}
       {!n.acknowledged ? <button onClick={() => void ack.run({})}>Acknowledge</button> : <span className="muted">acknowledged</span>}{" "}
       {!n.resolved ? <button onClick={() => void resolve.run({})}>Resolve</button> : <span className="muted">resolved</span>}
       <ActionResult state={ack.state} retry={() => void ack.retrySame()} />

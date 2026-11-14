@@ -4,6 +4,10 @@ import type { LiveEvent } from "../api/stream";
 import type { Claim, EvidenceRecord, ReportView } from "../api/types";
 import { useApi, useLiveStream } from "../app/context";
 import { AgentName, DataModeBadge, ErrorView, Loading, Section } from "../components/common";
+import { VerdictChip } from "./Runs";
+import { Related } from "../components/related";
+import { ReadOnlyBanner, type AccessGrantView } from "../components/access";
+import { useIdentity } from "../app/context";
 import { Markdown } from "../lib/markdown";
 import { Link } from "../lib/router";
 
@@ -16,6 +20,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const runId = reportId.includes(":") ? reportId.slice(0, reportId.lastIndexOf(":")) : reportId;
   const report = useApi<ReportView>(`/api/reports/${encodeURIComponent(reportId)}`);
   const qc = useQueryClient();
+  const { principal } = useIdentity();
   const [notice, setNotice] = useState<string | null>(null);
   const handlers = useRef({
     onEvent: (e: LiveEvent) => {
@@ -45,7 +50,15 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const isForecast = r.report_type.includes("forecast") || "forecast" in r.report;
   const proxy = typeof r.report.proxy_note === "string" ? r.report.proxy_note : null;
   return (
-    <Section title={`Report: ${r.report_type}`} mode={r.data_mode}>
+    <Section title={r.report_type.replace(/_/g, " ")} icon="task" mode={r.data_mode}>
+      <ReadOnlyBanner access={(r as unknown as { access?: AccessGrantView }).access} myRole={principal?.role ?? null} />
+      <Related
+        object={{ type: "report", id: r.report_id }}
+        chips={[
+          { entity: "run", id: r.run_id, label: "Run" },
+          { entity: "evidence", id: claims.flatMap((c) => c.evidence_ids ?? [])[0], label: "Evidence", count: new Set(claims.flatMap((c) => c.evidence_ids ?? [])).size, ctx: { runId: r.run_id } },
+        ]}
+      />
       {notice ? <p className="banner" role="status">{notice}</p> : null}
       {r.superseded_by ? (
         <p className="banner banner-warn" data-testid="superseded">
@@ -55,8 +68,12 @@ export function ReportDetail({ reportId }: { reportId: string }) {
       <p className="muted">
         Run <Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link> · version {r.report_version} · checked by{" "}
         <AgentName agent="sentinel" />
-        {r.withheld > 0 ? ` · ${r.withheld} item(s) withheld because your role cannot see their sources` : ""}
       </p>
+      {r.withheld > 0 ? (
+        <p className="withheld" role="note">
+          {r.withheld} item(s) withheld because your role cannot see their sources.
+        </p>
+      ) : null}
       {r.corrections.length ? (
         <div className="banner">
           <strong>Corrections</strong>
@@ -68,17 +85,19 @@ export function ReportDetail({ reportId }: { reportId: string }) {
           <DataModeBadge mode="REAL" /> Probabilities are illustrative. {proxy ?? PROXY_NOTE}
         </p>
       ) : null}
-      <Markdown source={r.markdown} />
+      <div className="report">
+        <Markdown source={r.markdown} />
+      </div>
       {claims.length ? (
         <>
           <h3>Claims and their evidence</h3>
           <ul className="claims">
             {claims.map((c) => (
               <li key={c.id}>
-                {c.text}{" "}
+                <VerdictChip verdict={c.verdict} /> {c.text}{" "}
                 {(c.evidence_ids ?? []).map((id) => (
-                  <Link key={id} className="cite" to={`/evidence/${encodeURIComponent(id)}?run=${encodeURIComponent(r.run_id)}`}>
-                    [{id}]
+                  <Link key={id} className="chip cite" to={`/evidence/${encodeURIComponent(id)}?run=${encodeURIComponent(r.run_id)}`}>
+                    {id}
                   </Link>
                 ))}
               </li>

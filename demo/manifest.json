@@ -1,6 +1,6 @@
 {
  "title": "ATLAS demonstration",
- "description": "Ordered demo rows. Each row names the server it runs on, the canvas box it shows, its data label, the HTTP calls to make, machine-checkable assertions, and how to restore state afterwards. The same file drives demo/run_demo.py and the guided demo in the UI. Snapshot ids, release ids and case ids are placeholders filled from configuration (see variables).",
+ "description": "Ordered demo steps. Each step names the server it runs on, what it shows, its data label, the HTTP calls to make, machine-checkable assertions, and how to restore state afterwards. The same file drives demo/run_demo.py and the guided demo in the interface. Data set, release and case ids are filled from configuration (see variables).",
  "servers": {
   "normal": "ATLAS_BASE_URL",
   "scenario": "ATLAS_SCENARIO_URL"
@@ -19,8 +19,7 @@
  "rows": [
   {
    "row_id": "T1",
-   "title": "Release close on the configured release",
-   "canvas_box": "7, 10, 11",
+   "title": "Release close",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -71,12 +70,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "A release close that produces the three planning reports."
   },
   {
    "row_id": "G13",
-   "title": "Forecast accuracy on four past releases (proxy)",
-   "canvas_box": "14",
+   "title": "Forecast accuracy",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -97,12 +96,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Forecasts from four past releases scored against what really carried over."
   },
   {
    "row_id": "T2",
-   "title": "Failure event: one commit behind three issues",
-   "canvas_box": "7, 10",
+   "title": "Investigate a failure",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -139,12 +138,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "One failure traced to a single change behind three issues."
   },
   {
    "row_id": "T3",
-   "title": "Nightly sweep with a backlog",
-   "canvas_box": "7, 12",
+   "title": "Nightly sweep",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -196,12 +195,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "The nightly sweep working through a backlog of failures."
   },
   {
    "row_id": "T4",
-   "title": "Questions, including a request to rank people",
-   "canvas_box": "5, 13",
+   "title": "Questions",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -243,12 +242,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Questions answered with evidence, and a request to rank people refused."
   },
   {
    "row_id": "T6a",
-   "title": "Manual triggers and safe retries",
-   "canvas_box": "7",
+   "title": "Run now",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -320,12 +319,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Starting runs by hand, with safe retries that never do the work twice."
   },
   {
    "row_id": "T6b",
-   "title": "Manual triggers under containment and Offline mode",
-   "canvas_box": "7, 16",
+   "title": "Run now while stopped",
    "data_mode": "SYNTHETIC",
    "server": "scenario",
    "setup": [],
@@ -443,12 +442,12 @@
       }
      ]
     }
-   ]
+   ],
+   "shows": "Runs refused while a kill switch is tripped or the system is offline."
   },
   {
    "row_id": "T7",
-   "title": "Automatic runs from watchers and schedules",
-   "canvas_box": "7",
+   "title": "Automatic runs",
    "data_mode": "SYNTHETIC",
    "server": "scenario",
    "setup": [],
@@ -488,12 +487,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Watchers and schedules starting runs on their own."
   },
   {
    "row_id": "N1",
-   "title": "Notifications and error flow",
-   "canvas_box": "7, 12, 16",
+   "title": "Notifications",
    "data_mode": "SYNTHETIC",
    "server": "scenario",
    "setup": [],
@@ -529,12 +528,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Errors and decisions reaching the right roles."
   },
   {
    "row_id": "T5",
-   "title": "Chat delivery (not available in the demo)",
-   "canvas_box": "7",
+   "title": "Chat delivery",
    "data_mode": "STAGED",
    "server": "normal",
    "setup": [],
@@ -555,12 +554,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Chat delivery, which is not part of this demo."
   },
   {
    "row_id": "C3",
-   "title": "Knowledge graph per snapshot",
-   "canvas_box": "8, 10",
+   "title": "Knowledge graph",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -599,12 +598,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Components and their import links for one point in time."
   },
   {
    "row_id": "R1-R6",
    "title": "The six reports",
-   "canvas_box": "11",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -643,12 +642,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "The six reports, each for its own reader."
   },
   {
    "row_id": "F1",
-   "title": "Feedback becomes a golden-set candidate",
-   "canvas_box": "10, 12",
+   "title": "Record a decision",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -669,12 +668,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "A recorded decision becoming a test case for later runs."
   },
   {
    "row_id": "X1-X5",
-   "title": "Task from creation to acceptance",
-   "canvas_box": "9, 12, 14",
+   "title": "Coding task",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -722,12 +721,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "A coding task from proposal to approval, publication and acceptance."
   },
   {
    "row_id": "K1",
-   "title": "Containment, recovery and corrections",
-   "canvas_box": "16",
+   "title": "Kill switches",
    "data_mode": "SYNTHETIC",
    "server": "scenario",
    "setup": [],
@@ -775,12 +774,12 @@
       200
      ]
     }
-   ]
+   ],
+   "shows": "A kill switch tripping, a correction, and a safe resume."
   },
   {
    "row_id": "E1",
-   "title": "Open views update after a re-check",
-   "canvas_box": "10",
+   "title": "Live updates",
    "data_mode": "REAL",
    "server": "normal",
    "setup": [],
@@ -802,12 +801,12 @@
      ]
     }
    ],
-   "restoration": []
+   "restoration": [],
+   "shows": "Open pages updating when claims are checked again."
   },
   {
    "row_id": "O1",
-   "title": "Offline mode makes no outside connections",
-   "canvas_box": "1, 13",
+   "title": "Offline mode",
    "data_mode": "SYNTHETIC",
    "server": "scenario",
    "setup": [],
@@ -851,7 +850,8 @@
       200
      ]
     }
-   ]
+   ],
+   "shows": "Offline mode making no outside connections."
   }
  ],
  "variables": {
