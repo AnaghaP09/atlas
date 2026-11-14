@@ -11,12 +11,14 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import sys
 from pathlib import Path
 
 from atlas.api.app import create_app
 from atlas.api.services import build_core
-from atlas.config import ConfigError, load_settings
+from atlas.config import ConfigError, load_settings, parse_env_file
+from atlas.api.demo_vars import demo_variables
 from atlas.contracts import Mode
 
 
@@ -26,9 +28,14 @@ def build_server(env_file: str, scenario: bool):
         raise ConfigError("the scenario server needs ATLAS_SERVER_ROLE=scenario and ATLAS_DEMO_SCENARIOS=on")
     if not scenario and settings.server_role != "normal":
         raise ConfigError("the normal server must run with ATLAS_SERVER_ROLE=normal")
-    extra = frozenset({settings.ui_origin.rstrip("/")}) if settings.ui_origin else frozenset()
-    services = build_core(environment="scenario" if scenario else "normal", port=settings.port,
-                          data_dir=Path(settings.data_dir) / "local", extra_origins=extra, mode=Mode(settings.mode))
+    ui = frozenset({settings.ui_origin.rstrip("/")}) if settings.ui_origin else frozenset()
+    services = build_core(environment="scenario" if scenario else "normal", host=settings.host, port=settings.port,
+                          data_dir=Path(settings.data_dir) / "local", allowed_hosts=settings.allowed_hosts,
+                          allowed_origins=settings.allowed_origins, ui_origins=ui, mode=Mode(settings.mode))
+    env = parse_env_file(Path(env_file))
+    env.update({k: v for k, v in os.environ.items() if k.startswith("ATLAS_")})
+    services.default_project_id = env.get("ATLAS_DEFAULT_PROJECT") or None
+    services.demo_variables = demo_variables(env)
     services.config_presence = settings.presence()
     services.model_configured = bool(settings.anthropic_api_key)
     try:  # the integration module connects the data and execution layers once they exist

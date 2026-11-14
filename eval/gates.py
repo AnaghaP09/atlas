@@ -19,8 +19,7 @@ from eval.canonical import g13 as score_g13
 GOLDEN_IDS = tuple(f"G{n:02d}" for n in range(1, 11))
 EGRESS_PURPOSES = {"model_call", "live_ingest", "action_security_ingest", "publication", "target_ci_read",
                    "webhook_delivery", "correction_preauth_read", "correction_write", "remediation_verify_read"}
-G08_REQUIRED = {"18236", "18020", "15907"}
-G08_EXCLUDED = {"17720", "17721", "17722", "17723"}
+CARRY_OVER_EXPECTED = Path(__file__).resolve().parents[1] / "data" / "evaluator" / "carry_over_expected.json"
 TASK_FIELDS = ("task", "patch", "diff", "approval", "prepare", "publish")
 
 
@@ -300,12 +299,29 @@ def g7(runs: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     return result("failed" if failures else "passed", {"runs": len(runs), **totals}, failures)
 
 
+def load_carry_over_expected(path: Path = CARRY_OVER_EXPECTED) -> dict[str, Any]:
+    import json
+
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
 def g8(forecast_items: Sequence[Mapping[str, Any]], reports: Mapping[str, Sequence[Any]],
-       alias_map: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """Carry-over forecast for the v1.9.0 close (reported as carry-over, not blocker forecasting)."""
+       alias_map: Mapping[str, str] | None = None, *, required: Iterable[str] | None = None,
+       excluded: Iterable[str] | None = None) -> dict[str, Any]:
+    """Carry-over forecast for the golden release close (reported as carry-over, not blocker forecasting).
+
+    Expected issues come from the evaluation data (``carry_over_expected.json``), not from code.
+    """
     if forecast_items is None:
         return unevaluated("no forecast")
     from eval.canonical import _norm_issue, unalias
+
+    if required is None or excluded is None:
+        expected = load_carry_over_expected()
+        required = expected["required"] if required is None else required
+        excluded = expected["excluded"] if excluded is None else excluded
+    G08_REQUIRED = {_norm_issue(i) for i in required}
+    G08_EXCLUDED = {_norm_issue(i) for i in excluded}
 
     named = {_norm_issue(unalias(str(i.get("issue_id", "")), alias_map)) for i in forecast_items if i.get("issue_id")}
     failures = []

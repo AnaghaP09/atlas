@@ -21,11 +21,9 @@ LIMITATION = (
 
 
 def _norm_issue(value: Any) -> str:
+    """``owner/repo#123``, ``repo#123``, ``#123`` and ``123`` all become ``123``."""
     text = str(value).strip()
-    for prefix in ("kubevirt#", "#"):
-        if text.startswith(prefix):
-            text = text[len(prefix):]
-    return text
+    return text.rsplit("#", 1)[-1] if "#" in text else text
 
 
 def unalias(value: str, alias_map: Mapping[str, str] | None) -> str:

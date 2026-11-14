@@ -144,10 +144,8 @@ def create_app(services: Services) -> FastAPI:
             return FileResponse(index)
         return _error(404, "not_found", "the UI has not been built on this server")
 
-    ui_origin = [o for o in services.allowed_origins if not o.startswith("http://127.0.0.1") and
-                 not o.startswith("http://localhost") and not o.startswith("http://[::1]")]
-    if ui_origin:
-        app.add_middleware(CORSMiddleware, allow_origins=ui_origin, allow_methods=["GET", "POST"],
+    if services.ui_origins:
+        app.add_middleware(CORSMiddleware, allow_origins=sorted(services.ui_origins), allow_methods=["GET", "POST"],
                            allow_headers=["X-Atlas-Role", "Idempotency-Key", "Last-Event-ID", "Content-Type"])
     app.add_middleware(HostOriginGuard, allowed_hosts=services.allowed_hosts, allowed_origins=services.allowed_origins)
     return app

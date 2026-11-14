@@ -1,0 +1,6 @@
+case_id,base_case,new_record_source,new_record_summary,before_classification,before_action,after_classification,after_action,provenance
+NE1,G05,git,The image change was reverted and the IPv6 flakes continue on the same lane,TEST_DEFECT,DELEGATE_TO_CODING_AGENT,CODE_DEFECT,ASSIGN_DEVELOPER,synthetic
+NE2,G06,kubernetes,The missing network plugin is installed on the cluster and about 20 tests still fail with a panic in a component,ENVIRONMENT,HAND_TO_INFRA_OWNER,CODE_DEFECT,ASSIGN_DEVELOPER,synthetic
+NE3,G03,issues,A maintainer links an earlier issue with the same race that already has a merged fix,CODE_DEFECT,ASSIGN_DEVELOPER,DUPLICATE,LINK_DUPLICATE,synthetic
+NE4,G01,security,A scan of the newer passt version reports a blocking vulnerability with no fixed release,DEPENDENCY,DELEGATE_TO_CODING_AGENT,DEPENDENCY,ESCALATE_DECISION,synthetic
+NE5,G02,issues,The failure is labelled critical-urgent and now blocks the release branch lane,CODE_DEFECT,ASSIGN_DEVELOPER,CODE_DEFECT,ESCALATE_DECISION,synthetic

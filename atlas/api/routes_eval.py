@@ -51,7 +51,8 @@ def demo_manifest(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
     s = services_of(request)
     manifest = json.loads(s.manifest_path.read_text(encoding="utf-8"))
-    return envelope(request, principal, {"manifest": manifest, "this_server": s.environment})
+    return envelope(request, principal, {"manifest": manifest, "variables": dict(s.demo_variables),
+                                         "this_server": s.environment})
 
 
 # ------------------------------------------------------------------ scenario server only
@@ -70,6 +71,11 @@ def _scenario_effect(request: Request, kind: str, body: dict[str, Any]):
             s.scenario.events.append(record)
         elif kind == "faults":
             s.scenario.faults[str(body.get("fault", ""))] = record
+            if body.get("fault") == "containment_trip":
+                trip = getattr(s.containment, "trip", None)
+                if trip is None:
+                    raise ApiError(503, "not_connected", "the containment service cannot be tripped on this server")
+                record["incident_id"] = trip(str(body.get("switch", "model_calls")), "scenario fault")
         elif kind == "clock":
             s.scenario.clock_offset_hours += float(body.get("advance_hours", 0))
         elif kind == "spend":

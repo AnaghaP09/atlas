@@ -142,16 +142,25 @@ class Services:
     unevaluated: tuple[str, ...] = ()
     run_errors: dict[str, str] = field(default_factory=dict)
     config_presence: dict[str, bool] = field(default_factory=dict)
+    ui_origins: frozenset[str] = frozenset()
+    default_project_id: str | None = None
+    demo_variables: dict[str, str] = field(default_factory=dict)
 
     @property
     def is_scenario(self) -> bool:
         return self.environment == "scenario"
 
 
-def build_core(*, environment: str = "normal", port: int = 8000, data_dir: Path | None = None,
-               identity: IdentityResolver | None = None, extra_origins: frozenset[str] = frozenset(),
-               mode: Mode = Mode.CONNECTED, notifier_kwargs: Mapping[str, Any] | None = None) -> Services:
-    """Build the parts of the server that exist in this layer. Ports are wired afterwards."""
+def build_core(*, environment: str = "normal", host: str = "127.0.0.1", port: int = 8000,
+               data_dir: Path | None = None, identity: IdentityResolver | None = None,
+               allowed_hosts: frozenset[str] | None = None, allowed_origins: frozenset[str] | None = None,
+               ui_origins: frozenset[str] = frozenset(), mode: Mode = Mode.CONNECTED,
+               notifier_kwargs: Mapping[str, Any] | None = None) -> Services:
+    """Build the parts of the server that exist in this layer. Ports are wired afterwards.
+
+    Host, port and the Host/Origin allow-lists come from configuration (``atlas.config.Settings``);
+    the defaults here only mirror the configuration defaults for tests.
+    """
 
     def db(name: str) -> str:
         if data_dir is None:
@@ -168,10 +177,11 @@ def build_core(*, environment: str = "normal", port: int = 8000, data_dir: Path 
                                 db_path=db("notifications"), **dict(notifier_kwargs or {}))
     notifier = NotifyingNotifier(inner, hub)
     admissions = AdmissionStore(db("admissions"))
-    hosts = frozenset({f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"})
-    origins = frozenset({f"http://{h}" for h in hosts}) | extra_origins
+    hosts = allowed_hosts or frozenset({f"{host}:{port}", f"localhost:{port}", f"[::1]:{port}"})
+    origins = (allowed_origins or frozenset({f"http://{h}" for h in hosts})) | ui_origins
     services = Services(
-        environment=environment, host="127.0.0.1", port=port, allowed_hosts=hosts, allowed_origins=origins,
+        environment=environment, host=host, port=port, allowed_hosts=hosts, allowed_origins=origins,
+        ui_origins=ui_origins,
         identity=identity or HeaderIdentity(), projection=projection, hub=hub, events=events, notifier=notifier,
         queue=HumanQueue(db("queue")), admissions=admissions,
         dispatcher=Dispatcher(admissions, lambda adm: None),

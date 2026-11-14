@@ -26,6 +26,13 @@ REPORTS_FOR = {
 
 # ------------------------------------------------------------------ helpers
 
+def _project(s: Any, body: dict[str, Any]) -> str:
+    project_id = body.get("project_id") or s.default_project_id
+    if not project_id:
+        raise ApiError(400, "project_required", "name the project (project_id) or set a default project in the configuration")
+    return str(project_id)
+
+
 def _availability(request: Request, principal: Any, trigger: cat.ManualTrigger) -> tuple[bool, str | None]:
     s = services_of(request)
     return cat.availability(trigger, principal, mode=s.mode.get(), permits=s.containment.permits,
@@ -237,7 +244,7 @@ def ingest(request: Request, body: dict[str, Any] = Body(...)):
         raise ApiError(403, "offline", "live ingestion is not possible in Offline mode")
 
     def effect(key: str) -> tuple[int, dict[str, Any]]:
-        out = dict(s.snapshots.ingest(list(body.get("sources", [])), body.get("project_id", "kubevirt")))
+        out = dict(s.snapshots.ingest(list(body.get("sources", [])), _project(s, body)))
         s.audit.record(principal.role.value, "ingest", out.get("ingest_id", ""), body)
         return 202, envelope(request, principal, out)
 
@@ -251,7 +258,7 @@ def freeze(request: Request, body: dict[str, Any] = Body(...)):
     s = services_of(request)
 
     def effect(key: str) -> tuple[int, dict[str, Any]]:
-        out = dict(s.snapshots.freeze(body.get("project_id", "kubevirt")))
+        out = dict(s.snapshots.freeze(_project(s, body)))
         s.audit.record(principal.role.value, "snapshot.freeze", out.get("snapshot_id", ""), body)
         return 201, envelope(request, principal, out)
 
