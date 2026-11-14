@@ -15,10 +15,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Iterable
 
+from atlas.connectors.project import data_dir
 from atlas.contracts import Provenance, Record
 from atlas.store import AUTHORITATIVE_WRITERS
 
-SYNTHETIC_ROOT = Path(__file__).resolve().parents[2] / "data" / "snapshots" / "synthetic"
+def synthetic_root() -> Path:
+    return data_dir() / "snapshots" / "synthetic"
+
+
 FORBIDDEN_CAPACITY_KEYS = {"name", "names", "email", "login", "handle", "person", "rating", "performance"}
 
 
@@ -43,8 +47,8 @@ def _record(source: str, source_id: str, view: dict[str, Any], t: datetime, scop
     )
 
 
-def kubernetes_records(case_id: str, clock: datetime, root: Path = SYNTHETIC_ROOT) -> list[tuple[Record, dict[str, Any], str]]:
-    path = root / "k8s" / f"{case_id}.json"
+def kubernetes_records(case_id: str, clock: datetime, root: Path | None = None) -> list[tuple[Record, dict[str, Any], str]]:
+    path = (root or synthetic_root()) / "k8s" / f"{case_id}.json"
     if not path.exists():
         return []
     out = []
@@ -56,8 +60,8 @@ def kubernetes_records(case_id: str, clock: datetime, root: Path = SYNTHETIC_ROO
     return out
 
 
-def telemetry_records(case_id: str, clock: datetime, root: Path = SYNTHETIC_ROOT) -> list[tuple[Record, dict[str, Any], str]]:
-    path = root / "telemetry" / f"{case_id}.json"
+def telemetry_records(case_id: str, clock: datetime, root: Path | None = None) -> list[tuple[Record, dict[str, Any], str]]:
+    path = (root or synthetic_root()) / "telemetry" / f"{case_id}.json"
     if not path.exists():
         return []
     out = []
@@ -69,8 +73,8 @@ def telemetry_records(case_id: str, clock: datetime, root: Path = SYNTHETIC_ROOT
     return out
 
 
-def capacity_records(clock: datetime, root: Path = SYNTHETIC_ROOT) -> list[tuple[Record, dict[str, Any], str]]:
-    data = json.loads((root / "capacity.json").read_text(encoding="utf-8"))
+def capacity_records(clock: datetime, root: Path | None = None) -> list[tuple[Record, dict[str, Any], str]]:
+    data = json.loads(((root or synthetic_root()) / "capacity.json").read_text(encoding="utf-8"))
     t = clock - timedelta(days=int(data.get("days_before", 2)))
     out = []
     for role in data["roles"]:
@@ -82,7 +86,7 @@ def capacity_records(clock: datetime, root: Path = SYNTHETIC_ROOT) -> list[tuple
     return out
 
 
-def all_synthetic(case_id: str, clock: datetime, root: Path = SYNTHETIC_ROOT) -> Iterable[tuple[Record, dict[str, Any], str]]:
+def all_synthetic(case_id: str, clock: datetime, root: Path | None = None) -> Iterable[tuple[Record, dict[str, Any], str]]:
     yield from kubernetes_records(case_id, clock, root)
     yield from telemetry_records(case_id, clock, root)
     yield from capacity_records(clock, root)

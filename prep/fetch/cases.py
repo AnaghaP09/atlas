@@ -16,25 +16,16 @@ from typing import Any
 from atlas.connectors.normalize import issue_as_of
 from atlas.store import from_iso
 from prep.fetch.raw import RawCache, prow_paths
+from prep.reference import reference
 
-# Issue cases: the issues that form the case input, extra context issues known to exist before the
-# cutoff, and the triage window after the report (what was known in the first hour).
-GOLDEN_CASES: dict[str, dict[str, Any]] = {
-    "G01": {"issues": [18234]},
-    "G02": {"issues": [17724]},
-    "G03": {"issues": [17388]},
-    "G04": {"issues": [18465, 18396, 18336], "context": [18333]},
-    "G05": {"issues": [15886], "context_prs": [13322]},
-    "G06": {"issues": [17371]},
-    "G07": {"issues": [17022], "context": [17019]},
-    "G08": {"release": "v1.9.0"},
-}
-TRIAGE_WINDOW = timedelta(hours=1)
-BACKGROUND_DAYS = 90
-MERGED_PR_DAYS = 14
-RELEASE_TAGS = ["v1.5.0", "v1.6.0-beta.0", "v1.6.0", "v1.7.0-beta.0", "v1.7.0", "v1.8.0-beta.0", "v1.8.0",
-                "v1.9.0-beta.0", "v1.9.0"]
-ISSUE_REF = re.compile(r"(?:kubevirt/kubevirt/(?:issues|pull)/|(?<![\w/])#)(\d{4,6})\b")
+REF = reference()
+GOLDEN_CASES: dict[str, dict[str, Any]] = REF.cases
+TRIAGE_WINDOW = timedelta(minutes=int(REF.windows["triage_minutes"]))
+BACKGROUND_DAYS = int(REF.windows["background_days"])
+MERGED_PR_DAYS = int(REF.windows["merged_pr_days"])
+RELEASE_TAGS = list(REF.releases["tags"])
+REPO = REF.project.repository
+ISSUE_REF = re.compile(r"(?:" + re.escape(REPO or "-") + r"/(?:issues|pull)/|(?<![\w/])#)(\d{4,6})\b")
 
 
 def day(t: datetime) -> str:
@@ -70,7 +61,7 @@ def fetch_golden(cache: RawCache) -> dict[str, Any]:
         since = cutoff - timedelta(days=BACKGROUND_DAYS)
         found = cache.search(
             f"{case_id}-flakes",
-            f"repo:kubevirt/kubevirt is:issue label:kind/flake created:{day(since)}..{day(cutoff)}",
+            f"repo:{REPO} is:issue label:{REF.windows['background_label']} created:{day(since)}..{day(cutoff)}",
             limit=200,
         )["data"]
         numbers |= {n["number"] for n in found}
@@ -84,7 +75,7 @@ def fetch_golden(cache: RawCache) -> dict[str, Any]:
         # Recently merged pull requests on the main branch.
         merged = cache.search(
             f"{case_id}-merged",
-            f"repo:kubevirt/kubevirt is:pr is:merged base:main merged:{day(cutoff - timedelta(days=MERGED_PR_DAYS))}..{day(cutoff)}",
+            f"repo:{REPO} is:pr is:merged base:{REF.windows['main_branch']} merged:{day(cutoff - timedelta(days=MERGED_PR_DAYS))}..{day(cutoff)}",
             limit=400,
         )["data"]
         pr_numbers |= {n["number"] for n in merged}
@@ -117,33 +108,35 @@ def fetch_golden(cache: RawCache) -> dict[str, Any]:
 def fetch_releases(cache: RawCache) -> dict[str, Any]:
     tags = {t: cache.tag(t)["data"] for t in RELEASE_TAGS}
     summary: dict[str, Any] = {"tags": tags}
-    for minor in (6, 7, 8, 9):
-        beta = from_iso(tags[f"v1.{minor}.0-beta.0"]["tagged_at"])
-        final = from_iso(tags[f"v1.{minor}.0"]["tagged_at"])
-        prev = from_iso(tags[f"v1.{minor - 1}.0"]["tagged_at"])
+    rel = REF.releases
+    major = rel["major"]
+    for minor in rel["minors"]:
+        beta = from_iso(tags[f"v{major}.{minor}.0-beta.0"]["tagged_at"])
+        final = from_iso(tags[f"v{major}.{minor}.0"]["tagged_at"])
+        prev = from_iso(tags[f"v{major}.{minor - 1}.0"]["tagged_at"])
         backports = cache.search(
-            f"backports-1.{minor}",
-            f"repo:kubevirt/kubevirt is:pr is:merged base:release-1.{minor} merged:{day(beta)}..{day(final)}",
+            f"backports-{major}.{minor}",
+            f"repo:{REPO} is:pr is:merged base:{rel['branch_pattern'].format(major=major, minor=minor)} merged:{day(beta)}..{day(final)}",
             limit=400,
         )["data"]
         for pr in backports:
             cache.pull_request(pr["number"])
         # Candidate items open at the previous release close.
         open_now = cache.search(
-            f"open-at-1.{minor - 1}-open",
-            f"repo:kubevirt/kubevirt is:issue is:open label:kind/bug,kind/flake created:<{day(prev)}",
+            f"open-at-{major}.{minor - 1}-open",
+            f"repo:{REPO} is:issue is:open label:{rel['candidate_labels']} created:<{day(prev)}",
             limit=1000,
         )["data"]
         closed_later = cache.search(
-            f"open-at-1.{minor - 1}-closed-later",
-            f"repo:kubevirt/kubevirt is:issue is:closed label:kind/bug,kind/flake created:<{day(prev)} closed:>{day(prev)}",
+            f"open-at-{major}.{minor - 1}-closed-later",
+            f"repo:{REPO} is:issue is:closed label:{rel['candidate_labels']} created:<{day(prev)} closed:>{day(prev)}",
             limit=1000,
         )["data"]
         candidates = sorted({n["number"] for n in open_now + closed_later})
         for n in candidates:
             cache.issue(n)
-        summary[f"1.{minor}"] = {"backports": len(backports), "candidates": len(candidates)}
-        print(f"1.{minor}", summary[f"1.{minor}"], flush=True)
+        summary[f"{major}.{minor}"] = {"backports": len(backports), "candidates": len(candidates)}
+        print(f"{major}.{minor}", summary[f"{major}.{minor}"], flush=True)
         cache.manifest.save()
     return summary
 

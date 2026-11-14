@@ -29,9 +29,9 @@ from pathlib import Path
 from typing import Any, Callable, Mapping
 from urllib.parse import parse_qs, urlsplit
 
+from atlas.connectors.project import SourceSet
 from atlas.contracts import EgressPurpose, Mode, Role, RunMode, TaskState
 
-UPSTREAM_REPO = "kubevirt/kubevirt"
 
 GRAPHQL_OPERATIONS = frozenset(
     {
@@ -264,14 +264,25 @@ _TARGET_CI_PATHS = [
     re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/commits/(?P<sha>[0-9a-f]{7,40})/check-runs$"),
 ]
 _PR_PATH = re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls/(?P<number>\d+)$")
-_UPSTREAM_GET = re.compile(r"^/repos/kubevirt/kubevirt(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
-_PROW_GCS = re.compile(r"^/kubevirt-prow/[A-Za-z0-9._~/-]+$")
-_PROW_VIEW = re.compile(r"^/view/gs/kubevirt-prow/[A-Za-z0-9._~/-]+$")
+_REPO_PATH = re.compile(r"^/repos/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
+_SAFE_PATH = re.compile(r"^[A-Za-z0-9._~/-]+$")
+NO_SOURCES = SourceSet()
 _OSV_VULN = re.compile(r"^/v1/vulns/[A-Za-z0-9._-]+$")
 
 
-def policy_check(connector: str, method: str, url: str, body: Any, ctx: RequestContext) -> str | None:
-    """Static policy row plus purpose rule. Returns a refusal reason or None."""
+def _under(path: str, prefix: str) -> bool:
+    prefix = prefix.rstrip("/")
+    return bool(prefix) and path.startswith(prefix + "/") and ".." not in path and bool(_SAFE_PATH.match(path))
+
+
+def policy_check(
+    connector: str, method: str, url: str, body: Any, ctx: RequestContext, sources: SourceSet = NO_SOURCES
+) -> str | None:
+    """Static policy row plus purpose rule. Returns a refusal reason or None.
+
+    Upstream repositories and CI artefact locations come only from the configured projects;
+    with no configuration every upstream read is refused.
+    """
     parts = urlsplit(url)
     if parts.scheme != "https":
         return "only https is allowed"
@@ -291,18 +302,16 @@ def policy_check(connector: str, method: str, url: str, body: Any, ctx: RequestC
                 return "host not allowed for this connector"
             if method == "POST" and path == "/graphql":
                 return check_graphql(body)
-            if method == "GET" and _UPSTREAM_GET.match(path):
+            m = _REPO_PATH.match(path)
+            if method == "GET" and m and f"{m.group('owner')}/{m.group('repo')}".lower() in sources.repositories():
                 return None
             return "method or path not allowed for this connector"
         if connector == "ci":
             if method != "GET":
                 return "only GET is allowed for CI artefacts"
-            if host == "storage.googleapis.com" and _PROW_GCS.match(path):
-                return None
-            if host == "gcsweb.ci.kubevirt.io" and path.startswith("/gcs/kubevirt-prow/") and ".." not in path:
-                return None
-            if host == "prow.ci.kubevirt.io" and _PROW_VIEW.match(path):
-                return None
+            for rule_host, rule_prefix in sources.ci_artifact_rules() | sources.ci_view_rules():
+                if host == rule_host and _under(path, rule_prefix):
+                    return None
             return "host or path not allowed for CI artefacts"
         if connector == "security":
             return _security_rule(method, host, path, body)
@@ -330,7 +339,7 @@ def policy_check(connector: str, method: str, url: str, body: Any, ctx: RequestC
             if not m:
                 continue
             repo = f"{m.group('owner')}/{m.group('repo')}"
-            if repo.lower() != pub.destination_repo.lower() or repo.lower() == UPSTREAM_REPO:
+            if repo.lower() != pub.destination_repo.lower() or repo.lower() in sources.repositories():
                 return "repository does not match the publication record"
             sha = m.groupdict().get("sha")
             if sha and not pub.published_commit.startswith(sha):
@@ -469,8 +478,10 @@ class Gateway:
         tokens: Mapping[str, Callable[[], str]] | None = None,
         journal: CorrectionJournal | None = None,
         clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc),
+        sources: SourceSet = NO_SOURCES,
     ) -> None:
         self._transport = transport
+        self.sources = sources
         self._mode = mode
         self._on_violation = on_violation or (lambda kind, detail: None)
         self._tokens = dict(tokens or {})
@@ -534,7 +545,7 @@ class Gateway:
             self._record(connector, ctx, method, url, False, "offline mode refuses every outbound request")
             self._on_violation("offline_egress_attempt", {"connector": connector, "url": _redact_url(url)})
             raise GatewayRefused("offline mode refuses every outbound request")
-        reason = policy_check(connector, method, url, body, ctx)
+        reason = policy_check(connector, method, url, body, ctx, self.sources)
         if reason is not None:
             self._record(connector, ctx, method, url, False, reason)
             self._on_violation("allow_list_violation", {"connector": connector, "reason": reason, "url": _redact_url(url)})
@@ -603,7 +614,7 @@ class Gateway:
                 self._journal.record(holder, auth, pr, "refused_stale", "description changed since authorisation")
                 return "refused_stale"
             body = {"body": auth.replacement_text}
-            reason = policy_check("correction", "PATCH", url, body, ctx)
+            reason = policy_check("correction", "PATCH", url, body, ctx, self.sources)
             if reason is not None:
                 self._record("correction", ctx, "PATCH", url, False, reason)
                 self._on_violation("allow_list_violation", {"connector": "correction", "reason": reason})

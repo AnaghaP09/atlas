@@ -18,6 +18,8 @@ from atlas.snapshots import SnapshotRegistry
 from atlas.store import AUTHORITATIVE_WRITERS
 from tests.a.helpers import T0, ctx
 
+MOD = "kubevirt.io/kubevirt"
+
 GO_FILE = '''//go:build linux
 // +build linux
 
@@ -59,8 +61,8 @@ def test_component_mapping(path, component):
 
 
 def test_component_of_import_internal_only():
-    assert component_of_import("kubevirt.io/kubevirt/pkg/network/setup") == "pkg/network"
-    assert component_of_import("kubevirt.io/api/core/v1") is None
+    assert component_of_import("kubevirt.io/kubevirt/pkg/network/setup", MOD) == "pkg/network"
+    assert component_of_import("kubevirt.io/api/core/v1", MOD) is None
 
 
 def _tree(root: Path, files: dict[str, str]) -> Path:
@@ -88,7 +90,7 @@ def test_edge_direction_follows_imports_with_identical_paths_and_owners(tmp_path
         "pkg/b/b.go": _go(["kubevirt.io/kubevirt/pkg/a"]),
         "pkg/a/OWNERS": owners,
     })
-    g1, g2 = extract(rev1, "r1"), extract(rev2, "r2")
+    g1, g2 = extract(rev1, "r1", module=MOD), extract(rev2, "r2", module=MOD)
     assert g1.depends_on("pkg/a") == {"pkg/b"} and g1.depends_on("pkg/b") == set()
     assert g2.depends_on("pkg/b") == {"pkg/a"} and g2.depends_on("pkg/a") == set()
     assert g1.components["pkg/a"]["owner_team"] == "sig/compute"
@@ -102,7 +104,7 @@ def test_test_imports_and_build_tags(tmp_path):
         "pkg/c/c.go": _go([]),
         "vendor/x/y.go": _go(["kubevirt.io/kubevirt/pkg/z"]),
     })
-    g = extract(root, "r")
+    g = extract(root, "r", module=MOD)
     assert ("pkg/a", "pkg/b", "depends_on") in g.edges
     assert ("pkg/a", "pkg/c", "test_depends_on") in g.edges
     assert ("pkg/a", "pkg/c", "depends_on") not in g.edges
@@ -111,10 +113,10 @@ def test_test_imports_and_build_tags(tmp_path):
 
 def test_owner_team_never_uses_handles(tmp_path):
     root = _tree(tmp_path / "r", {"pkg/a/a.go": _go([]), "pkg/a/OWNERS": "approvers:\n- somebody\nreviewers:\n- other\n"})
-    assert extract(root, "r").components["pkg/a"]["owner_team"] is None
+    assert extract(root, "r", module=MOD).components["pkg/a"]["owner_team"] is None
 
 
-ARCH = Path(__file__).resolve().parents[2] / "data" / "snapshots" / "architecture" / "v1.9.0.json"
+ARCH = Path("data") / "snapshots" / "architecture" / "v1.9.0.json"
 
 
 @pytest.mark.skipif(not ARCH.exists(), reason="committed architecture graph not present")

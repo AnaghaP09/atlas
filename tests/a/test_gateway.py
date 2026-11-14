@@ -2,6 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+from atlas.connectors.project import ProjectSources, SourceSet
 from atlas.contracts import EgressPurpose, Mode, Role, RunMode, TaskState
 from atlas.gateway import (
     CorrectionAuthorisation,
@@ -19,6 +20,10 @@ from atlas.gateway import (
 )
 
 NOW = datetime(2026, 11, 14, 12, 0, tzinfo=timezone.utc)
+EXAMPLE = SourceSet((ProjectSources.from_mapping("example", {
+    "repository": "kubevirt/kubevirt",
+    "ci": {"artifact_base": "https://storage.googleapis.com/kubevirt-prow", "view_hosts": ["prow.ci.kubevirt.io"], "view_prefix": "/view/gs/kubevirt-prow"},
+}),))
 LIVE = RequestContext(purpose=EgressPurpose.LIVE_INGEST)
 
 
@@ -41,6 +46,7 @@ def gw(transport=None, mode=Mode.CONNECTED, journal=None, clock=NOW, tokens=None
         journal=journal,
         clock=lambda: clock,
         tokens=tokens,
+        sources=EXAMPLE,
     )
     return g, violations
 
@@ -340,7 +346,7 @@ def test_concurrent_correction_on_same_pr_is_held(tmp_path):
 def test_correction_policy_refusals(method, url, body, a):
     from atlas.gateway import policy_check
 
-    assert policy_check("correction", method, url, body, write_ctx(a)) is not None
+    assert policy_check("correction", method, url, body, write_ctx(a), EXAMPLE) is not None
 
 
 def test_expired_authorisation_refused(tmp_path):
@@ -355,3 +361,21 @@ def test_correction_write_never_via_generic_request(tmp_path):
     g, _ = gw()
     with pytest.raises(GatewayRefused):
         g.request("correction", "PATCH", PR_URL, write_ctx(auth()), {"body": FIXED})
+
+
+def test_unconfigured_gateway_refuses_every_upstream_read():
+    g = Gateway(FakeTransport())
+    for connector, url in (
+        ("issues", "https://api.github.com/repos/kubevirt/kubevirt/issues/1"),
+        ("ci", "https://storage.googleapis.com/kubevirt-prow/pr-logs/x/build-log.txt"),
+    ):
+        with pytest.raises(GatewayRefused):
+            g.request(connector, "GET", url, LIVE)
+
+
+def test_configured_ci_prefix_cannot_be_escaped():
+    g, _ = gw()
+    with pytest.raises(GatewayRefused):
+        g.request("ci", "GET", "https://storage.googleapis.com/kubevirt-prow-other/x", LIVE)
+    with pytest.raises(GatewayRefused):
+        g.request("ci", "GET", "https://storage.googleapis.com/kubevirt-prow/../other/x", LIVE)

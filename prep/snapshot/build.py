@@ -32,32 +32,17 @@ from atlas.store import AUTHORITATIVE_WRITERS, EvidenceDB, from_iso
 from atlas.snapshots import normalized_sha256
 from prep.fetch.cases import GOLDEN_CASES, TRIAGE_WINDOW
 from prep.fetch.raw import RAW, prow_paths
+from prep.reference import paths, reference
 from prep.snapshot.people import People
 
-ROOT = Path(__file__).resolve().parents[2]
-LOCAL = ROOT / "data" / "local"
-EXPORT = LOCAL / "export"
-BUILD = LOCAL / "build"
+LOCAL = paths()["local"]
+EXPORT = paths()["export"]
+BUILD = paths()["build"]
+ROOT = paths()["data"].parent if paths()["data"].is_absolute() else Path.cwd()
 
-# Outcome records per case: the pull requests that fixed each case, later closing comments and
-# duplicates. None may appear in the case snapshot by id or number.
-PROHIBITED_PRS: dict[str, set[int]] = {
-    "G01": {18235},
-    "G02": {17825},
-    "G03": {17475},
-    "G04": {18718},
-    "G05": {15955},
-    "G06": set(),
-    "G07": set(),
-    "G08": set(),
-}
-
-NOTES: dict[str, list[str]] = {
-    "G06": ["Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the "
-            "case outcome; the case is scored with that limitation reported."],
-    "G02": ["Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the "
-            "case outcome; the case is scored with that limitation reported."],
-}
+REF = reference()
+PROHIBITED_PRS: dict[str, set[int]] = {cid: REF.prohibited_prs(cid) for cid in GOLDEN_CASES}
+NOTES: dict[str, list[str]] = {cid: REF.notes(cid) for cid in GOLDEN_CASES}
 
 
 class LeakageError(AssertionError):
@@ -343,7 +328,7 @@ def build_golden(root: Path = EXPORT) -> dict[str, Any]:
         }
         target = export(db, f"case-{case_id.lower()}", "cases", manifest, people, root=root)
         db.close()
-        report[case_id] = {"cutoff": info["cutoff"].isoformat(), **info["stats"], "export": target.relative_to(ROOT).as_posix()}
+        report[case_id] = {"cutoff": info["cutoff"].isoformat(), **info["stats"], "export": target.as_posix()}
     people.write_handles_file()
     problems = []
     for case_id in report:

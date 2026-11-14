@@ -13,17 +13,16 @@ import secrets
 from pathlib import Path
 from typing import Any, Iterable
 
-ROOT = Path(__file__).resolve().parents[2]
-LOCAL = ROOT / "data" / "local"
+from prep.reference import paths, reference
+
+LOCAL = paths()["local"]
 MENTION = re.compile(r"(?<![\w/.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![\w-])")
 DATA_URI = re.compile(r"data:[A-Za-z0-9.+/-]+;base64,[A-Za-z0-9+/=]+")
 SSH_KEY = re.compile(r"(ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-nistp\d+) AAAA[A-Za-z0-9+/=]{20,}")
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
 # Bots and organisation accounts are not people; keep them so the evidence stays readable.
-NON_PERSON = {
-    "kubevirt-bot", "kubevirt-prow", "kubevirt-prow[bot]", "kubevirt-commenter-bot", "dependabot", "dependabot[bot]",
-    "github-actions", "github-actions[bot]", "openshift-ci", "openshift-ci-robot", "k8s-ci-robot", "copilot",
-}
+GENERIC_BOTS = {"dependabot", "dependabot[bot]", "github-actions", "github-actions[bot]", "copilot"}
+NON_PERSON = GENERIC_BOTS | {b.lower() for b in reference().project.bot_accounts}
 # Words that look like mentions in technical text but are not accounts.
 NOT_HANDLES = {"example", "types", "param", "return", "todo", "v1", "v2", "latest", "main", "host"}
 

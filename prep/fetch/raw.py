@@ -17,13 +17,10 @@ from typing import Any, Callable
 from atlas.connectors.github import GitHubReader
 from atlas.contracts import EgressPurpose, Mode, RunMode
 from atlas.gateway import Gateway, GatewayRefused, RequestContext, Response, httpx_transport
+from prep.reference import paths, reference
 
-ROOT = Path(__file__).resolve().parents[2]
-DATA = ROOT / "data"
-RAW = DATA / "local" / "raw"
-MANIFEST = DATA / "local" / "export" / "evaluator" / "MANIFEST.json"
-
-PROW_VIEW = re.compile(r"https?://prow\.ci\.kubevirt\.io/+view/gs/kubevirt-prow/([A-Za-z0-9._~/-]+?)(?=[)\]\s>\"'`]|$)")
+RAW = paths()["raw"]
+MANIFEST = paths()["export"] / "evaluator" / "MANIFEST.json"
 
 
 def now() -> datetime:
@@ -56,6 +53,7 @@ def live_gateway(transport: Callable | None = None) -> Gateway:
         transport or httpx_transport(),
         mode=lambda: Mode.CONNECTED,
         tokens={"github": lambda: token},
+        sources=reference().sources,
     )
 
 
@@ -69,8 +67,9 @@ class RawCache:
         self.gateway = gateway or live_gateway()
         self.manifest = manifest or Manifest()
         self.raw = raw_dir
-        self.issues_reader = GitHubReader(self.gateway, LIVE_CTX, connector="issues")
-        self.git_reader = GitHubReader(self.gateway, LIVE_CTX, connector="git")
+        project = reference().project
+        self.issues_reader = GitHubReader(self.gateway, LIVE_CTX, owner=project.owner, name=project.name, connector="issues")
+        self.git_reader = GitHubReader(self.gateway, LIVE_CTX, owner=project.owner, name=project.name, connector="git")
 
     def _cached(self, kind: str, key: str, fetch: Callable[[], Any], request: dict[str, Any]) -> Any:
         path = self.raw / kind / f"{key}.json"
@@ -106,7 +105,7 @@ class RawCache:
     def prow_artifact(self, prow_path: str, name: str, max_lines: int = 50_000) -> dict[str, Any]:
         """Fetch a Prow job artefact (build log or job metadata) from public storage."""
         key = hashlib.sha256(f"{prow_path}/{name}".encode()).hexdigest()[:24]
-        url = f"https://storage.googleapis.com/kubevirt-prow/{prow_path.strip('/')}/{name}"
+        url = f"{reference().project.ci_artifact_base}/{prow_path.strip('/')}/{name}"
 
         def fetch() -> Any:
             try:
@@ -128,7 +127,7 @@ def prow_paths(text: str | None) -> list[str]:
     if not text:
         return []
     seen: list[str] = []
-    for m in PROW_VIEW.finditer(text):
+    for m in reference().view_link_pattern().finditer(text):
         p = m.group(1).strip("/")
         if p not in seen:
             seen.append(p)

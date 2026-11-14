@@ -21,7 +21,6 @@ from typing import Any, Iterable, Mapping
 from atlas.contracts import Provenance, Record, RunContext
 from atlas.store import AUTHORITATIVE_WRITERS, EvidenceStore
 
-MODULE = "kubevirt.io/kubevirt"
 RUNTIME_LIMITATION = (
     "Dependency edges are derived from Go import statements only. Runtime relationships such as "
     "RPC calls, Kubernetes API interactions and roll-outs are not visible this way and are unknown."
@@ -71,7 +70,7 @@ def component_of(path: str) -> str:
     return parts[0]
 
 
-def component_of_import(imp: str, module: str = MODULE) -> str | None:
+def component_of_import(imp: str, module: str) -> str | None:
     if not imp.startswith(module + "/"):
         return None
     return component_of(imp[len(module) + 1:] + "/x.go")
@@ -127,7 +126,7 @@ class ArchitectureGraph:
         return g
 
 
-def extract(root: Path, revision: str, *, module: str = MODULE, top: Iterable[str] = ("pkg", "cmd", "tests")) -> ArchitectureGraph:
+def extract(root: Path, revision: str, *, module: str, top: Iterable[str] = ("pkg", "cmd", "tests")) -> ArchitectureGraph:
     """Build the component graph from a source tree checked out at ``revision``."""
     graph = ArchitectureGraph(revision)
     root = Path(root)

@@ -6,6 +6,7 @@ import pytest
 
 from atlas.connectors.github import GitHubError, GitHubReader
 from atlas.connectors.issues import IssuesConnector
+from atlas.connectors.project import ProjectSources, SourceSet
 from atlas.contracts import EgressPurpose, RunMode
 from atlas.freshness import FreshnessStatus, evaluate
 from atlas.gateway import Gateway, GatewayRefused, RequestContext, Response, SourceUnavailable
@@ -14,6 +15,7 @@ from atlas.store import LIVE_SNAPSHOT_ID, EvidenceDB, ReadOnlyStore, WriterRejec
 from tests.a.helpers import ctx, rec
 
 T0 = datetime(2026, 11, 14, 9, 0, tzinfo=timezone.utc)
+EXAMPLE = SourceSet((ProjectSources.from_mapping("example", {"repository": "kubevirt/kubevirt"}),))
 LIVE_CTX = RequestContext(purpose=EgressPurpose.LIVE_INGEST, run_mode=RunMode.LIVE)
 
 ISSUE_GRAPHQL = {
@@ -53,8 +55,8 @@ class GitHubFake:
 def env(tmp_path):
     clock = {"now": T0}
     fake = GitHubFake()
-    gateway = Gateway(fake, clock=lambda: clock["now"])
-    reader = GitHubReader(gateway, LIVE_CTX)
+    gateway = Gateway(fake, clock=lambda: clock["now"], sources=EXAMPLE)
+    reader = GitHubReader(gateway, LIVE_CTX, owner="kubevirt", name="kubevirt")
     registry = SnapshotRegistry(tmp_path / "data")
     store = registry.store()
     connector = IssuesConnector(store, reader, clock=lambda: clock["now"])
@@ -118,13 +120,13 @@ def test_bodyless_304_returns_cached_body_and_304_without_cache_is_an_error(env)
     assert unchanged is False and body["number"] == 42
     body2, unchanged2 = reader.rest_conditional("/issues/42")
     assert unchanged2 is True and body2 == body
-    fresh_reader = GitHubReader(Gateway(lambda m, u, h, b: Response(304, None)), LIVE_CTX)
+    fresh_reader = GitHubReader(Gateway(lambda m, u, h, b: Response(304, None), sources=EXAMPLE), LIVE_CTX, owner="kubevirt", name="kubevirt")
     with pytest.raises(GitHubError):
         fresh_reader.rest_conditional("/issues/42")
 
 
 def test_gateway_allows_only_conditional_headers_on_get():
-    g = Gateway(lambda m, u, h, b: Response(200, {}))
+    g = Gateway(lambda m, u, h, b: Response(200, {}), sources=EXAMPLE)
     url = "https://api.github.com/repos/kubevirt/kubevirt/issues/42"
     g.request("issues", "GET", url, LIVE_CTX, conditional={"If-None-Match": '"x"', "If-Modified-Since": "Fri, 13 Nov 2026 00:00:00 GMT"})
     with pytest.raises(GatewayRefused):

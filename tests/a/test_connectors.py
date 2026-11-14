@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -217,12 +218,12 @@ def test_log_cap_keeps_last_lines_with_marker():
 
 
 def test_synthetic_records_are_flagged_fresh_and_nameless():
-    rows = list(all_synthetic("G06", NOW))
+    rows = list(all_synthetic("G06", NOW, Path("data") / "snapshots" / "synthetic"))
     assert rows and all(r.provenance is Provenance.SYNTHETIC and r.synthetic_ancestry for r, _, _ in rows)
     from atlas.freshness import evaluate
 
     assert all(evaluate(r.source, r.confirmed_through, NOW).usable for r, _, _ in rows)
-    for r, view, _ in capacity_records(NOW):
+    for r, view, _ in capacity_records(NOW, Path("data") / "snapshots" / "synthetic"):
         assert not (FORBIDDEN_CAPACITY_KEYS & set(view))
         assert r.access_scopes == frozenset({"staffing"})
 

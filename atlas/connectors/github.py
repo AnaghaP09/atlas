@@ -19,7 +19,7 @@ class GitHubError(RuntimeError):
 class GitHubReader:
     """Paginated GitHub reads for one repository. Read-only by construction."""
 
-    def __init__(self, gateway: Gateway, ctx: RequestContext, *, owner: str = "kubevirt", name: str = "kubevirt", connector: str = "issues") -> None:
+    def __init__(self, gateway: Gateway, ctx: RequestContext, *, owner: str, name: str, connector: str = "issues") -> None:
         self.gateway = gateway
         self.ctx = ctx
         self.owner = owner

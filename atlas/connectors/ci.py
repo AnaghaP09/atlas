@@ -1,4 +1,7 @@
-"""CI connector: Prow job artefacts from public storage, logs capped at 50,000 lines."""
+"""CI connector: job artefacts (build log and result) from the project's configured artefact store.
+
+Logs are capped at 50,000 lines, keeping the last lines and a cut marker.
+"""
 
 from __future__ import annotations
 
@@ -70,16 +73,19 @@ class CIConnector(ReplayConnector):
     name = "ci"
     source = "ci"
 
-    def __init__(self, store: EvidenceStore, gateway: Gateway | None = None, **kw: Any) -> None:
+    def __init__(self, store: EvidenceStore, gateway: Gateway | None = None, *, artifact_base: str | None = None, **kw: Any) -> None:
         super().__init__(store, **kw)
         self.gateway = gateway
+        self.artifact_base = artifact_base.rstrip("/") if artifact_base else None
 
     def fetch_live(self, query: Mapping[str, Any], ctx: RunContext) -> list[Record]:
         if self.gateway is None:
             raise RuntimeError("CI connector has no gateway")
+        if not self.artifact_base:
+            raise RuntimeError("CI artefact base is not configured for this project (sources.ci.artifact_base)")
         path = str(query["prow_path"]).strip("/")
         rctx = RequestContext(purpose=EgressPurpose.LIVE_INGEST, run_mode=RunMode.LIVE)
-        base = f"https://storage.googleapis.com/kubevirt-prow/{path}"
+        base = f"{self.artifact_base}/{path}"
         try:
             log = self.gateway.request("ci", "GET", f"{base}/build-log.txt", rctx)
             text = log.body if log.status == 200 and isinstance(log.body, str) else None
