@@ -4,6 +4,8 @@ import { useApi, useApp, useIdentity } from "./app/context";
 import { AgentName, ButtonLink, PageHead } from "./components/common";
 import { BrandMark, Icon, type IconName } from "./components/icons";
 import { LatestReport } from "./screens/LatestReport";
+import { LockedChip } from "./components/access";
+import { AccessRequests } from "./screens/AccessRequests";
 import { SystemScreen } from "./screens/System";
 import { signOut } from "./identity/bootstrap";
 import { ROLES, ROLE_LABELS, type Role } from "./identity/identity";
@@ -56,6 +58,7 @@ const PAGES: Record<string, Page> = {
   "/feedback": { title: "Record a decision", sub: "Overrides and debt-acceptance decisions. They become test cases for later runs." },
   "/evaluation": { title: "Quality checks", sub: "The quality bars ATLAS must pass. A check that is not measured is never shown as passed." },
   "/demo": { title: "Guided demo", sub: "Walk through each part of ATLAS in order, on the right server for each step." },
+  "/access-requests": { title: "Access requests", sub: "" },
   "/system": { title: "System and mode", sub: "Health, Connected or Offline mode, open incidents and failed notification deliveries." },
   "/latest-report/:type": { title: "Latest report", sub: "The most recent verified report of this kind for the project." },
 };
@@ -86,6 +89,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
     ["/evaluation", () => <Evaluation />],
     ["/demo", () => <GuidedDemo />],
     ["/system", () => <SystemScreen />],
+    ["/access-requests", () => <AccessRequests />],
     ["/latest-report/:type", (p) => <LatestReport kind={p.type ?? ""} />],
   ];
   const pageId = pageIdForPath(path);
@@ -97,7 +101,8 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
         <PageHead title={hidden?.title ?? "Not on your menu"} role={capitalise(nav.role_title)} />
         <div className="role-notice" role="note" data-testid="role-notice">
           <strong>This page is for the {hidden ? joinRoles(hidden.role_titles) : "other roles"}.</strong>
-          <ButtonLink to="/" variant="primary" icon="home">Your home</ButtonLink>
+          <LockedChip objectType="page" objectId={pageId} />
+          <ButtonLink to="/" variant="ghost" icon="home">Your home</ButtonLink>
         </div>
       </>
     );

@@ -4,6 +4,8 @@ import { useAction, useApi } from "../app/context";
 import type { Approval } from "../api/types";
 import { ActionResult, Button, Empty, ErrorView, IdDetails, Loading, Section, StatusPill } from "../components/common";
 import { EntityLink, Related } from "../components/related";
+import { isReadOnly, ReadOnlyBanner, type AccessGrantView } from "../components/access";
+import { useIdentity } from "../app/context";
 import { ExternalLink } from "../components/ExternalLink";
 import { Link } from "../lib/router";
 
@@ -49,13 +51,17 @@ export function TaskDetail({ taskId }: { taskId: string }) {
   const adjudicate = useAction<{ verdict: string; note: string }, unknown>(`${base}/adjudicate`);
   const [note, setNote] = useState("");
   const approvals = useApi<{ approvals: Approval[] }>("/api/approvals");
+  const { principal } = useIdentity();
   if (task.isLoading) return <Loading what="the task" />;
   if (task.error) return <ErrorView error={task.error} />;
   const t = task.data;
   if (!t) return null;
+  const readOnly = isReadOnly(t.access as AccessGrantView | undefined);
   return (
     <Section title={(t.action ?? "Task").replace(/_/g, " ").toLowerCase()} icon="task" mode={t.data_mode} end={<StatusPill status={t.state} />}>
+      <ReadOnlyBanner access={t.access as AccessGrantView | undefined} myRole={principal?.role ?? null} />
       <Related
+        object={{ type: "task", id: t.task_id }}
         chips={[
           { entity: "run", id: t.run_id, label: "Run" },
           { entity: "approval", id: (approvals.data?.approvals ?? []).find((a) => a.task_id === t.task_id)?.approval_id, label: "Approvals", count: (approvals.data?.approvals ?? []).filter((a) => a.task_id === t.task_id).length },
@@ -78,9 +84,9 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         </>
       ) : null}
       <div className="actions">
-        <Button variant="primary" icon="play" loading={prepare.state.status === "running"} onClick={() => void prepare.run({})}>Prepare</Button>
-        <Button icon="arrow" loading={publish.state.status === "running"} onClick={() => void publish.run({})}>Publish draft PR</Button>
-        <Button variant="ghost" icon="shield" loading={refresh.state.status === "running"} onClick={() => void refresh.run({})}>Refresh security</Button>
+        <Button variant="primary" icon="play" disabled={readOnly} loading={prepare.state.status === "running"} onClick={() => void prepare.run({})}>Prepare</Button>
+        <Button icon="arrow" disabled={readOnly} loading={publish.state.status === "running"} onClick={() => void publish.run({})}>Publish draft PR</Button>
+        <Button variant="ghost" icon="shield" disabled={readOnly} loading={refresh.state.status === "running"} onClick={() => void refresh.run({})}>Refresh security</Button>
         <ActionResult state={prepare.state} retry={() => void prepare.retrySame()} />
         <ActionResult state={publish.state} retry={() => void publish.retrySame()} />
         <ActionResult state={refresh.state} retry={() => void refresh.retrySame()} />
@@ -91,8 +97,8 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         Note
         <input value={note} onChange={(e) => setNote(e.target.value)} />
       </label>
-      <button onClick={() => void adjudicate.run({ verdict: "works", note })}>It works</button>
-      <button onClick={() => void adjudicate.run({ verdict: "does_not_work", note })}>It does not work</button>
+      <button disabled={readOnly} onClick={() => void adjudicate.run({ verdict: "works", note })}>It works</button>
+      <button disabled={readOnly} onClick={() => void adjudicate.run({ verdict: "does_not_work", note })}>It does not work</button>
       <ActionResult state={adjudicate.state} retry={() => void adjudicate.retrySame()} />
     </Section>
   );

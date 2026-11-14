@@ -67,6 +67,8 @@ PAGES: tuple[Page, ...] = (
     Page("graph", "/graph", "Knowledge graph", "Insight", "For the solution architect: components and their import links."),
     Page("feedback", "/feedback", "Record a decision", "Insight", "Overrides and debt-acceptance decisions."),
     Page("evaluation", "/evaluation", "Quality checks", "Insight", "The quality bars ATLAS must pass."),
+    Page("access_requests", "/access-requests", "Access requests", "Safety",
+         "Your requests to open locked items; security and audit also decide on sensitive ones."),
     Page("demo", "/demo", "Guided demo", "Demo", "A walk through every part of ATLAS."),
 )
 BY_ID = {p.page_id: p for p in PAGES}
@@ -74,12 +76,14 @@ GROUP_ORDER = ("Overview", "Reports", "Work", "Safety", "Insight", "Demo")
 
 # The matrix. Order inside a role's list is the menu order within each group.
 ROLE_PAGES: dict[str, tuple[str, ...]] = {
-    "pm": ("home", "dashboard", "report_forecast", "run_now", "runs", "notifications", "feedback", "evaluation"),
+    "pm": ("home", "dashboard", "report_forecast", "run_now", "runs", "notifications", "access_requests", "feedback",
+           "evaluation"),
     "em": ("home", "dashboard", "report_allocation", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
-           "notifications", "scorecard"),
-    "architect": ("home", "dashboard", "report_architecture", "runs", "notifications", "graph", "feedback"),
-    "security": ("home", "dashboard", "report_security", "queue", "notifications", "containment"),
-    "oncall": ("home", "dashboard", "report_investigation", "run_now", "runs", "notifications"),
+           "notifications", "access_requests", "scorecard"),
+    "architect": ("home", "dashboard", "report_architecture", "runs", "notifications", "access_requests", "graph",
+                  "feedback"),
+    "security": ("home", "dashboard", "report_security", "queue", "notifications", "containment", "access_requests"),
+    "oncall": ("home", "dashboard", "report_investigation", "run_now", "runs", "notifications", "access_requests"),
     "audit": tuple(p.page_id for p in PAGES),
 }
 

@@ -5,11 +5,11 @@
 export const HELP_SLUG: Record<string, string> = {
   home: "home",
   dashboard: "live-dashboard",
-  report_forecast: "forecast-report",
-  report_allocation: "allocation-report",
-  report_architecture: "architecture-report",
-  report_security: "security-gate-report",
-  report_investigation: "investigation-report",
+  report_forecast: "reports",
+  report_allocation: "reports",
+  report_architecture: "reports",
+  report_security: "reports",
+  report_investigation: "reports",
   run_now: "run-now",
   schedules: "automatic-runs",
   runs: "runs",
@@ -19,13 +19,17 @@ export const HELP_SLUG: Record<string, string> = {
   notifications: "notifications",
   containment: "kill-switches",
   system: "system-and-mode",
+  access_requests: "access-requests",
   scorecard: "scorecard",
   graph: "knowledge-graph",
   feedback: "record-a-decision",
   evaluation: "quality-checks",
   demo: "guided-demo",
-  data_modes: "data-labels",
+  data_labels: "glossary",
 };
+
+/** Guide pages that must exist in the docs for every help link to show. */
+export const HELP_PAGES = [...new Set(Object.values(HELP_SLUG))].sort();
 
 export const HELP_INDEX = "/docs/guide/pages.json";
 

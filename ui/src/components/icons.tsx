@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 export type IconName =
   | "home" | "pulse" | "play" | "clock" | "list" | "hand" | "check" | "task" | "bell" | "power"
-  | "chart" | "graph" | "pen" | "gauge" | "compass" | "sun" | "moon" | "menu" | "database" | "arrow" | "shield";
+  | "chart" | "graph" | "pen" | "gauge" | "compass" | "sun" | "moon" | "menu" | "database" | "arrow" | "shield" | "lock" | "key";
 
 const PATHS: Record<IconName, ReactNode> = {
   home: <><path d="M3 11l9-7 9 7" /><path d="M5 10v10h14V10" /><path d="M10 20v-6h4v6" /></>,
@@ -26,6 +26,8 @@ const PATHS: Record<IconName, ReactNode> = {
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   database: <><ellipse cx="12" cy="6" rx="8" ry="3" /><path d="M4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6" /><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3" /></>,
   arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  lock: <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 018 0v4" /></>,
+  key: <><circle cx="8" cy="15" r="4" /><path d="M11 12l9-9M17 6l3 3" /></>,
   shield: <><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z" /><path d="M9 12l2 2 4-4" /></>,
 };
 

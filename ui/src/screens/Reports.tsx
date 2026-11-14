@@ -6,6 +6,8 @@ import { useApi, useLiveStream } from "../app/context";
 import { AgentName, DataModeBadge, ErrorView, Loading, Section } from "../components/common";
 import { VerdictChip } from "./Runs";
 import { Related } from "../components/related";
+import { ReadOnlyBanner, type AccessGrantView } from "../components/access";
+import { useIdentity } from "../app/context";
 import { Markdown } from "../lib/markdown";
 import { Link } from "../lib/router";
 
@@ -18,6 +20,7 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const runId = reportId.includes(":") ? reportId.slice(0, reportId.lastIndexOf(":")) : reportId;
   const report = useApi<ReportView>(`/api/reports/${encodeURIComponent(reportId)}`);
   const qc = useQueryClient();
+  const { principal } = useIdentity();
   const [notice, setNotice] = useState<string | null>(null);
   const handlers = useRef({
     onEvent: (e: LiveEvent) => {
@@ -48,7 +51,9 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const proxy = typeof r.report.proxy_note === "string" ? r.report.proxy_note : null;
   return (
     <Section title={r.report_type.replace(/_/g, " ")} icon="task" mode={r.data_mode}>
+      <ReadOnlyBanner access={(r as unknown as { access?: AccessGrantView }).access} myRole={principal?.role ?? null} />
       <Related
+        object={{ type: "report", id: r.report_id }}
         chips={[
           { entity: "run", id: r.run_id, label: "Run" },
           { entity: "evidence", id: claims.flatMap((c) => c.evidence_ids ?? [])[0], label: "Evidence", count: new Set(claims.flatMap((c) => c.evidence_ids ?? [])).size, ctx: { runId: r.run_id } },

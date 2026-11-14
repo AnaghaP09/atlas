@@ -562,3 +562,13 @@ label.check input { width: auto; margin: 0; }
 .related { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-4); }
 .related-chip { margin: 0; padding: 4px 10px; }
 .related-count { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 0 6px; font-size: 0.72rem; }
+
+/* Locked items and grants */
+.locked { display: inline-flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; }
+.locked-chip { color: var(--muted); border-style: dashed; }
+.request-pop { display: inline-flex; gap: var(--s-2); align-items: center; padding: var(--s-1) var(--s-2); border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface); box-shadow: var(--shadow); }
+.request-pop input { width: 14rem; margin: 0; padding: 4px 8px; }
+.read-only { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin: 0 0 var(--s-3); }
+.small { font-size: 0.78rem; }
+.row-actions { white-space: nowrap; text-align: right; }
+.row-actions .btn { margin: 0 0 0 var(--s-1); }

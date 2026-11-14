@@ -1,6 +1,8 @@
 // Entity links and the compact "Related" strip. Both hide anything the caller's menu does not include.
 import type { ReactNode } from "react";
+import { ApiError } from "../api/client";
 import { useApi } from "../app/context";
+import { LockedChip, type AccessRequestState } from "./access";
 import { resolveLink, type Entity, type LinkContext } from "../links";
 import { allowedPages, type Navigation } from "../lib/nav";
 import { Link } from "../lib/router";
@@ -29,8 +31,45 @@ export interface RelatedChip {
   ctx?: LinkContext;
 }
 
-/** Chips with icon + count. A chip whose page the caller cannot open is left out. */
-export function Related({ chips }: { chips: RelatedChip[] }) {
+interface ServerRelated {
+  items: {
+    object_type: string;
+    object_id: string;
+    label?: string;
+    count?: number;
+    path?: string;
+    access: "open" | "locked";
+    request?: AccessRequestState | null;
+  }[];
+}
+
+/** Chips with icon + count. Open items link to their page; locked items show a lock and a "Request access" action.
+ * Uses GET /api/related/{type}/{id} when the server has it; otherwise the local link map (locked items then hidden). */
+export function Related({ chips, object }: { chips: RelatedChip[]; object?: { type: string; id: string } }) {
+  const server = useApi<ServerRelated>(object ? `/api/related/${encodeURIComponent(object.type)}/${encodeURIComponent(object.id)}` : null);
+  const fallback = !object || (server.error instanceof ApiError && server.error.status === 404) || (!!server.error && !(server.error instanceof ApiError));
+  if (object && !fallback) {
+    if (!server.data) return null;
+    if (!server.data.items.length) return null;
+    return (
+      <nav className="related" aria-label="Related">
+        {server.data.items.map((it) =>
+          it.access === "open" && it.path ? (
+            <Link key={`${it.object_type}-${it.object_id}`} to={it.path} className="chip related-chip">
+              {it.label ?? it.object_type}
+              {typeof it.count === "number" ? <span className="num related-count">{it.count}</span> : null}
+            </Link>
+          ) : (
+            <LockedChip key={`${it.object_type}-${it.object_id}`} objectType={it.object_type} objectId={it.object_id} request={it.request ?? null} />
+          ),
+        )}
+      </nav>
+    );
+  }
+  return <LocalRelated chips={chips} />;
+}
+
+function LocalRelated({ chips }: { chips: RelatedChip[] }) {
   const allowed = useAllowed();
   const shown = chips
     .map((c) => ({ c, t: resolveLink(c.entity, c.id, allowed, c.ctx) }))
