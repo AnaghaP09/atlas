@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from atlas.access import AccessRequestStore
 from atlas.api.identity import HeaderIdentity, IdentityResolver
 from atlas.projects import ProjectRegistry
 from atlas.api.idempotency import IdempotencyStore
@@ -83,9 +84,12 @@ class NotifyingNotifier:
         self.hub = hub
 
     def emit(self, event_type: str, subject_id: str, payload_refs: Any, required_scopes: frozenset[str],
-             content: Mapping[str, Any] | None = None, project_id: str = "") -> str:
+             content: Mapping[str, Any] | None = None, project_id: str = "",
+             roles: Any = None) -> str:
         before = {r["id"] for r in self.inner.records()}
-        nid = self.inner.emit(event_type, subject_id, payload_refs, required_scopes, content, project_id=project_id)
+        extra = {"roles": roles} if roles is not None else {}
+        nid = self.inner.emit(event_type, subject_id, payload_refs, required_scopes, content, project_id=project_id,
+                              **extra)
         for rec in self.inner.records():
             if rec["id"] not in before:
                 self.hub.on_notification(rec)
@@ -148,6 +152,7 @@ class Services:
     demo_variables: dict[str, str] = field(default_factory=dict)
     projects: ProjectRegistry = field(default_factory=ProjectRegistry)
     feed: Any = None
+    access: AccessRequestStore = field(default_factory=AccessRequestStore)
 
     @property
     def is_scenario(self) -> bool:
@@ -193,5 +198,6 @@ def build_core(*, environment: str = "normal", host: str = "127.0.0.1", port: in
         idempotency=IdempotencyStore(db("idempotency")), audit=ManualAudit(db("audit")), mode=mode_state,
         scenario=ScenarioState() if environment == "scenario" else None,
         candidates_dir=(data_dir / "candidates") if data_dir else None,
+        access=AccessRequestStore(db("access")),
     )
     return services

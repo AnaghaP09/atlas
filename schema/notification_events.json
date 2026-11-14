@@ -1,43 +1,426 @@
 {
   "description": "Catalog of notification event types. The notifier takes severity, kind and roles only from this file; callers pass the event type and subject. Roles: pm, em, architect, security, oncall, audit. Backup roles receive reminders and escalations when the target role has not acted.",
-  "severities": ["info", "warning", "high", "critical"],
-  "kinds": ["alert", "reminder", "decision"],
-  "roles": ["pm", "em", "architect", "security", "oncall", "audit"],
+  "severities": [
+    "info",
+    "warning",
+    "high",
+    "critical"
+  ],
+  "kinds": [
+    "alert",
+    "reminder",
+    "decision"
+  ],
+  "roles": [
+    "pm",
+    "em",
+    "architect",
+    "security",
+    "oncall",
+    "audit"
+  ],
   "events": {
-    "run.failed":                {"severity": "warning",  "kind": "alert",    "roles": ["em", "oncall"],        "backup_roles": ["audit"]},
-    "run.partial":               {"severity": "warning",  "kind": "alert",    "roles": ["em", "oncall"],        "backup_roles": []},
-    "run.unverified":            {"severity": "warning",  "kind": "decision", "roles": ["em"],                  "backup_roles": ["audit"]},
-    "run.over_budget":           {"severity": "warning",  "kind": "alert",    "roles": ["em"],                  "backup_roles": ["audit"]},
-    "connector.failed":          {"severity": "warning",  "kind": "alert",    "roles": ["oncall"],              "backup_roles": ["em"]},
-    "model.failed":              {"severity": "warning",  "kind": "alert",    "roles": ["oncall"],              "backup_roles": ["em"]},
-    "model.refusal":             {"severity": "warning",  "kind": "alert",    "roles": ["oncall"],              "backup_roles": ["em"]},
-    "model.timeout":             {"severity": "warning",  "kind": "alert",    "roles": ["oncall"],              "backup_roles": ["em"]},
-    "verifier.missing":          {"severity": "warning",  "kind": "decision", "roles": ["em"],                  "backup_roles": ["audit"]},
-    "verifier.rejections_high":  {"severity": "warning",  "kind": "decision", "roles": ["em"],                  "backup_roles": ["audit"]},
-    "security_gate.not_run":     {"severity": "high",     "kind": "decision", "roles": ["security", "em"],      "backup_roles": ["audit"]},
-    "security_gate.blocked":     {"severity": "high",     "kind": "decision", "roles": ["security", "em"],      "backup_roles": ["audit"]},
-    "injection.detected":        {"severity": "high",     "kind": "decision", "roles": ["security", "em"],      "backup_roles": ["audit"]},
-    "containment.tripped":       {"severity": "critical", "kind": "alert",    "roles": ["audit", "em"],         "backup_roles": []},
-    "containment.resumed":       {"severity": "info",     "kind": "alert",    "roles": ["audit", "em"],         "backup_roles": []},
-    "approval.requested":        {"severity": "info",     "kind": "decision", "roles": ["em"],                  "backup_roles": ["audit"]},
-    "approval.nearing_expiry":   {"severity": "warning",  "kind": "reminder", "roles": ["em"],                  "backup_roles": ["audit"]},
-    "approval.sla_missed":       {"severity": "warning",  "kind": "reminder", "roles": ["em"],                  "backup_roles": ["audit"]},
-    "approval.expired":          {"severity": "warning",  "kind": "alert",    "roles": ["em"],                  "backup_roles": []},
-    "approval.voided":           {"severity": "info",     "kind": "alert",    "roles": ["em"],                  "backup_roles": []},
-    "task.voided":               {"severity": "warning",  "kind": "alert",    "roles": ["em"],                  "backup_roles": []},
-    "task.support_withdrawn":    {"severity": "high",     "kind": "decision", "roles": ["em", "audit"],         "backup_roles": []},
-    "scorecard.class_negative":  {"severity": "warning",  "kind": "decision", "roles": ["em", "pm"],            "backup_roles": []},
-    "requirements.at_risk":      {"severity": "warning",  "kind": "decision", "roles": ["pm"],                  "backup_roles": ["em"]},
-    "forecast.slip_over_week":   {"severity": "warning",  "kind": "decision", "roles": ["pm", "em"],            "backup_roles": []},
-    "watcher.failed":            {"severity": "warning",  "kind": "alert",    "roles": ["oncall"],              "backup_roles": ["em"]},
-    "scheduler.failed":          {"severity": "warning",  "kind": "alert",    "roles": ["oncall"],              "backup_roles": ["em"]},
-    "nightly.backlog_high":      {"severity": "warning",  "kind": "alert",    "roles": ["em", "oncall"],        "backup_roles": []},
-    "spend.80":                  {"severity": "warning",  "kind": "alert",    "roles": ["em", "audit"],         "backup_roles": []},
-    "spend.100":                 {"severity": "critical", "kind": "alert",    "roles": ["em", "audit"],         "backup_roles": []},
-    "egress.offline_attempt":    {"severity": "critical", "kind": "alert",    "roles": ["audit", "em"],         "backup_roles": []},
-    "correction.held":           {"severity": "high",     "kind": "decision", "roles": ["audit"],               "backup_roles": ["em"]},
-    "delivery.dead_lettered":    {"severity": "warning",  "kind": "alert",    "roles": ["audit"],               "backup_roles": []},
-    "delivery.audience_undeclared": {"severity": "warning", "kind": "alert",  "roles": ["audit"],               "backup_roles": []},
-    "notifier.error":            {"severity": "high",     "kind": "alert",    "roles": ["audit"],               "backup_roles": []}
+    "run.failed": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em",
+        "oncall"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "run.partial": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em",
+        "oncall"
+      ],
+      "backup_roles": []
+    },
+    "run.unverified": {
+      "severity": "warning",
+      "kind": "decision",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "run.over_budget": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "connector.failed": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "oncall"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "model.failed": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "oncall"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "model.refusal": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "oncall"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "model.timeout": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "oncall"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "verifier.missing": {
+      "severity": "warning",
+      "kind": "decision",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "verifier.rejections_high": {
+      "severity": "warning",
+      "kind": "decision",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "security_gate.not_run": {
+      "severity": "high",
+      "kind": "decision",
+      "roles": [
+        "security",
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "security_gate.blocked": {
+      "severity": "high",
+      "kind": "decision",
+      "roles": [
+        "security",
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "injection.detected": {
+      "severity": "high",
+      "kind": "decision",
+      "roles": [
+        "security",
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "containment.tripped": {
+      "severity": "critical",
+      "kind": "alert",
+      "roles": [
+        "audit",
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "containment.resumed": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "audit",
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "approval.requested": {
+      "severity": "info",
+      "kind": "decision",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "approval.nearing_expiry": {
+      "severity": "warning",
+      "kind": "reminder",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "approval.sla_missed": {
+      "severity": "warning",
+      "kind": "reminder",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": [
+        "audit"
+      ]
+    },
+    "approval.expired": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "approval.voided": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "task.voided": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "task.support_withdrawn": {
+      "severity": "high",
+      "kind": "decision",
+      "roles": [
+        "em",
+        "audit"
+      ],
+      "backup_roles": []
+    },
+    "scorecard.class_negative": {
+      "severity": "warning",
+      "kind": "decision",
+      "roles": [
+        "em",
+        "pm"
+      ],
+      "backup_roles": []
+    },
+    "requirements.at_risk": {
+      "severity": "warning",
+      "kind": "decision",
+      "roles": [
+        "pm"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "forecast.slip_over_week": {
+      "severity": "warning",
+      "kind": "decision",
+      "roles": [
+        "pm",
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "watcher.failed": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "oncall"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "scheduler.failed": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "oncall"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "nightly.backlog_high": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em",
+        "oncall"
+      ],
+      "backup_roles": []
+    },
+    "spend.80": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "em",
+        "audit"
+      ],
+      "backup_roles": []
+    },
+    "spend.100": {
+      "severity": "critical",
+      "kind": "alert",
+      "roles": [
+        "em",
+        "audit"
+      ],
+      "backup_roles": []
+    },
+    "egress.offline_attempt": {
+      "severity": "critical",
+      "kind": "alert",
+      "roles": [
+        "audit",
+        "em"
+      ],
+      "backup_roles": []
+    },
+    "correction.held": {
+      "severity": "high",
+      "kind": "decision",
+      "roles": [
+        "audit"
+      ],
+      "backup_roles": [
+        "em"
+      ]
+    },
+    "delivery.dead_lettered": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "audit"
+      ],
+      "backup_roles": []
+    },
+    "delivery.audience_undeclared": {
+      "severity": "warning",
+      "kind": "alert",
+      "roles": [
+        "audit"
+      ],
+      "backup_roles": []
+    },
+    "notifier.error": {
+      "severity": "high",
+      "kind": "alert",
+      "roles": [
+        "audit"
+      ],
+      "backup_roles": []
+    },
+    "access.requested": {
+      "severity": "info",
+      "kind": "decision",
+      "roles": [
+        "pm",
+        "em",
+        "architect",
+        "security",
+        "oncall",
+        "audit"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "access.granted_automatically": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "pm",
+        "em",
+        "architect",
+        "security",
+        "oncall",
+        "audit"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "access.decided": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "pm",
+        "em",
+        "architect",
+        "security",
+        "oncall",
+        "audit"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "access.revoked": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "pm",
+        "em",
+        "architect",
+        "security",
+        "oncall",
+        "audit"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "access.expiring": {
+      "severity": "info",
+      "kind": "reminder",
+      "roles": [
+        "pm",
+        "em",
+        "architect",
+        "security",
+        "oncall",
+        "audit"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    }
   }
 }

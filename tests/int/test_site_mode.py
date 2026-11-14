@@ -195,7 +195,7 @@ def test_housekeeper_runs_jobs_and_survives_a_failing_one():
 def test_housekeeper_sweeps_approvals_and_sessions(site):
     app, _, sessions, _ = site
     keeper = build_housekeeper(app.state.services, sessions)
-    assert set(keeper.jobs) == {"approvals", "sessions"}
+    assert set(keeper.jobs) == {"approvals", "sessions", "access"}
     results = keeper.run_once()
     assert set(results["approvals"]) == {"expired", "nearing_expiry", "sla_missed"}
 

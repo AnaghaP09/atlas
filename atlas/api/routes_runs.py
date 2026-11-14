@@ -400,8 +400,13 @@ def reports(request: Request, run_id: str = Query(...), type: str | None = Query
 
 @router.get("/reports/{report_id}")
 def report(request: Request, report_id: str, generation: int | None = Query(None)) -> dict[str, Any]:
+    from atlas.api import access_control as ac
+
     principal = principal_of(request)
-    return _report(request, principal, report_id, generation)
+    _, reader, grant = ac.reader_for(request, principal, "report", report_id)
+    body = _report(request, reader, report_id, generation)
+    body["read_only"] = grant is not None
+    return body
 
 
 @router.get("/evidence/{record_id}")
