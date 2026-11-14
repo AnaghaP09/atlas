@@ -25,9 +25,11 @@ EXECUTABLE_CHECKS = ("go_build", "go_vet", "behavioural_tests")
 GO_ENV = {
     "HOME": "/work", "GOCACHE": "/work/cache", "GOPATH": "/work/gopath", "GOFLAGS": "-mod=mod",
     "GOPROXY": "off", "GOTOOLCHAIN": "local", "CGO_ENABLED": "0", "GOTELEMETRY": "off",
+    "GOTMPDIR": "/work/tmp", "TMPDIR": "/work/tmp",
 }
 CHECK_SCRIPT = r"""
 set -u
+mkdir -p /work/tmp
 cp -r /src /work/repo || { echo "CHECK copy failed"; exit 90; }
 cd /work/repo
 if [ -d .atlas/behaviour ] && [ -n "${BEHAVIOUR_PACKAGE:-}" ]; then cp .atlas/behaviour/*_test.go "$BEHAVIOUR_PACKAGE"/ 2>/dev/null; fi

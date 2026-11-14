@@ -1,9 +1,10 @@
 """Fetch the pinned sandbox images once and save them to the local image cache.
 
-Run while connected: ``python -m prep.images.fetch_images``. Each image is pulled by digest with
-retries and back-off (some local security software intercepts registry traffic and makes the first
-attempt fail), its id is verified against the pinned digest, and it is saved as a tar with a
-recorded checksum. The sandbox later loads from this cache and never pulls.
+Run while connected: ``python -m prep.images.fetch_images``. Each image is pulled by its manifest
+digest with retries and back-off (some local security software intercepts registry traffic and
+makes the first attempt fail). The pulled reference must carry the pinned digest in its
+``RepoDigests``; its local image id (not always equal to the manifest digest) and the SHA256 of the
+saved tar are recorded. The sandbox later loads from this cache by image id and never pulls.
 """
 
 from __future__ import annotations
@@ -31,8 +32,8 @@ def pull_with_retries(image: PinnedImage, run: Runner, attempts: int = 5,
         result = run(["pull", "-q", image.pull_ref])
         if result.returncode == 0:
             return
-        last = (result.stderr or result.stdout).strip().splitlines()[-1:] or [""]
-        last = last[0]
+        lines = (result.stderr or result.stdout or "").strip().splitlines()
+        last = lines[-1] if lines else ""
         if attempt < attempts:
             sleep(delay)
             delay *= 2
@@ -44,24 +45,26 @@ def fetch(names: Sequence[str], cache: ImageCache, sleep: Callable[[float], None
     manifest = cache.manifest()
     for name in names:
         image = IMAGES[name]
-        if cache.loaded_id(image.digest) != image.digest:
+        held = cache.inspect(image.pull_ref)
+        if held is None or not image.matches_repo_digest(held.repo_digests):
             pull_with_retries(image, cache.run, sleep=sleep)
-        loaded = cache.loaded_id(image.digest)
-        if loaded != image.digest:
-            raise FetchError(f"{name}: pulled image id {loaded} does not match pinned {image.digest}")
+            held = cache.inspect(image.pull_ref)
+        if held is None or not image.matches_repo_digest(held.repo_digests):
+            raise FetchError(f"{name}: pulled image does not carry the pinned manifest digest {image.manifest_digest}")
         tar = cache.tar_path(image)
-        result = cache.run(["save", "-o", str(tar), image.digest])
+        result = cache.run(["save", "-o", str(tar), image.pull_ref])
         if result.returncode != 0:
             raise FetchError(f"{name}: save failed: {result.stderr.strip()[:200]}")
         manifest[name] = {
             "repository": image.repository,
             "tag": image.tag,
-            "digest": image.digest,
+            "manifest_digest": image.manifest_digest,
+            "image_id": held.image_id,
             "tar_sha256": sha256_file(tar),
             "saved_at": datetime.now(timezone.utc).isoformat(),
         }
         cache.manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
-        print(f"{name}: cached {image.repository}:{image.tag} {image.digest}")
+        print(f"{name}: cached {image.repository}:{image.tag} manifest {image.manifest_digest} image id {held.image_id}")
     return manifest
 
 

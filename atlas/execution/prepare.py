@@ -21,6 +21,7 @@ from atlas.execution import diffs
 from atlas.execution.agent import CodingAgent
 from atlas.execution.checks import static_checks
 from atlas.execution.ports import DiffReviewer
+from atlas.execution.runner import SandboxBundle, SandboxLimits
 from atlas.tasks import TaskStore
 
 
@@ -52,7 +53,8 @@ class PreparationRefused(RuntimeError):
 class Preparer:
     def __init__(self, tasks: TaskStore, eligibility: Eligibility, agent: CodingAgent, sandbox,
                  reviewer: DiffReviewer, projection: Projection, trees: TreeSource,
-                 containment: ContainmentStore) -> None:
+                 containment: ContainmentStore, limits: SandboxLimits | None = None) -> None:
+        self.limits = limits or SandboxLimits()
         self.tasks = tasks
         self.eligibility = eligibility
         self.agent = agent
@@ -103,7 +105,7 @@ class Preparer:
                                          and frozen["scans"]["personal_data_scan"] == "passed" else "failed")
 
         tree = diffs.apply(base, diffs.parse(frozen["diff"]))
-        sandbox_result = self.sandbox.run_checks(tree)
+        sandbox_result = self.sandbox.prepare(task, SandboxBundle(tree), self.limits)
         results.update(sandbox_result.checks)
         review = self.reviewer.review(task.task_text, task.scope, frozen["diff"])
         results["verifier_review"] = "passed" if review.passed else "failed"

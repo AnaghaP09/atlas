@@ -117,7 +117,14 @@ class PassingSandbox:
         self.checks = dict(checks or {})
         self.trees: list[dict] = []
 
-    def run_checks(self, tree):
+    name = "fake"
+    data_mode = "REAL"
+
+    def prepare(self, task, bundle, limits):
+        return self.run_checks(bundle, limits)
+
+    def run_checks(self, bundle, limits=None):
+        tree = bundle.tree
         self.trees.append(dict(tree))
         base = {"gofmt": "passed", "go_build": "passed", "go_vet": "passed", "behavioural_tests": "passed",
                 "container_sandbox": "passed"}
