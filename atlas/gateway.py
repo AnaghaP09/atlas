@@ -263,6 +263,9 @@ _TARGET_CI_PATHS = [
     re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/actions/runs/(?P<run>\d+)/artifacts$"),
     re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/commits/(?P<sha>[0-9a-f]{7,40})/check-runs$"),
 ]
+_ACTIONS_PATH = re.compile(
+    r"^/repos/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/actions/(runs|runs/\d+|runs/\d+/jobs|jobs/\d+|jobs/\d+/logs)$"
+)
 _PR_PATH = re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls/(?P<number>\d+)$")
 _REPO_PATH = re.compile(r"^/repos/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 _SAFE_PATH = re.compile(r"^[A-Za-z0-9._~/-]+$")
@@ -315,6 +318,14 @@ def policy_check(
             return "host or path not allowed for CI artefacts"
         if connector == "security":
             return _security_rule(method, host, path, body)
+        if connector == "actions":
+            # GitHub Actions CI of a configured upstream project: read-only run and job listings.
+            if host != "api.github.com" or method != "GET":
+                return "Actions reads are GET requests to api.github.com only"
+            m = _ACTIONS_PATH.match(path)
+            if m and f"{m.group('owner')}/{m.group('repo')}".lower() in sources.repositories():
+                return None
+            return "Actions route or repository not allowed"
         return "connector not allowed for live ingestion"
 
     if purpose is EgressPurpose.ACTION_SECURITY_INGEST:
@@ -507,7 +518,7 @@ class Gateway:
 
     def _headers(self, connector: str, ctx: RequestContext) -> dict[str, str]:
         headers = {"Accept": "application/json", "User-Agent": "atlas-backend"}
-        if connector in ("issues", "git"):
+        if connector in ("issues", "git", "actions"):
             token_name = "github"
         elif connector in ("target_ci", "correction"):
             token_name = "publish"

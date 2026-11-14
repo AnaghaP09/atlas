@@ -130,7 +130,8 @@ def run_scan(
             })
     ok = sum(1 for s in per_module.values() if s == "ok")
     total = len(per_module)
-    completion = "complete" if ok == total and total > 0 else ("failed" if ok == 0 else "partial")
+    # A module with no third-party dependencies has nothing to query: its scan is complete.
+    completion = "complete" if ok == total else ("failed" if ok == 0 else "partial")
     scan_run = {
         "scan_run_id": scan_run_id,
         "destination": destination,

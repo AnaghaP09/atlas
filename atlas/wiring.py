@@ -5,13 +5,12 @@ the outbound boundary (with the configured model provider), the run engine (Scou
 the execution layer (task store, approvals, eligibility, containment, sandbox runner) and plugs
 them into the API through its ports.
 
+The evidence side (snapshot registry, live stores per project, security scans for tasks, the
+forecast's open items and the live dashboard pollers) comes from ``atlas.data_wiring``. Without a
+data directory (in-memory test runs) the server falls back to empty stand-ins that say so plainly.
+
 What is not connected in this build is said plainly instead of faked:
 
-* **Evidence data.** Until the data layer is connected, the server uses an empty, local evidence
-  store. Snapshots can be created, but they hold no records, and live ingestion answers
-  "not connected". No project data is invented.
-* **Security scans for tasks.** Without the scanner connector, a task's security decision is
-  ``not_run``, so the eligibility rules refuse Approval A with that reason.
 * **Publication and corrections.** Writing to the target repository needs the publication
   connector; those endpoints answer "not connected".
 """
@@ -33,6 +32,7 @@ from atlas.approvals import ApprovalError, ApprovalService
 from atlas.config import parse_env_file
 from atlas.containment import RULES, ContainmentError, ContainmentStore
 from atlas.feed import ProjectFeed
+from atlas.data_wiring import connect_data
 from atlas.projects import ProjectRegistry
 from atlas.contracts import (
     REVERIFICATION_ASSESSMENTS,
@@ -67,6 +67,8 @@ NOT_CONNECTED_PUBLICATION = "publishing to the target repository is not connecte
 
 # Outbound containment events -> containment table rows.
 EVENT_ROWS = {"outbound_offline_attempt": 4, "outbound_not_allowlisted": 5, "outbound_unredacted_pii": 6}
+# Gateway violations -> the same containment events.
+GATEWAY_EVENTS = {"offline_egress_attempt": "outbound_offline_attempt", "allow_list_violation": "outbound_not_allowlisted"}
 
 
 def _now() -> datetime:
@@ -710,7 +712,7 @@ def _env_values(settings: Any, env_file: str | Path | None) -> dict[str, str]:
 
 def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = None, provider: Any = None,
             scanner: Any = None, runner: Any = None, clock: Callable[[], datetime] | None = None,
-            persist: bool = True, env_file: str | Path | None = ".env") -> Wiring:
+            persist: bool = True, env_file: str | Path | None = ".env", data_transport: Any = None) -> Wiring:
     """Build the real layers and plug them into ``services`` (the API container)."""
     clock = clock or _now
     env = dict(env if env is not None else _env_values(settings, env_file))
@@ -738,20 +740,35 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                                 events=ContainmentEvents(containment, notifier, clock), provider=provider,
                                 internal_model_hosts=frozenset(settings.model_internal_hosts or ()), spend=spend.add)
 
-    store = EmptyEvidenceStore()
     default_project = getattr(services, "default_project_id", None) or (settings.default_project or None)
-    snapshots = LocalSnapshots(data_dir / f"{environment}-snapshots.json" if data_dir else None, default_project, clock)
-
-    partition = ActionSecurityPartition()
-    scanner = scanner or UnconnectedScanner()
-    task_gate = TaskSecurityGate(partition, components=lambda ctx: ["target"], clock=clock)
+    if getattr(services, "feed", None) is None:
+        services.feed = ProjectFeed(services.hub)
+    target_dir = Path(env.get("ATLAS_TARGET_DIR") or DEFAULT_TARGET_DIR)
+    data = None
+    if data_dir is not None:
+        events = ContainmentEvents(containment, notifier, clock)
+        data = connect_data(settings, env, mode=services.mode.get, feed=services.feed,
+                            on_violation=lambda kind, detail: events.record_event(GATEWAY_EVENTS.get(kind, kind), detail),
+                            transport=data_transport, target_dir=target_dir, clock=clock,
+                            default_project=default_project)
+        store = data.store
+        snapshots = data.snapshots
+        partition = data.security_reader
+        scanner = scanner or data.scanner
+        components = data.scanner.components
+    else:
+        store = EmptyEvidenceStore()
+        snapshots = LocalSnapshots(None, default_project, clock)
+        partition = ActionSecurityPartition()
+        scanner = scanner or UnconnectedScanner()
+        components = lambda ctx: ["target"]  # noqa: E731
+    task_gate = TaskSecurityGate(partition, components=components, clock=clock)
     tasks = TaskStore(ops)
     approvals = ApprovalService(ops, tasks, notifier, containment)
     runs = RunStore(db_path("runs"))
     run_state = RunStateAdapter(runs)
     eligibility = Eligibility(tasks, approvals, task_gate, run_state, containment)
     runner = runner or select_runner(env)
-    target_dir = Path(env.get("ATLAS_TARGET_DIR") or DEFAULT_TARGET_DIR)
     trees = DirectoryTreeSource(target_dir)
     coding = CodingAgent(MessageOutbound(outbound, DIFF_SCHEMA))
     reviewer = SentinelDiffReviewer(MessageOutbound(outbound, REVIEW_SCHEMA))
@@ -762,7 +779,10 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     gate = RunSecurityGate(POLICY_VERSION, clock)
     orchestrator = Orchestrator(Deps(store=store, outbound=outbound, gate=gate, queue=services.queue,
                                      notifier=notifier, events=services.events, approvals=approvals,
-                                     tasks=disposition, content_of=lambda r: r.content_ref, clock=clock), runs=runs)
+                                     tasks=disposition,
+                                     content_of=data.store.content_of if data else (lambda r: r.content_ref),
+                                     open_items_for=data.open_items.open_items_for if data else (lambda ctx: []),
+                                     clock=clock), runs=runs)
 
     target = settings.publish_target if settings.publish_target and "<" not in settings.publish_target else None
     w = Wiring(settings=settings, clock=clock, ops=ops, spend=spend, containment=containment, outbound=outbound,
@@ -772,15 +792,14 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                publish_target=target, base_ref=env.get("ATLAS_PUBLISH_BASE_REF", "main"),
                base_commit=_tree_commit(trees) if target_dir.exists() else "unknown",
                task_scope=tuple(s for s in (env.get("ATLAS_TASK_SCOPE") or "*.go").split(",") if s),
-               default_project=default_project, projects=getattr(services, "projects", None) or ProjectRegistry())
+               default_project=default_project, projects=getattr(services, "projects", None) or ProjectRegistry(),
+               data_layer="connected" if data else "not connected")
+    w.extra["data"] = data
 
     # Export grants for non-person principals come from the projects file.
     inner = getattr(notifier, "inner", notifier)
     if hasattr(inner, "export_grant"):
         inner.export_grant = w.projects.may_notify
-    if getattr(services, "feed", None) is None:
-        services.feed = ProjectFeed(services.hub)
-
     services.orchestrator = orchestrator
     services.snapshots = snapshots
     services.tasks = TaskPortAdapter(w)
@@ -788,8 +807,12 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     services.spend = spend
     services.model_configured = provider is not None and bool(getattr(settings, "anthropic_api_key", "") or
                                                                settings.model_provider != "anthropic")
-    services.staged = tuple(services.staged) + (
-        "evidence data (" + NOT_CONNECTED_DATA + ")", "publication and corrections (" + NOT_CONNECTED_PUBLICATION + ")")
+    staged = ("publication and corrections (" + NOT_CONNECTED_PUBLICATION + ")",)
+    if data is None:
+        staged = ("evidence data (" + NOT_CONNECTED_DATA + ")",) + staged
+    services.staged = tuple(services.staged) + staged
+    if data is not None and data.pollers and env.get("ATLAS_DASHBOARD_POLL", "on").lower() not in ("off", "false", "0"):
+        data.poll_loop.start()
     variables = dict(getattr(services, "demo_variables", {}) or {})
     if getattr(settings, "peer_ui_url", ""):
         variables.setdefault("peer_ui_url", settings.peer_ui_url)
