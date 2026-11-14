@@ -162,6 +162,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/containment/{switch_id}/drill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Drill
+         * @description Trip one kill switch as a drill. It really blocks what the switch blocks until the audit
+         *     role ends it with ``POST /api/incidents/{id}/resume``.
+         */
+        post: operations["drill_api_containment__switch_id__drill_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/corrections": {
         parameters: {
             query?: never;
@@ -1475,6 +1496,43 @@ export interface operations {
             };
         };
     };
+    drill_api_containment__switch_id__drill_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                switch_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                } | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     corrections_api_corrections_get: {
         parameters: {
             query: {
@@ -1904,11 +1962,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody: {
+        requestBody?: {
             content: {
                 "application/json": {
                     [key: string]: unknown;
-                };
+                } | null;
             };
         };
         responses: {

@@ -10,8 +10,10 @@ export interface SwitchView {
   title?: string;
   state: string;
   blocks?: string[];
+  blocks_ids?: string[];
   incident?: (Incident & { drill?: boolean }) | null;
   last_tripped?: string | null;
+  last_tripped_at?: string | null;
   can_drill?: boolean;
 }
 
@@ -34,7 +36,7 @@ export function blockChips(blocks: string[] | undefined): string[] {
 
 export function switchState(s: SwitchView): "ready" | "tripped" | "drill" {
   if (s.state === "ok") return "ready";
-  return s.incident?.drill ? "drill" : "tripped";
+  return s.state === "drill" || s.incident?.drill ? "drill" : "tripped";
 }
 
 const LIGHT_TEXT = { ready: "Ready", tripped: "Tripped", drill: "Tripped (drill)" };
@@ -43,7 +45,9 @@ const LIGHT_TEXT = { ready: "Ready", tripped: "Tripped", drill: "Tripped (drill)
 export function useBlockedBy(kind: string): SwitchView[] {
   const data = useApi<ContainmentView>("/api/containment");
   const label = BLOCK_LABEL[kind] ?? kind;
-  return ((data.data?.switches ?? []) as SwitchView[]).filter((s) => s.state !== "ok" && blockChips(s.blocks).includes(label));
+  return ((data.data?.switches ?? []) as SwitchView[]).filter(
+    (s) => s.state !== "ok" && ((s.blocks_ids ?? []).includes(kind) || blockChips(s.blocks).includes(label)),
+  );
 }
 
 function Corrections({ incidentId }: { incidentId: string }) {
@@ -134,7 +138,7 @@ function SwitchCard({ s, audit, done }: { s: SwitchView; audit: boolean; done: (
         {blockChips(s.blocks).map((b) => <span key={b} className="chip">{b}</span>)}
       </div>
       <p className="muted small">
-        Last tripped: {s.last_tripped || s.incident?.tripped_at ? <Time iso={s.last_tripped ?? s.incident?.tripped_at ?? null} short /> : "never"}
+        Last tripped: {s.last_tripped_at || s.last_tripped || s.incident?.tripped_at ? <Time iso={s.last_tripped_at ?? s.last_tripped ?? s.incident?.tripped_at ?? null} short /> : "never"}
       </p>
       {audit && state === "ready" && s.can_drill === true ? (
         confirming ? (
@@ -186,7 +190,7 @@ export function ContainmentBanner() {
   const data = useApi<ContainmentView>("/api/containment");
   const tripped = ((data.data?.switches ?? []) as SwitchView[]).filter((s) => s.state !== "ok");
   if (!tripped.length) return null;
-  const drillOnly = tripped.every((s) => s.incident?.drill);
+  const drillOnly = tripped.every((s) => s.state === "drill" || s.incident?.drill);
   return (
     <Link to="/containment" className={`containment-banner${drillOnly ? " drill" : ""}`}>
       <Icon name="power" size={16} />

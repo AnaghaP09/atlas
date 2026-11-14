@@ -122,7 +122,8 @@ def render(report_type: str, artefact: Mapping[str, Any], principal: Principal, 
         f = data.get("forecast") if isinstance(data.get("forecast"), Mapping) else {}
         lines += ["## Items likely to carry over", "Probabilities are illustrative, not calibrated."]
         for item in f.get("items", []):
-            lines.append(f"- {item.get('issue_id')} ({item.get('component')}): score {item.get('score')}")
+            name = item.get("title") or f"Issue {item.get('issue_id')}"
+            lines.append(f"- {name} (#{item.get('issue_id')}, {item.get('component')}): score {item.get('score')}")
         if f.get("proxy_note"):
             lines += ["", f"Note: {f['proxy_note']}"]
     if report_type == "allocation":

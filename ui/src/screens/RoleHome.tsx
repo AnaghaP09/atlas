@@ -2,7 +2,7 @@
 // (GET /api/navigation "home"); the data comes from the same projected API reads as everywhere else.
 import type { ContainmentView, Envelope, Health, Notification, QueueEntry, ReportView, RunView, TaskView } from "../api/types";
 import { useApi } from "../app/context";
-import { ButtonLink, DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill } from "../components/common";
+import { ButtonLink, DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Truncate } from "../components/common";
 import { Link } from "../lib/router";
 import { latestReport } from "./LatestReport";
 import { useCurrentProject } from "./Dashboard";
@@ -15,6 +15,7 @@ function useLatest(type: string) {
 }
 
 interface ForecastItem {
+  title?: string;
   issue_id?: string;
   component?: string;
   score?: number;
@@ -39,11 +40,11 @@ function ForecastFocus() {
         {items.length ? (
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Issue</th><th>Component</th><th className="num">Carry-over score</th></tr></thead>
+              <thead><tr><th>Issue</th><th>Component</th><th className="num">Score</th></tr></thead>
               <tbody>
                 {items.slice(0, 10).map((i, n) => (
                   <tr key={`${i.issue_id}-${n}`}>
-                    <td className="mono">{i.issue_id}</td>
+                    <td><Truncate text={i.title ?? `Issue ${i.issue_id ?? ""}`} max={70} /> <span className="muted num">#{i.issue_id}</span></td>
                     <td>{i.component ?? "—"}</td>
                     <td className="num">{typeof i.score === "number" ? i.score.toFixed(2) : "—"}</td>
                   </tr>
