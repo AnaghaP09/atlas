@@ -83,9 +83,9 @@ class NotifyingNotifier:
         self.hub = hub
 
     def emit(self, event_type: str, subject_id: str, payload_refs: Any, required_scopes: frozenset[str],
-             content: Mapping[str, Any] | None = None) -> str:
+             content: Mapping[str, Any] | None = None, project_id: str = "") -> str:
         before = {r["id"] for r in self.inner.records()}
-        nid = self.inner.emit(event_type, subject_id, payload_refs, required_scopes, content)
+        nid = self.inner.emit(event_type, subject_id, payload_refs, required_scopes, content, project_id=project_id)
         for rec in self.inner.records():
             if rec["id"] not in before:
                 self.hub.on_notification(rec)

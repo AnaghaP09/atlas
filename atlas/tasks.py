@@ -79,11 +79,12 @@ class Task:
     defect_window_ends: datetime | None
     created_at: datetime
     updated_at: datetime
+    project_id: str = ""
 
     @property
     def security_context(self) -> SecurityContext:
         revision = (self.artefact or {}).get("tree_sha256") or self.base_commit
-        return SecurityContext(self.destination_repo, self.action_id, revision)
+        return SecurityContext(self.destination_repo, self.action_id, revision, self.project_id)
 
     @property
     def executable_action(self) -> str:
@@ -122,6 +123,7 @@ def _row_to_task(row: sqlite3.Row) -> Task:
         defect_window_ends=parse_iso(row["defect_window_ends"]),
         created_at=parse_iso(row["created_at"]),  # type: ignore[arg-type]
         updated_at=parse_iso(row["updated_at"]),  # type: ignore[arg-type]
+        project_id=(row["project_id"] if "project_id" in row.keys() else "") or "",
     )
 
 
@@ -150,31 +152,39 @@ class TaskStore:
         gate: SecurityGate,
         now: datetime,
         idempotency_key: str | None = None,
+        project_id: str = "",
     ) -> Task:
         """Create a task in ``proposed``: allocate the action id, scan the destination at its base
-        revision into the action-security partition and record the first gate decision."""
+        revision into the action-security partition and record the first gate decision.
+
+        ``project_id`` is the project of the run the task comes from; it is stored with the task and
+        every later change is checked against it. Idempotency keys are partitioned by project.
+        """
         request = {
             "op": "create_task", "run_id": run_id, "generation": generation, "action": action,
             "task_text": task_text, "scope": list(scope), "destination_repo": destination_repo,
-            "base_ref": base_ref, "base_commit": base_commit,
+            "base_ref": base_ref, "base_commit": base_commit, "project_id": project_id,
         }
+        if idempotency_key is not None and project_id:
+            idempotency_key = f"{project_id}::{idempotency_key}"
         with self.db.transaction() as conn:
             stored = self.db.idempotent(conn, idempotency_key, request)
             if stored is not None:
                 return self.get(stored["task_id"])
             task_id = new_id("task")
             action_id = new_id("act")
-            ctx = SecurityContext(destination_repo, action_id, base_commit)
+            ctx = SecurityContext(destination_repo, action_id, base_commit, project_id)
             scanner.scan(ctx)
             decision = gate.decide(ctx, now)
             conn.execute(
                 "INSERT INTO tasks (task_id, action_id, run_id, generation, action, task_class, task_text,"
                 " scope_json, destination_repo, destination_node_id, base_ref, base_commit, publication_ref,"
-                " snapshot_id, policy_version, state, security_decision_id, created_at, updated_at)"
-                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " snapshot_id, policy_version, state, security_decision_id, created_at, updated_at, project_id)"
+                " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (task_id, action_id, run_id, generation, action, task_class, task_text, json.dumps(list(scope)),
                  destination_repo, destination_node_id, base_ref, base_commit, f"atlas/{action_id}",
-                 snapshot_id, policy_version, TaskState.PROPOSED.value, decision.decision_id, iso(now), iso(now)),
+                 snapshot_id, policy_version, TaskState.PROPOSED.value, decision.decision_id, iso(now), iso(now),
+                 project_id),
             )
             self._history(conn, task_id, None, TaskState.PROPOSED, "created", now)
             self.db.emit_event(conn, "task.state_changed", at=now, run_id=run_id, generation=generation,
@@ -202,6 +212,10 @@ class TaskStore:
     def for_run(self, run_id: str) -> list[Task]:
         return [_row_to_task(r) for r in self.db.query("SELECT * FROM tasks WHERE run_id = ? ORDER BY created_at", (run_id,))]
 
+    def for_project(self, project_id: str) -> list[Task]:
+        return [_row_to_task(r) for r in self.db.query(
+            "SELECT * FROM tasks WHERE project_id = ? ORDER BY created_at", (project_id,))]
+
     def all(self) -> list[Task]:
         return [_row_to_task(r) for r in self.db.query("SELECT * FROM tasks ORDER BY created_at")]
 
@@ -221,6 +235,7 @@ class TaskStore:
         ]
         return {
             "task_id": task.task_id,
+            "project_id": task.project_id or None,
             "action_id": task.action_id,
             "run_id": task.run_id,
             "state": task.state.value,

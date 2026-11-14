@@ -32,6 +32,8 @@ from atlas.api.ports import NotWired, Refused
 from atlas.approvals import ApprovalError, ApprovalService
 from atlas.config import parse_env_file
 from atlas.containment import RULES, ContainmentError, ContainmentStore
+from atlas.feed import ProjectFeed
+from atlas.projects import ProjectRegistry
 from atlas.contracts import (
     REVERIFICATION_ASSESSMENTS,
     ApprovalKind,
@@ -354,12 +356,18 @@ class TaskPortAdapter:
     # -- helpers ---------------------------------------------------------------------------------
 
     def _project(self, run_id: str | None) -> str | None:
+        """The project of a run: stored on its context when it was admitted (never from a request)."""
         stored = self.w.orchestrator.runs.run(run_id) if run_id else None
         if stored is not None:
+            if stored["ctx"].project_id:
+                return stored["ctx"].project_id
             snap = self.w.snapshots.get(stored["ctx"].snapshot_id) or {}
             if snap.get("project_id"):
                 return str(snap["project_id"])
-        return self.w.default_project
+        return None
+
+    def _task_project(self, task: Any) -> str | None:
+        return task.project_id or self._project(task.run_id)
 
     def _view(self, task_id: str) -> dict[str, Any]:
         task = self.w.tasks.get(task_id)
@@ -374,7 +382,7 @@ class TaskPortAdapter:
             except Exception:
                 validation = None
         view = self.w.tasks.view(task_id, security_summary=summary, validation=validation)
-        view["project_id"] = self._project(task.run_id)
+        view["project_id"] = self._task_project(task)
         view["required_scopes"] = ["internal"]
         return view
 
@@ -392,6 +400,10 @@ class TaskPortAdapter:
         auth = self.w.orchestrator.runs.authoritative(run_id)
         if stored is None or auth is None:
             raise Refused("the run has no verified result", 409)
+        project_id = self._project(run_id) or ""
+        if not self.w.projects.may_publish(project_id, target):
+            raise Refused(f"the project has no export grant to publish to {target}; add it to the "
+                          "project's publish_targets in the projects file", 409)
         artefact = auth[1]
         task_text = str((artefact.get("evidence_recommendation") or {}).get("text") if isinstance(artefact.get("evidence_recommendation"), Mapping)
                         else artefact.get("root_cause") or "Fix the verified cause of the failure")
@@ -404,14 +416,15 @@ class TaskPortAdapter:
                 task_text=task_text, scope=self.w.task_scope, destination_repo=target,
                 destination_node_id="unresolved", base_ref=self.w.base_ref, base_commit=self.w.base_commit,
                 snapshot_id=stored["ctx"].snapshot_id, policy_version=POLICY_VERSION, scanner=self.w.scanner,
-                gate=self.w.task_gate, now=self.w.clock(), idempotency_key=idempotency_key)
+                gate=self.w.task_gate, now=self.w.clock(), idempotency_key=idempotency_key,
+                project_id=project_id)
         except (TaskError, ValueError) as exc:
             raise self._refuse(exc) from exc
         return self._view(task.task_id)
 
     def list(self, project_id: str | None = None) -> list[Mapping[str, Any]]:
-        out = [self._view(t.task_id) for t in self.w.tasks.all()]
-        return [t for t in out if project_id is None or t.get("project_id") == project_id]
+        tasks = self.w.tasks.all()
+        return [self._view(t.task_id) for t in tasks if project_id is None or self._task_project(t) == project_id]
 
     def get(self, task_id: str) -> Mapping[str, Any] | None:
         try:
@@ -444,7 +457,7 @@ class TaskPortAdapter:
             if kind:
                 rows.append({"approval_id": f"pending-{kind}-{t.task_id}", "task_id": t.task_id, "kind": kind,
                              "state": "requested", "generation": t.generation, "expires_at": None,
-                             "project_id": self._project(t.run_id), "required_scopes": ["internal"],
+                             "project_id": self._task_project(t), "required_scopes": ["internal"],
                              **self._approval_details(t)})
         return rows
 
@@ -454,7 +467,7 @@ class TaskPortAdapter:
             for r in self.w.approvals.rows(t.task_id):
                 granted.append({"approval_id": r["approval_id"], "task_id": r["task_id"], "kind": r["kind"],
                                 "state": r["status"], "generation": r["generation"], "expires_at": r["expires_at"],
-                                "project_id": self._project(t.run_id), "required_scopes": ["internal"],
+                                "project_id": self._task_project(t), "required_scopes": ["internal"],
                                 **self._approval_details(t, r["generation"])})
         rows = self._pending() + granted
         return [r for r in rows if project_id is None or r.get("project_id") == project_id]
@@ -521,9 +534,12 @@ class TaskPortAdapter:
         return {**out, "task": self._view(task_id)}
 
     def scorecard(self, project_id: str | None = None) -> Mapping[str, Any]:
+        owner = {t.task_id: self._task_project(t) for t in self.w.tasks.all()}
         rows = [{**dict(r), "net_contribution": dict(r).get("net_contribution", "unavailable"),
-                 "data_mode": dict(r).get("data_mode", "REAL"), "range": dict(r).get("range")}
+                 "data_mode": dict(r).get("data_mode", "REAL"), "range": dict(r).get("range"),
+                 "project_id": owner.get(dict(r).get("task_id"))}
                 for r in self.w.scorecard.latest_rows()]
+        rows = [r for r in rows if project_id is None or r["project_id"] == project_id]
         return {"rows": rows, "net_contribution": "unavailable", "baseline": "SYNTHETIC",
                 "data_mode": "SYNTHETIC", "required_scopes": ["internal"]}
 
@@ -679,6 +695,7 @@ class Wiring:
     base_commit: str
     task_scope: tuple[str, ...]
     default_project: str | None
+    projects: Any = None
     data_layer: str = "not connected"
     extra: dict[str, Any] = field(default_factory=dict)
 
@@ -755,7 +772,14 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                publish_target=target, base_ref=env.get("ATLAS_PUBLISH_BASE_REF", "main"),
                base_commit=_tree_commit(trees) if target_dir.exists() else "unknown",
                task_scope=tuple(s for s in (env.get("ATLAS_TASK_SCOPE") or "*.go").split(",") if s),
-               default_project=default_project)
+               default_project=default_project, projects=getattr(services, "projects", None) or ProjectRegistry())
+
+    # Export grants for non-person principals come from the projects file.
+    inner = getattr(notifier, "inner", notifier)
+    if hasattr(inner, "export_grant"):
+        inner.export_grant = w.projects.may_notify
+    if getattr(services, "feed", None) is None:
+        services.feed = ProjectFeed(services.hub)
 
     services.orchestrator = orchestrator
     services.snapshots = snapshots

@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from atlas.api import routes_eval, routes_ops, routes_runs, routes_tasks
+from atlas.api import routes_eval, routes_ops, routes_projects, routes_runs, routes_tasks
 from atlas.api.guard import HostOriginGuard
 from atlas.api.identity import IdentityError
 from atlas.api.idempotency import IdempotencyError
@@ -49,7 +49,8 @@ def _start_run_factory(services: Services):
         cutoff_dt = datetime.fromisoformat(cutoff) if isinstance(cutoff, str) else (cutoff or datetime.now(timezone.utc))
         ctx = RunContext(run_id=adm.run_id, snapshot_id=adm.snapshot_id, mode=RunMode(snap.get("mode", "replay")),
                          release_or_case=str(snap.get("release") or snap.get("case_id") or ""), cutoff=cutoff_dt,
-                         alias_variant=snap.get("alias_variant"), evidence_clock=cutoff_dt)
+                         alias_variant=snap.get("alias_variant"), evidence_clock=cutoff_dt,
+                         project_id=adm.project_id or str(snap.get("project_id") or ""))
         sb = adm.started_by
         started_by = StartedBy(kind=StartedByKind(sb.get("kind", "person")),
                                role=Role(sb["role"]) if sb.get("role") else None, watcher_id=sb.get("watcher_id"))
@@ -95,6 +96,7 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
     api.include_router(routes_tasks.router)
     api.include_router(routes_ops.router)
     api.include_router(routes_eval.router)
+    api.include_router(routes_projects.router)
     if services.is_scenario:
         api.include_router(routes_eval.scenario_router)
     app.include_router(api)

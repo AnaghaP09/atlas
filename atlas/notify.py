@@ -21,6 +21,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+from atlas.projects import ANY_PROJECT
 from atlas.contracts import EgressPurpose, Mode, Principal
 
 DEFAULT_CATALOG = Path(__file__).resolve().parents[1] / "schema" / "notification_events.json"
@@ -83,6 +84,8 @@ class NotificationService:
     ) -> None:
         self.catalog = load_catalog(catalog_path)
         self.projection = projection
+        # Which project may notify which external audience (set from the projects file).
+        self.export_grant = lambda project_id, audience: True
         self.principal_for = principal_for
         self.outbound = outbound
         self.destinations = list(destinations)
@@ -97,13 +100,22 @@ class NotificationService:
         self.degraded = False
         self._db = sqlite3.connect(str(db_path), isolation_level=None, check_same_thread=False)
         self._db.executescript(SCHEMA)
+        cols = {r[1] for r in self._db.execute("PRAGMA table_info(notifications)").fetchall()}
+        if "project_id" not in cols:
+            self._db.execute("ALTER TABLE notifications ADD COLUMN project_id TEXT NOT NULL DEFAULT ''")
         self._lock = threading.RLock()
 
     # ------------------------------------------------------------------ emit
 
     def emit(self, event_type: str, subject_id: str, payload_refs: Sequence[str],
-             required_scopes: frozenset[str], content: Mapping[str, Any] | None = None) -> str:
-        """Record a notification. Severity, kind and roles come only from the catalog."""
+             required_scopes: frozenset[str], content: Mapping[str, Any] | None = None,
+             project_id: str = "") -> str:
+        """Record a notification. Severity, kind and roles come only from the catalog.
+
+        A notification about one project's object carries that ``project_id``: only members of the
+        project see it in the app, and an external destination receives it only with that project's
+        export grant for the destination's audience.
+        """
         if event_type not in self.catalog:
             raise KeyError(f"event type not in catalog: {event_type}")
         entry = self.catalog[event_type]
@@ -111,7 +123,7 @@ class NotificationService:
         with self._lock:
             dup = self._db.execute(
                 "SELECT id, created FROM notifications WHERE event_type = ? AND subject_id = ? AND severity = ? "
-                "ORDER BY created DESC LIMIT 1", (event_type, subject_id, entry["severity"])
+                "AND project_id = ? ORDER BY created DESC LIMIT 1", (event_type, subject_id, entry["severity"], project_id)
             ).fetchone()
             if dup and now - datetime.fromisoformat(dup[1]) < self.dedup_window:
                 return dup[0]
@@ -120,10 +132,10 @@ class NotificationService:
             body.setdefault("required_scopes", sorted(required_scopes))
             self._db.execute(
                 "INSERT INTO notifications (id, event_type, subject_id, severity, kind, roles, backup_roles, "
-                "payload_refs, content, required_scopes, created) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                "payload_refs, content, required_scopes, created, project_id) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                 (nid, event_type, subject_id, entry["severity"], entry["kind"], json.dumps(entry["roles"]),
                  json.dumps(entry.get("backup_roles", [])), json.dumps(list(payload_refs)),
-                 json.dumps(body, default=str), json.dumps(sorted(required_scopes)), now.isoformat()),
+                 json.dumps(body, default=str), json.dumps(sorted(required_scopes)), now.isoformat(), project_id),
             )
         if not event_type.startswith(("delivery.", "notifier.")):
             try:
@@ -136,11 +148,16 @@ class NotificationService:
 
     def _row(self, r: tuple) -> dict[str, Any]:
         keys = ("id", "event_type", "subject_id", "severity", "kind", "roles", "backup_roles", "payload_refs",
-                "content", "required_scopes", "created", "status")
+                "content", "required_scopes", "created", "status", "project_id")
         d = dict(zip(keys, r))
+        d["project_id"] = d.get("project_id") or None
         for k in ("roles", "backup_roles", "payload_refs", "content", "required_scopes"):
             d[k] = json.loads(d[k])
         return d
+
+    def _project_of(self, nid: str) -> str:
+        row = self._db.execute("SELECT project_id FROM notifications WHERE id = ?", (nid,)).fetchone()
+        return (row[0] or "") if row else ""
 
     def records(self) -> list[dict[str, Any]]:
         return [self._row(r) for r in self._db.execute("SELECT * FROM notifications ORDER BY created").fetchall()]
@@ -154,12 +171,15 @@ class NotificationService:
         for n in self.records():
             if role not in n["roles"] and role not in n["backup_roles"]:
                 continue
+            if n["project_id"] and principal.project_id not in (n["project_id"], ANY_PROJECT):
+                continue
             if n["severity"] != "critical" and datetime.fromisoformat(n["created"]) >= recent:
                 count += 1
                 if count > self.rate_limit:
                     continue
             projected = self.projection.project({"required_scopes": [], "content": n["content"]}, principal)
-            out.append({**{k: n[k] for k in ("id", "event_type", "subject_id", "severity", "kind", "created", "status")},
+            out.append({**{k: n[k] for k in ("id", "event_type", "subject_id", "severity", "kind", "created", "status",
+                                             "project_id")},
                         "content": projected.get("content"), "restricted_items": projected.get("restricted_items", 0)})
         return out
 
@@ -221,7 +241,11 @@ class NotificationService:
             self._attempt(n, dest)
 
     def _attempt(self, n: Mapping[str, Any], dest: Destination, notify_on_failure: bool = True) -> None:
-        principal = self.principal_for(dest.audience)
+        project_id = n.get("project_id") or ""
+        if project_id and not self.export_grant(project_id, dest.audience):
+            self._set_delivery(n["id"], dest.name, "held", "export_not_granted")
+            return
+        principal = self.principal_for(dest.audience, project_id) if project_id else self.principal_for(dest.audience)
         projected = self.projection.project({"required_scopes": [], "content": n["content"]}, principal)
         body = {"event_type": n["event_type"], "severity": n["severity"], "subject_id": n["subject_id"],
                 "content": projected.get("content"), "restricted_items": projected.get("restricted_items", 0)}

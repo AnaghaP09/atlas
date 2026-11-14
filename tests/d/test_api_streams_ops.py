@@ -25,9 +25,10 @@ SCHEMA_FIELDS = {"event", "event_id", "emitted_at", "run_id", "authoritative_gen
                  "correction_version", "data"}
 
 
-def test_only_two_stream_paths_exist(app):
+def test_only_the_three_stream_paths_exist(app):
     streams = [p for p in app.openapi()["paths"] if p.endswith("/stream")]
-    assert sorted(streams) == ["/api/notifications/stream", "/api/runs/{run_id}/stream"]
+    assert sorted(streams) == ["/api/notifications/stream", "/api/projects/{project_id}/stream",
+                               "/api/runs/{run_id}/stream"]
 
 
 def test_run_stream_carries_schema_events_from_the_real_producer(client):

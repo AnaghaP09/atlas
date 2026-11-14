@@ -41,7 +41,7 @@ def _bind_session(request: Request) -> Any:
 
 
 async def _stream(request: Request, stream: str, last_event_id: str | None, run_id: str | None,
-                  follow: bool, handle: Any = None) -> AsyncIterator[str]:
+                  follow: bool, handle: Any = None, project_id: str | None = None) -> AsyncIterator[str]:
     principal = principal_of(request)
 
     def alive() -> bool:
@@ -51,7 +51,7 @@ async def _stream(request: Request, stream: str, last_event_id: str | None, run_
     try:
         if not alive():
             return
-        reset, events = hub.read(stream, principal, last_event_id, run_id)
+        reset, events = hub.read(stream, principal, last_event_id, run_id, project_id)
         if reset is not None:
             yield encode(reset)
         last = last_event_id if reset is None else None
@@ -75,7 +75,7 @@ async def _stream(request: Request, stream: str, last_event_id: str | None, run_
                     return
             if hub.version != seen_version:
                 seen_version = hub.version
-                r, new = hub.read(stream, principal, last, run_id)
+                r, new = hub.read(stream, principal, last, run_id, project_id)
                 if r is not None:
                     if not alive():
                         return
