@@ -309,7 +309,7 @@ def check_export_people(target: Path, people: People) -> list[str]:
         if m.group(1) and token in mentioned:
             problems.append(f"{target.name}: mentioned handle survived pseudonymisation")
             break
-    if re.search(r"[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}", text):
+    if re.search(r"\b[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text):
         problems.append(f"{target.name}: email address survived pseudonymisation")
     if re.search(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ", text):
         problems.append(f"{target.name}: signed token survived")
