@@ -99,3 +99,5 @@ pre { overflow-x: auto; background: var(--bg); padding: 0.6rem; border: 1px soli
 .graph .node { fill: var(--accent); }
 .legend { display: flex; gap: 1rem; flex-wrap: wrap; padding: 0; list-style: none; }
 .cite { margin-left: 0.25rem; font-size: 0.85rem; }
+
+.session-bar { display: inline-flex; gap: 0.5rem; align-items: center; margin-left: auto; }

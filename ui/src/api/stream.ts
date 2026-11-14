@@ -37,6 +37,16 @@ export interface SseFrame {
   data: string;
 }
 
+/** Adds the identity's scope (the selected project, in sign-in mode) to a stream path. */
+export function withScope(path: string, scope: Record<string, string>): string {
+  const entries = Object.entries(scope);
+  if (entries.length === 0) return path;
+  const [base, query = ""] = path.split("?", 2) as [string, string?];
+  const params = new URLSearchParams(query);
+  for (const [k, v] of entries) if (!params.has(k)) params.set(k, v);
+  return `${base}?${params.toString()}`;
+}
+
 /** Splits text into SSE frames. Returns the frames and the unparsed remainder. */
 export function parseFrames(buffer: string): { frames: SseFrame[]; rest: string } {
   const frames: SseFrame[] = [];
@@ -129,9 +139,15 @@ export function openStream(opts: OpenStreamOptions): () => void {
   (async () => {
     while (current()) {
       try {
-        const headers: Record<string, string> = { Accept: "text/event-stream", ...identity.headers() };
+        const headers: Record<string, string> = { Accept: "text/event-stream", ...identity.headers(false) };
         if (lastEventId) headers["Last-Event-ID"] = lastEventId;
-        const res = await fetchImpl(path, { headers, signal: local.signal, credentials: "same-origin", cache: "no-store" });
+        const res = await fetchImpl(withScope(path, identity.scope()), { headers, signal: local.signal, credentials: "same-origin", cache: "no-store" });
+        if (res.status === 401) {
+          // Signed out or the session ended: stop for good and send the user to sign in.
+          handlers.onStatus?.("closed");
+          identity.provider.onUnauthorised();
+          return;
+        }
         if (!res.ok || !res.body) throw new Error(`stream refused (${res.status})`);
         handlers.onStatus?.("live");
         backoff = 500;

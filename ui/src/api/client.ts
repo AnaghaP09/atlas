@@ -52,7 +52,7 @@ export function createClient(identity: IdentityStore, fetchImpl: typeof fetch = 
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const { epoch, signal } = identity.snapshot;
     const method = options.method ?? "GET";
-    const headers: Record<string, string> = { Accept: "application/json", ...identity.headers() };
+    const headers: Record<string, string> = { Accept: "application/json", ...identity.headers(method !== "GET") };
     if (method !== "GET") {
       if (!options.idempotencyKey) throw new Error("every write needs an Idempotency-Key");
       headers["Idempotency-Key"] = options.idempotencyKey;
@@ -60,7 +60,7 @@ export function createClient(identity: IdentityStore, fetchImpl: typeof fetch = 
     }
     let response: Response;
     try {
-      response = await fetchImpl(buildPath(path, options.query), {
+      response = await fetchImpl(buildPath(path, { ...identity.scope(), ...(options.query ?? {}) }), {
         method,
         headers,
         body: method === "GET" ? undefined : JSON.stringify(options.body ?? {}),
@@ -82,6 +82,7 @@ export function createClient(identity: IdentityStore, fetchImpl: typeof fetch = 
       data = null;
     }
     if (!identity.isCurrent(epoch)) throw new StaleEpochError();
+    if (response.status === 401) identity.provider.onUnauthorised();
     if (!response.ok) {
       const d = (data ?? {}) as { error?: string; reason?: string; detail?: string };
       throw new ApiError(response.status, d.error ?? "error", d.reason ?? d.detail ?? response.statusText);

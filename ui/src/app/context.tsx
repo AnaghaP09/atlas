@@ -75,7 +75,7 @@ export function useIdentity(): IdentitySnapshot & { switchRole: (p: Principal) =
   return {
     ...snap,
     switchRole: (principal) => identity.transition({ principal }),
-    switchProject: (projectId) => identity.transition({ projectId }),
+    switchProject: (projectId) => identity.selectProject(projectId),
   };
 }
 

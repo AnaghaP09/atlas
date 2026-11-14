@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { DemoManifest, ManifestCall, ManifestRow } from "../api/types";
 import { useApi, useApp } from "../app/context";
 import { DataModeBadge, ErrorView, Loading, Section } from "../components/common";
+import { withScope } from "../api/stream";
 import { newKey } from "../lib/idempotency";
 import { useRouter } from "../lib/router";
 
@@ -54,14 +55,27 @@ function RowCard({ row, thisServer, vars, setVars }: { row: ManifestRow; thisSer
       }
       for (const [i, call] of row.calls.entries()) {
         const c = fill(call, saved) as ManifestCall & { save?: Record<string, string> };
-        const headers: Record<string, string> = { Accept: "application/json", ...identity.provider.requestHeaders(c.role ? { role: c.role as never } : identity.snapshot.principal) };
-        if (c.method !== "GET") {
+        const write = c.method !== "GET";
+        let headers: Record<string, string>;
+        if (identity.provider.mode === "session") {
+          // Signed in: the browser sends this server's session cookie and Origin; the UI adds the
+          // CSRF token. A step for another role needs that user to sign in, so it stops here.
+          const current = identity.snapshot.principal?.role;
+          if (c.role && c.role !== current) {
+            out.push({ call: `${c.method} ${c.path}: sign in as a user with the ${c.role} role to run this step`, status: "no answer", ok: false });
+            break;
+          }
+          headers = { Accept: "application/json", ...identity.headers(write) };
+        } else {
+          headers = { Accept: "application/json", ...identity.provider.requestHeaders(c.role ? { role: c.role as never } : identity.snapshot.principal) };
+        }
+        if (write) {
           headers["Content-Type"] = "application/json";
           headers["Idempotency-Key"] = keys[i] ?? newKey();
         }
         let status: number | "no answer" = "no answer";
         try {
-          const res = await fetch(c.path, { method: c.method, headers, body: c.method === "GET" ? undefined : JSON.stringify(c.body ?? {}), signal, cache: "no-store" });
+          const res = await fetch(withScope(c.path, identity.scope()), { method: c.method, headers, credentials: "same-origin", body: c.method === "GET" ? undefined : JSON.stringify(c.body ?? {}), signal, cache: "no-store" });
           status = res.status;
           const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
           for (const [name, field] of Object.entries(c.save ?? {})) {

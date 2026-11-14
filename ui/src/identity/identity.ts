@@ -24,16 +24,41 @@ export interface Principal {
   role: Role;
 }
 
+/** What the server says about a signed-in user (GET /api/session). */
+export interface SessionInfo {
+  user: string;
+  display_name: string;
+  /** Role per project, for example { kubevirt: "pm", "argo-cd": "pm" }. */
+  projects: Record<string, Role>;
+  default_project: string | null;
+  csrf_token: string;
+  expires_at: number;
+  idle_seconds: number;
+}
+
+/** Facts a provider needs to build the headers for one request. */
+export interface RequestContext {
+  write: boolean;
+  csrfToken: string | null;
+}
+
 export interface IdentityProvider {
+  /** "header": the demo role header. "session": built-in sign-in with a session cookie. */
+  readonly mode: "header" | "session";
   /** Short name shown to the user, for example "demo identity". */
   readonly label: string;
-  /** Headers added to every API request. */
-  requestHeaders(principal: Principal | null): Record<string, string>;
   /** Whether the user picks a role in the UI (true) or the server decides after sign-in (false). */
   readonly rolePicker: boolean;
+  /** Headers added to every API request. */
+  requestHeaders(principal: Principal | null, ctx?: RequestContext): Record<string, string>;
+  /** Query parameters added to every API path (the selected project, in sign-in mode). */
+  scopeQuery(projectId: string | null): Record<string, string>;
+  /** Called when the server says the user is not signed in. */
+  onUnauthorised(): void;
 }
 
 export const headerIdentity: IdentityProvider = {
+  mode: "header",
   label: "Demo identity (not sign-in)",
   rolePicker: true,
   requestHeaders: (principal): Record<string, string> => {
@@ -41,7 +66,25 @@ export const headerIdentity: IdentityProvider = {
     if (principal) h["X-Atlas-Role"] = principal.role;
     return h;
   },
+  scopeQuery: () => ({}),
+  onUnauthorised: () => undefined,
 };
+
+/**
+ * Built-in sign-in. The browser sends the session cookie by itself; the UI adds the CSRF token
+ * to every write and the selected project to every request. It never sends a role header.
+ */
+export function sessionIdentity(navigate: (url: string) => void = (url) => window.location.assign(url)): IdentityProvider {
+  return {
+    mode: "session",
+    label: "Signed in",
+    rolePicker: false,
+    requestHeaders: (_principal, ctx): Record<string, string> =>
+      ctx?.write && ctx.csrfToken ? { "X-CSRF-Token": ctx.csrfToken } : {},
+    scopeQuery: (projectId): Record<string, string> => (projectId ? { project_id: projectId } : {}),
+    onUnauthorised: () => navigate("/login"),
+  };
+}
 
 export interface IdentitySnapshot {
   principal: Principal | null;
@@ -60,12 +103,25 @@ export class IdentityStore {
   private listeners = new Set<Listener>();
   private snap: IdentitySnapshot;
   readonly provider: IdentityProvider;
+  readonly session: SessionInfo | null;
 
-  constructor(provider: IdentityProvider, principal: Principal | null = null, projectId: string | null = null) {
+  constructor(provider: IdentityProvider, principal: Principal | null = null, projectId: string | null = null,
+    session: SessionInfo | null = null) {
     this.provider = provider;
     this.principal = principal;
     this.projectId = projectId;
+    this.session = session;
     this.snap = this.makeSnapshot();
+  }
+
+  /** Signed-in mode: start from the user's default project and their role in it. */
+  static fromSession(provider: IdentityProvider, session: SessionInfo): IdentityStore {
+    const projects = Object.keys(session.projects);
+    const project = session.default_project && session.projects[session.default_project]
+      ? session.default_project
+      : (projects[0] ?? null);
+    const role = project ? session.projects[project] : undefined;
+    return new IdentityStore(provider, role ? { role } : null, project, session);
   }
 
   private makeSnapshot(): IdentitySnapshot {
@@ -101,7 +157,18 @@ export class IdentityStore {
     return epoch === this.epoch;
   }
 
-  headers(): Record<string, string> {
-    return this.provider.requestHeaders(this.principal);
+  /** Signed-in mode: switch project and take the user's role in it, as one transition. */
+  selectProject(projectId: string | null): void {
+    const role = projectId && this.session ? this.session.projects[projectId] : undefined;
+    this.transition(role ? { projectId, principal: { role } } : { projectId });
+  }
+
+  headers(write = false): Record<string, string> {
+    return this.provider.requestHeaders(this.principal, { write, csrfToken: this.session?.csrf_token ?? null });
+  }
+
+  /** Query parameters every API request carries for the current identity. */
+  scope(): Record<string, string> {
+    return this.provider.scopeQuery(this.projectId);
   }
 }
