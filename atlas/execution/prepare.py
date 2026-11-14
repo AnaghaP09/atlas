@@ -21,7 +21,7 @@ from atlas.execution import diffs
 from atlas.execution.agent import CodingAgent
 from atlas.execution.checks import static_checks
 from atlas.execution.ports import DiffReviewer
-from atlas.execution.runner import SandboxBundle, SandboxLimits
+from atlas.execution.runner import IsolationViolation, SandboxBundle, SandboxLimits
 from atlas.tasks import TaskStore
 
 
@@ -105,7 +105,12 @@ class Preparer:
                                          and frozen["scans"]["personal_data_scan"] == "passed" else "failed")
 
         tree = diffs.apply(base, diffs.parse(frozen["diff"]))
-        sandbox_result = self.sandbox.prepare(task, SandboxBundle(tree), self.limits)
+        try:
+            sandbox_result = self.sandbox.prepare(task, SandboxBundle(tree), self.limits)
+        except IsolationViolation as exc:
+            self.containment.trip(3, producer="sandbox", now=now,
+                                  detail={"task_id": task_id, "run_id": task.run_id, "violation": str(exc)})
+            raise PreparationRefused([f"sandbox isolation violated: {exc}"]) from exc
         results.update(sandbox_result.checks)
         review = self.reviewer.review(task.task_text, task.scope, frozen["diff"])
         results["verifier_review"] = "passed" if review.passed else "failed"

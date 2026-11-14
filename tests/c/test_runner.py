@@ -109,3 +109,23 @@ def test_local_docker_runner_end_to_end():
     fixed = runner.prepare(None, SandboxBundle(diffs.apply(base, diffs.parse(FIX_DIFF))), SandboxLimits())
     assert fixed.checks["behavioural_tests"] == "passed" and fixed.checks["container_sandbox"] == "passed", fixed.log
     assert set(runner.probe_isolation().values()) == {"blocked"}
+
+
+def test_isolation_violation_during_preparation_trips_row_3():
+    from atlas.containment import PREPARATION
+    from atlas.execution.prepare import PreparationRefused
+    from tests.c.fakes import make_env
+
+    class Violating:
+        name, data_mode = "fake", "REAL"
+
+        def prepare(self, task, bundle, limits):
+            raise IsolationViolation("network must be none")
+
+    env = make_env(sandbox=Violating())
+    task = env.new_task()
+    env.approvals.grant_a(task.task_id, role="em", eligibility=env.eligibility, now=env.now)
+    with pytest.raises(PreparationRefused, match="isolation"):
+        env.preparer.prepare(task.task_id, env.now)
+    assert env.containment.open_incidents()[0]["row"] == 3
+    assert not env.containment.permits(PREPARATION).allowed
