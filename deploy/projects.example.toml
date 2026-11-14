@@ -1,0 +1,46 @@
+# Example projects for ATLAS. Setup copies this file to your private data directory
+# (data/local/projects.toml by default). Edit that copy to point ATLAS at your own projects.
+#
+# A project is a set of read-only sources. ATLAS keeps each project's data separate.
+# These two public open-source projects are examples only.
+
+[projects.kubevirt]
+name = "KubeVirt"
+data_source_note = "Release data: KubeVirt public project (github.com/kubevirt/kubevirt)"
+repository = "kubevirt/kubevirt"
+issue_query = "is:issue label:kind/flake"
+ci = "prow"
+release_tag_pattern = "^v[0-9]+\\.[0-9]+\\.0$"
+security_inventory = "go.mod"
+evaluation = true            # the golden set and quality gates run on this project
+
+[projects.kubevirt.labels]
+flaky = "kind/flake"
+bug = "kind/bug"
+critical = "priority/critical-urgent"
+
+[projects."argo-cd"]
+name = "Argo CD"
+data_source_note = "Release data: Argo CD public project (github.com/argoproj/argo-cd)"
+repository = "argoproj/argo-cd"
+issue_query = "is:issue label:bug"
+ci = "github_actions"
+release_tag_pattern = "^v[0-9]+\\.[0-9]+\\.0$"
+security_inventory = "go.mod"
+evaluation = false           # live views and reports only
+
+[projects."argo-cd".labels]
+flaky = ""                   # Argo CD has no flaky-test label; flaky failures come from CI runs
+bug = "bug"
+critical = "bug/priority:urgent"
+regression = "regression"
+
+# Where each project may publish and which notification audiences may receive it.
+# Publication is off unless a target is set here and in ATLAS_PUBLISH_TARGET.
+[projects.kubevirt.export]
+publish_targets = []
+notification_audiences = []
+
+[projects."argo-cd".export]
+publish_targets = []
+notification_audiences = []
