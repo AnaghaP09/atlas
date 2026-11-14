@@ -171,6 +171,11 @@ class FakeContainmentPort:
                                "required_scopes": ["internal"]}
         return iid
 
+    def drill(self, switch_id: str, note: str, role: str, user: str | None = None) -> Mapping[str, Any]:
+        iid = self.trip(switch_id, "drill")
+        self.incidents[iid].update(drill=True, kind="Drill", note=note)
+        return self.incidents[iid]
+
     def permits(self, consumer: str) -> EligibilityResult:
         if consumer in self.tripped:
             return EligibilityResult(False, (self.tripped[consumer],))

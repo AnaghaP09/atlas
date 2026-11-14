@@ -271,6 +271,24 @@ def containment_switch(request: Request, switch_id: str) -> dict[str, Any]:
     return envelope(request, principal, {"switch": dict(sw)})
 
 
+@router.post("/containment/{switch_id}/drill", status_code=201)
+def drill(request: Request, switch_id: str, body: dict[str, Any] | None = Body(None)):
+    """Trip one kill switch as a drill. It really blocks what the switch blocks until the audit
+    role ends it with ``POST /api/incidents/{id}/resume``."""
+    principal = principal_of(request)
+    require_role(principal, {"audit"}, "run a kill switch drill")
+    s = services_of(request)
+    note = str((body or {}).get("note", ""))[:500]
+
+    def effect(key: str) -> tuple[int, dict[str, Any]]:
+        rec = _port_call(s.containment.drill, switch_id, note, principal.role.value, principal.user)
+        s.audit.record(principal.role.value, "containment.drill", str(rec.get("incident_id")),
+                       {"switch_id": switch_id, "note": note, "user": principal.user})
+        return 201, envelope(request, principal, {"incident": dict(rec)})
+
+    return idempotent(request, principal, body or {}, effect)
+
+
 @router.post("/incidents/{incident_id}/prerequisites", status_code=201)
 def prerequisite(request: Request, incident_id: str, body: dict[str, Any] = Body(...)):
     principal = principal_of(request)
@@ -289,7 +307,8 @@ def prerequisite(request: Request, incident_id: str, body: dict[str, Any] = Body
 
 
 @router.post("/incidents/{incident_id}/resume")
-def resume(request: Request, incident_id: str, body: dict[str, Any] = Body(...)):
+def resume(request: Request, incident_id: str, body: dict[str, Any] | None = Body(None)):
+    body = body or {}
     principal = principal_of(request)
     require_role(principal, {"audit"}, "resume after an incident")
     s = services_of(request)
