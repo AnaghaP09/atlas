@@ -197,6 +197,44 @@ def issue_as_of(raw: dict[str, Any], cutoff: datetime) -> AsOf | None:
     return AsOf(f"issue/{raw['number']}", "issue", view, max(t for t in change_times if t), complete, sorted(set(missing)))
 
 
+def issue_from_rest(rest: dict[str, Any], fetched_at: datetime) -> AsOf | None:
+    """A live issue built from the REST representation alone.
+
+    Used only for the live store when the detailed history (edits, timeline, comments) cannot be
+    read, for example without a GitHub token. The current state, title, labels and body are real;
+    the edit history is marked unknown, so the record never counts as complete history and is never
+    used for as-of snapshots or evaluation.
+    """
+    if not isinstance(rest, dict) or "number" not in rest or "pull_request" in rest:
+        return None
+    created = _t(rest.get("created_at"))
+    if created is None or created > fetched_at:
+        return None
+    updated = _t(rest.get("updated_at")) or created
+    labels = sorted(str(lab.get("name")) for lab in rest.get("labels", []) if isinstance(lab, dict) and lab.get("name"))
+    missing = ["comments", "edit_history", "timeline"]
+    view = {
+        "number": rest["number"],
+        "title": rest.get("title"),
+        "body": rest.get("body"),
+        "state": str(rest.get("state", "open")).upper(),
+        "state_reason": rest.get("state_reason"),
+        "closed_by": None,
+        "duplicate_of": None,
+        "labels": labels,
+        "created_at": rest.get("created_at"),
+        "updated_at": rest.get("updated_at"),
+        "author": (rest.get("user") or {}).get("login"),
+        "url": rest.get("html_url"),
+        "references": [],
+        "comments": [],
+        "comment_count": rest.get("comments"),
+        "edit_history": "unknown",
+        "missing": missing,
+    }
+    return AsOf(f"issue/{rest['number']}", "issue", view, min(updated, fetched_at), False, missing)
+
+
 def pull_request_as_of(raw: dict[str, Any], cutoff: datetime) -> AsOf | None:
     """A pull request as of ``cutoff``. Only pull requests merged before the cutoff are visible."""
     merged = _t(raw.get("mergedAt"))
