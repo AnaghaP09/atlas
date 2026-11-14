@@ -36,7 +36,7 @@ def scan(files: list[Path]) -> list[str]:
     sys.path.insert(0, str(Path.cwd() / "scripts"))
     import public_check  # the repository's own check
 
-    handles = public_check.load_handles()
+    handles = frozenset(public_check.load_handles())
     hits: list[str] = []
     for f in files:
         try:
@@ -44,7 +44,8 @@ def scan(files: list[Path]) -> list[str]:
         except UnicodeDecodeError:
             hits.append(f"{f.as_posix()}: not UTF-8 text")
             continue
-        hits += public_check.scan_text(text, f.as_posix(), handles=handles)
+        # Everything published here lands under data/: the evidence-data policy applies.
+        hits += public_check.scan_text(text, f.as_posix(), handles=handles, data=True)
     return hits
 
 

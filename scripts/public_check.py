@@ -117,8 +117,9 @@ def scan_text(text: str, label: str, *, entropy: bool = True, handles: list[str]
                 hits.append(f"{where}: {name}")
         if handle_set:
             # One pass: split the line into handle-shaped tokens and look each up in the set.
+            # Digits-only tokens are issue, pull request and run numbers, not handles.
             for token in HANDLE_TOKEN.findall(line):
-                if token.casefold() in handle_set:
+                if not token.isdigit() and token.casefold() in handle_set:
                     hits.append(f"{where}: personal handle")
                     break
         if entropy and not data:

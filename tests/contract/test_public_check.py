@@ -144,3 +144,8 @@ def test_data_files_skip_entropy_and_label_checks_but_keep_personal_checks() -> 
     assert public_check.scan_text("contact someone" + "@" + "corp-mail.org", "d", data=True)
     assert public_check.scan_text("token ghp_" + "a" * 36, "d", data=True)
     assert public_check.scan_text("fixed by @octo-dev", "d", data=True, handles=["octo-dev"])
+
+
+def test_numbers_are_not_matched_as_handles() -> None:
+    assert not public_check.scan_text("see pull request #30787", "d", data=True, handles=["30787"])
+    assert public_check.scan_text("thanks user30787", "d", data=True, handles=["user30787"])
