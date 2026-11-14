@@ -13,7 +13,7 @@ import re
 import threading
 from collections import Counter
 from dataclasses import dataclass, field
-from typing import Any, Callable, Mapping, Protocol
+from typing import Any, Callable, Mapping, Protocol, Sequence
 
 from atlas.contracts import EgressPurpose, Mode, ModelResponse
 
@@ -36,6 +36,10 @@ class PayloadWithheld(OutboundRefused):
 
 class ModelRefusal(RuntimeError):
     """The model declined the request; the step has failed."""
+
+
+class ModelStepFailed(RuntimeError):
+    """The model call did not complete (truncated or failed); the step has failed."""
 
 
 # ---------------------------------------------------------------------------
@@ -206,11 +210,54 @@ class ContainmentSink(Protocol):
 
 
 class ModelTransport(Protocol):
+    """Low-level sender used by the Anthropic provider (the SDK in production, a fake in tests)."""
+
     def send(self, request: Mapping[str, Any]) -> ModelResponse: ...
 
 
 class WebhookTransport(Protocol):
     def post(self, url: str, body: Mapping[str, Any]) -> int: ...
+
+
+# ---------------------------------------------------------------------------
+# Model providers
+# ---------------------------------------------------------------------------
+
+STOP_COMPLETE, STOP_REFUSED, STOP_TRUNCATED, STOP_FAILED = "complete", "refused", "truncated", "failed"
+ROLES = ("investigator", "verifier", "coding_agent", "triage", "log_filter", "injection_classifier")
+REASONING_ROLES = frozenset({"investigator", "verifier", "coding_agent"})
+
+
+@dataclass(frozen=True)
+class ModelLimits:
+    max_tokens: int = 4096
+    effort: str | None = None
+
+
+@dataclass(frozen=True)
+class ModelResult:
+    """Provider-neutral result of one model call."""
+
+    content: Any  # parsed structured output (dict or list) or text
+    stop: str  # complete | refused | truncated | failed
+    input_tokens: int
+    output_tokens: int
+    model: str
+    provider: str
+
+
+class ModelProvider(Protocol):
+    """One model backend. Used only by the outbound boundary, after redaction and every check."""
+
+    name: str
+    internal: bool  # True when the endpoint is inside the organisation's network
+
+    def model_for(self, role: str) -> str: ...
+
+    def endpoint_host(self) -> str | None: ...
+
+    def complete(self, role: str, messages: Sequence[Mapping[str, Any]], schema: Mapping[str, Any] | None,
+                 limits: ModelLimits) -> ModelResult: ...
 
 
 # Per million tokens, USD (input, output); used only for the spend counter.
@@ -229,10 +276,132 @@ MODEL_ROLES = {
     "injection_classifier": "claude-haiku-5-5",
 }
 
+_ANTHROPIC_STOPS = {"end_turn": STOP_COMPLETE, "stop_sequence": STOP_COMPLETE, "tool_use": STOP_COMPLETE,
+                    "pause_turn": STOP_FAILED, "refusal": STOP_REFUSED, "max_tokens": STOP_TRUNCATED}
+_OPENAI_STOPS = {"stop": STOP_COMPLETE, "length": STOP_TRUNCATED, "content_filter": STOP_REFUSED}
+
+
+def _split_system(messages: Sequence[Mapping[str, Any]]) -> tuple[str, list[dict[str, Any]]]:
+    system = "\n\n".join(str(m["content"]) for m in messages if m.get("role") == "system")
+    return system, [dict(m) for m in messages if m.get("role") != "system"]
+
+
+class AnthropicProvider:
+    """Claude through the official SDK (Connected mode)."""
+
+    name = "anthropic"
+    internal = False
+
+    def __init__(self, transport: ModelTransport | None = None, *, api_key: str | None = None,
+                 models: Mapping[str, str] | None = None) -> None:
+        self.transport = transport if transport is not None else (AnthropicTransport(api_key) if api_key else None)
+        self.models = dict(MODEL_ROLES, **(models or {}))
+
+    def model_for(self, role: str) -> str:
+        return self.models[role]
+
+    def endpoint_host(self) -> str | None:
+        return "api.anthropic.com"
+
+    def complete(self, role, messages, schema, limits):
+        if self.transport is None:
+            raise RuntimeError("no Anthropic transport configured")
+        system, rest = _split_system(messages)
+        model = self.model_for(role)
+        request: dict[str, Any] = {"model": model, "max_tokens": int(limits.max_tokens), "system": system, "messages": rest}
+        if schema:
+            request["output_config"] = {"format": {"type": "json_schema", "schema": dict(schema)}}
+        if limits.effort:
+            request.setdefault("output_config", {})["effort"] = limits.effort
+        r = self.transport.send(request)
+        return ModelResult(content=r.content, stop=_ANTHROPIC_STOPS.get(str(r.stop_reason), STOP_FAILED),
+                           input_tokens=r.input_tokens, output_tokens=r.output_tokens, model=model, provider=self.name)
+
+
+class OpenAICompatibleProvider:
+    """A self-hosted, OpenAI-compatible chat endpoint (for example vLLM serving an open-weight model).
+
+    Intended for Offline mode inside the organisation's network. The HTTP client is created here,
+    inside the outbound boundary, and only for the configured endpoint.
+    """
+
+    name = "openai_compatible"
+
+    def __init__(self, base_url: str, models: Mapping[str, str], *, api_key: str = "",
+                 internal_hosts: frozenset[str] = frozenset(), timeout: float = 120.0, client: Any = None) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.models = dict(models)
+        self.api_key = api_key
+        self.internal_hosts = frozenset(h.lower() for h in internal_hosts)
+        self.timeout = timeout
+        self._client = client
+
+    @property
+    def internal(self) -> bool:
+        return (self.endpoint_host() or "") in self.internal_hosts
+
+    def endpoint_host(self) -> str | None:
+        return re.sub(r"^https?://", "", self.base_url).split("/")[0].split(":")[0].lower() or None
+
+    def model_for(self, role: str) -> str:
+        return self.models[role]
+
+    def _http(self) -> Any:
+        if self._client is None:
+            import httpx
+
+            self._client = httpx.Client(timeout=self.timeout)
+        return self._client
+
+    def complete(self, role, messages, schema, limits):
+        model = self.model_for(role)
+        body: dict[str, Any] = {"model": model, "messages": [dict(m) for m in messages], "max_tokens": int(limits.max_tokens)}
+        if schema:
+            body["response_format"] = {"type": "json_schema", "json_schema": {"name": "result", "schema": dict(schema), "strict": True}}
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        try:
+            resp = self._http().post(f"{self.base_url}/v1/chat/completions", json=body, headers=headers)
+        except Exception:
+            return ModelResult(None, STOP_FAILED, 0, 0, model, self.name)
+        if resp.status_code != 200:
+            return ModelResult(None, STOP_FAILED, 0, 0, model, self.name)
+        data = resp.json()
+        choice = (data.get("choices") or [{}])[0]
+        text = (choice.get("message") or {}).get("content") or ""
+        content: Any = text
+        if schema and text:
+            try:
+                content = json.loads(text)
+            except ValueError:
+                return ModelResult(text, STOP_FAILED, 0, 0, model, self.name)
+        usage = data.get("usage") or {}
+        return ModelResult(content, _OPENAI_STOPS.get(str(choice.get("finish_reason")), STOP_FAILED),
+                           int(usage.get("prompt_tokens", 0)), int(usage.get("completion_tokens", 0)), model, self.name)
+
+
+def provider_from_env(env: Mapping[str, str]) -> ModelProvider:
+    """Build the provider named by ``ATLAS_MODEL_PROVIDER`` (default ``anthropic``)."""
+    kind = (env.get("ATLAS_MODEL_PROVIDER") or "anthropic").strip().lower()
+    reasoning = env.get("ATLAS_MODEL_REASONING") or ""
+    fast = env.get("ATLAS_MODEL_FAST") or ""
+    if kind == "anthropic":
+        models = {r: (reasoning or MODEL_ROLES[r]) if r in REASONING_ROLES else (fast or MODEL_ROLES[r]) for r in ROLES}
+        key = env.get("ANTHROPIC_API_KEY") or ""
+        return AnthropicProvider(api_key=key or None, models=models)
+    if kind == "openai_compatible":
+        base = env.get("ATLAS_MODEL_BASE_URL") or ""
+        if not base or not reasoning or not fast:
+            raise ValueError("openai_compatible needs ATLAS_MODEL_BASE_URL, ATLAS_MODEL_REASONING and ATLAS_MODEL_FAST")
+        hosts = frozenset(h.strip() for h in (env.get("ATLAS_MODEL_INTERNAL_HOSTS") or "").split(",") if h.strip())
+        models = {r: reasoning if r in REASONING_ROLES else fast for r in ROLES}
+        return OpenAICompatibleProvider(base, models, api_key=env.get("ATLAS_MODEL_API_KEY") or "", internal_hosts=hosts)
+    raise ValueError(f"unknown model provider {kind!r}")
+
 
 @dataclass
 class OutboundStats:
     egress_attempts: int = 0
+    internal_calls: int = 0
     refused: int = 0
     withheld: int = 0
     redactions: Counter = field(default_factory=Counter)
@@ -258,7 +427,9 @@ class OutboundBoundary:
         mode: Callable[[], Mode] | Mode = Mode.CONNECTED,
         containment: ContainmentGate | None = None,
         events: ContainmentSink | None = None,
+        provider: ModelProvider | None = None,
         transport: ModelTransport | None = None,
+        internal_model_hosts: frozenset[str] = frozenset(),
         webhook: WebhookTransport | None = None,
         redactor: Redactor | None = None,
         allowed_webhook_hosts: frozenset[str] = frozenset(),
@@ -267,7 +438,9 @@ class OutboundBoundary:
         self._mode = mode
         self.containment = containment
         self.events = events
-        self.transport = transport
+        # ``transport`` is accepted for compatibility and wraps the Anthropic provider.
+        self.provider: ModelProvider | None = provider or (AnthropicProvider(transport) if transport else None)
+        self.internal_model_hosts = frozenset(h.lower() for h in internal_model_hosts)
         self.webhook = webhook
         self.redactor = redactor or Redactor()
         self.allowed_webhook_hosts = allowed_webhook_hosts
@@ -319,13 +492,22 @@ class OutboundBoundary:
 
     # -- the boundary --------------------------------------------------------
 
+    def _internal_model(self) -> bool:
+        p = self.provider
+        return bool(p is not None and getattr(p, "internal", False)
+                    and (p.endpoint_host() or "") in self.internal_model_hosts)
+
     def call(self, role: str, purpose: EgressPurpose, payload: Mapping[str, Any]) -> ModelResponse:
+        internal = purpose in self.MODEL_PURPOSES and self._internal_model()
         with self._lock:
-            self.stats.egress_attempts += 1
+            if internal:
+                self.stats.internal_calls += 1
+            else:
+                self.stats.egress_attempts += 1
             self.stats.by_purpose[str(purpose)] += 1
-        if self.mode == Mode.OFFLINE:
+        if self.mode == Mode.OFFLINE and not internal:
             self._event("outbound_offline_attempt", {"role": role, "purpose": str(purpose)})
-            self._refuse("offline mode: outbound connections are refused")
+            self._refuse("offline mode: only a model endpoint on the internal allow-list may be used")
         consumer = "model_calls" if purpose in self.MODEL_PURPOSES else "report_delivery"
         if self.containment is not None:
             verdict = self.containment.permits(consumer)
@@ -340,33 +522,29 @@ class OutboundBoundary:
         if role not in MODEL_ROLES:
             self._event("outbound_not_allowlisted", {"role": role, "purpose": str(purpose)})
             self._refuse(f"unknown model role {role}")
-        if self.transport is None:
-            self._refuse("no model transport configured")
+        if self.provider is None:
+            self._refuse("no model provider configured")
 
         safe = self.redact_payload(payload)
-        model = MODEL_ROLES[role]
-        request = {
-            "model": model,
-            "max_tokens": int(safe.get("max_tokens", 4096)),
-            "system": safe.get("system", ""),
-            "messages": safe["messages"],
-        }
-        if safe.get("schema"):
-            request["output_config"] = {"format": {"type": "json_schema", "schema": safe["schema"]}}
-        if safe.get("effort"):
-            request.setdefault("output_config", {})["effort"] = safe["effort"]
-        response = self.transport.send(request)
-        price_in, price_out = PRICES.get(model, (0.0, 0.0))
-        cost = (response.input_tokens * price_in + response.output_tokens * price_out) / 1_000_000
+        messages = ([{"role": "system", "content": safe["system"]}] if safe.get("system") else []) + list(safe["messages"])
+        limits = ModelLimits(max_tokens=int(safe.get("max_tokens", 4096)), effort=safe.get("effort"))
+        result = self.provider.complete(role, messages, safe.get("schema"), limits)
+        price_in, price_out = PRICES.get(result.model, (0.0, 0.0))
+        cost = (result.input_tokens * price_in + result.output_tokens * price_out) / 1_000_000
         with self._lock:
-            self.stats.input_tokens += response.input_tokens
-            self.stats.output_tokens += response.output_tokens
+            self.stats.input_tokens += result.input_tokens
+            self.stats.output_tokens += result.output_tokens
             self.stats.cost_usd += cost
         if self.spend is not None:
             self.spend(cost)
-        if response.stop_reason == "refusal":
+        if result.stop == STOP_REFUSED:
             raise ModelRefusal(f"model declined the request ({role})")
-        return response
+        if result.stop == STOP_TRUNCATED:
+            raise ModelStepFailed(f"model output was truncated ({role})")
+        if result.stop != STOP_COMPLETE:
+            raise ModelStepFailed(f"model call failed ({role}, {result.provider})")
+        return ModelResponse(content=result.content, stop_reason=result.stop, input_tokens=result.input_tokens,
+                             output_tokens=result.output_tokens, model=result.model)
 
     def _deliver_webhook(self, payload: Mapping[str, Any]) -> ModelResponse:
         url = str(payload.get("url", ""))
