@@ -165,6 +165,10 @@ def build_tools(trace_dependency: Callable[[EvidenceResolver, str], list[Resolve
 # Step protocol
 # ---------------------------------------------------------------------------
 
+# An investigation answers with one of these; the other categories belong to forecasts and policy.
+INVESTIGATION_CLASSES = ("DUPLICATE", "ENVIRONMENT", "DEPENDENCY", "TEST_DEFECT", "CODE_DEFECT", "UNKNOWN")
+assert all(c in {x.value for x in Classification} for c in INVESTIGATION_CLASSES)
+
 STEP_SCHEMA = {
     "type": "object",
     "properties": {
@@ -182,7 +186,7 @@ STEP_SCHEMA = {
         "result": {
             "type": ["object", "null"],
             "properties": {
-                "classification": {"type": "string", "enum": [c.value for c in Classification]},
+                "classification": {"type": "string", "enum": list(INVESTIGATION_CLASSES)},
                 "confidence": {"type": "number"},
                 "root_cause": {"type": ["string", "null"]},
                 "root_cause_claim_ids": {"type": "array", "items": {"type": "string"}},
@@ -239,7 +243,9 @@ SYSTEM = (
     "tools. Choose the next tool from what you have read. Read the reported issue in full first, "
     "including its comments and references, then the records it points to (linked issues, commits, "
     "job logs, cluster events). When a result says content was cut, use read_record to read the rest "
-    "before you conclude.\n"
+    "before you conclude. If the reported issue is a tracker, a quarantine notice or a request about a "
+    "failing test, the event is still that failing test: search the issues for its test id or name, "
+    "read the issues that report it and the commits and pull requests they point to.\n"
     "Classify the event with the category the evidence supports best:\n"
     "- DUPLICATE: the records show the same failure is already tracked in another issue (for example a "
     "maintainer closes it in favour of that issue, or both report the same job and error). Set "
@@ -254,8 +260,8 @@ SYSTEM = (
     "category and set confidence to how well the records support it (0 to 1); list what would "
     "confirm it in missing_evidence. Do not answer UNKNOWN only because a log or a confirmation is "
     "missing when the issue text, comments, labels or events already point to one category.\n"
-    "Flags: bounded_change is true when a fix is a small, well-defined change in one place (a "
-    "version bump, an adjusted test); cross_component when the cause spans components; "
+    "Flags: bounded_change is true when a fix is a small, well-defined change in one place, such as "
+    "updating or pinning the third-party component the records name, or adjusting one test; cross_component when the cause spans components; "
     "release_blocker when the records mark it as blocking a release; special_hardware when it needs "
     "hardware or an architecture a normal contributor does not have.\n"
     "Claims: each claim states one fact about the project that a cited record states or directly "
