@@ -3,10 +3,14 @@ import type { Health, Notification } from "./api/types";
 import { useApi, useApp, useIdentity } from "./app/context";
 import { AgentName, ButtonLink, PageHead } from "./components/common";
 import { BrandMark, Icon, type IconName } from "./components/icons";
+import { LatestReport } from "./screens/LatestReport";
+import { SystemScreen } from "./screens/System";
 import { signOut } from "./identity/bootstrap";
 import { ROLES, ROLE_LABELS, type Role } from "./identity/identity";
+import { allowedPages, findPage, joinRoles, PAGE_ICON, pageIdForPath, type Navigation } from "./lib/nav";
 import { applyTheme, setCollapsed, setTheme, storedCollapsed, storedTheme, systemTheme, type Theme } from "./lib/theme";
 import { Link, matchPath, useRouter } from "./lib/router";
+import { helpFor, loadHelpIndex, onHelpIndex } from "./lib/helpIndex";
 import { Approvals } from "./screens/Approvals";
 import { Containment } from "./screens/Containment";
 import { ActivityEvidence, Dashboard } from "./screens/Dashboard";
@@ -23,53 +27,6 @@ import { RunNow } from "./screens/RunNow";
 import { Schedules } from "./screens/Schedules";
 import { Scorecard } from "./screens/Scorecard";
 import { TaskDetail, TaskList } from "./screens/Tasks";
-
-interface NavItem {
-  to: string;
-  label: string;
-  icon: IconName;
-}
-
-const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
-  {
-    title: "Overview",
-    items: [
-      { to: "/", label: "Home", icon: "home" },
-      { to: "/dashboard", label: "Live dashboard", icon: "pulse" },
-    ],
-  },
-  {
-    title: "Work",
-    items: [
-      { to: "/run-now", label: "Run now", icon: "play" },
-      { to: "/schedules", label: "Automatic runs", icon: "clock" },
-      { to: "/runs", label: "Runs", icon: "list" },
-      { to: "/queue", label: "Needs a person", icon: "hand" },
-      { to: "/approvals", label: "Approvals", icon: "check" },
-      { to: "/tasks", label: "Tasks", icon: "task" },
-    ],
-  },
-  {
-    title: "Safety",
-    items: [
-      { to: "/notifications", label: "Notifications", icon: "bell" },
-      { to: "/containment", label: "Kill switches", icon: "power" },
-    ],
-  },
-  {
-    title: "Insight",
-    items: [
-      { to: "/scorecard", label: "Scorecard", icon: "chart" },
-      { to: "/graph", label: "Knowledge graph", icon: "graph" },
-      { to: "/feedback", label: "Record a decision", icon: "pen" },
-      { to: "/evaluation", label: "Quality checks", icon: "gauge" },
-    ],
-  },
-  {
-    title: "Demo",
-    items: [{ to: "/demo", label: "Guided demo", icon: "compass" }],
-  },
-];
 
 interface Page {
   title: string;
@@ -99,9 +56,11 @@ const PAGES: Record<string, Page> = {
   "/feedback": { title: "Record a decision", sub: "Overrides and debt-acceptance decisions. They become test cases for later runs." },
   "/evaluation": { title: "Quality checks", sub: "The quality bars ATLAS must pass. A check that is not measured is never shown as passed." },
   "/demo": { title: "Guided demo", sub: "Walk through each part of ATLAS in order, on the right server for each step." },
+  "/system": { title: "System and mode", sub: "Health, Connected or Offline mode, open incidents and failed notification deliveries." },
+  "/latest-report/:type": { title: "Latest report", sub: "The most recent verified report of this kind for the project." },
 };
 
-export function Route({ path, search }: { path: string; search: URLSearchParams }): ReactNode {
+export function Route({ path, search, nav }: { path: string; search: URLSearchParams; nav?: Navigation }): ReactNode {
   const routes: [string, (p: Record<string, string>) => ReactNode][] = [
     ["/", () => <Home />],
     ["/dashboard", () => <Dashboard />],
@@ -126,7 +85,23 @@ export function Route({ path, search }: { path: string; search: URLSearchParams 
     ["/feedback", () => <Feedback />],
     ["/evaluation", () => <Evaluation />],
     ["/demo", () => <GuidedDemo />],
+    ["/system", () => <SystemScreen />],
+    ["/latest-report/:type", (p) => <LatestReport kind={p.type ?? ""} />],
   ];
+  const pageId = pageIdForPath(path);
+  const entry = pageId && nav ? findPage(nav, pageId) : undefined;
+  if (pageId && nav && !allowedPages(nav).has(pageId)) {
+    const hidden = nav.other_pages.find((p) => p.page_id === pageId);
+    return (
+      <>
+        <PageHead title={hidden?.title ?? "Not on your menu"} role={capitalise(nav.role_title)} />
+        <div className="role-notice" role="note" data-testid="role-notice">
+          <strong>This page is for the {hidden ? joinRoles(hidden.role_titles) : "other roles"}.</strong>
+          <ButtonLink to="/" variant="primary" icon="home">Your home</ButtonLink>
+        </div>
+      </>
+    );
+  }
   for (const [pattern, render] of routes) {
     const params = matchPath(pattern, path);
     if (params) {
@@ -135,8 +110,9 @@ export function Route({ path, search }: { path: string; search: URLSearchParams 
         <>
           {page ? (
             <PageHead
-              title={page.title}
-              sub={page.sub}
+              title={entry?.title && pageId?.startsWith("report_") ? entry.title : page.title}
+              role={nav?.role_title ? capitalise(nav.role_title) : undefined}
+              help={pageId ? helpFor(pageId) : null}
               actions={page.action ? <ButtonLink to={page.action.to} variant="primary" icon={page.action.icon}>{page.action.label}</ButtonLink> : null}
             />
           ) : null}
@@ -147,10 +123,14 @@ export function Route({ path, search }: { path: string; search: URLSearchParams 
   }
   return (
     <>
-      <PageHead title="Page not found" sub="This address does not match any screen." />
+      <PageHead title="Page not found" />
       <p><Link to="/">Go to the overview</Link></p>
     </>
   );
+}
+
+function capitalise(s: string): string {
+  return s ? s[0]!.toUpperCase() + s.slice(1) : s;
 }
 
 /** Demo identity: switch project with the same reset as a role switch. */
@@ -306,6 +286,13 @@ export function App() {
   const { path, search } = useRouter();
   const { epoch } = useIdentity();
   const [collapsed, setCollapsedState] = useState(storedCollapsed);
+  // Keyed by role and project like every other read, so a switch fetches the new menu.
+  const nav = useApi<Navigation>("/api/navigation");
+  const [, setHelpReady] = useState(0);
+  useEffect(() => {
+    loadHelpIndex();
+    return onHelpIndex(() => setHelpReady((n) => n + 1));
+  }, []);
   return (
     <div className={`app${collapsed ? " collapsed" : ""}`}>
       <aside className="side">
@@ -317,21 +304,28 @@ export function App() {
           </span>
         </Link>
         <nav aria-label="Main">
-          {NAV_GROUPS.map((g) => (
-            <div className="nav-group" key={g.title}>
-              <p className="nav-group-title">{g.title}</p>
-              <ul>
-                {g.items.map((item) => (
-                  <li key={item.to}>
-                    <Link to={item.to} className={`nav-link${isActive(item.to, path) ? " active" : ""}`}>
-                      <Icon name={item.icon} size={18} />
-                      <span className="nav-label">{item.label}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+          {nav.data ? (
+            nav.data.groups.map((g) => (
+              <div className="nav-group" key={g.title}>
+                <p className="nav-group-title">{g.title}</p>
+                <ul>
+                  {g.pages.map((item) => (
+                    <li key={item.page_id}>
+                      <Link to={item.path} className={`nav-link${isActive(item.path, path) ? " active" : ""}`} title={item.for}>
+                        <Icon name={PAGE_ICON[item.page_id] ?? "list"} size={18} />
+                        <span className="nav-label">{item.title}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))
+          ) : (
+            <div className="nav-loading" aria-hidden="true">
+              <span className="skeleton w-80" /><span className="skeleton w-60" /><span className="skeleton w-80" />
             </div>
-          ))}
+          )}
+          {nav.data ? <p className="nav-role">Menu for the {nav.data.role_title}</p> : null}
         </nav>
         <div className="side-foot">
           <div className="agents" aria-label="Agents">
@@ -365,7 +359,7 @@ export function App() {
       </header>
       {/* Keyed by the identity epoch: a role or project switch remounts every screen and drops its state. */}
       <main key={epoch} className="main">
-        <Route path={path} search={search} />
+        <Route path={path} search={search} nav={nav.data} />
       </main>
     </div>
   );

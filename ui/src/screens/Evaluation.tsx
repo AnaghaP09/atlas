@@ -67,7 +67,7 @@ export function Evaluation() {
       <Section title="Latest evaluation" icon="gauge" mode={data.data?.data_mode}>
         {data.isLoading ? <Loading what="the latest evaluation" /> : null}
         {none ? (
-          <Empty>No evaluation has finished yet. Run the evaluation harness, then come back here for the results.</Empty>
+          <Empty>No evaluation has finished yet.</Empty>
         ) : (
           <ErrorView error={data.error} />
         )}

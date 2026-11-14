@@ -536,3 +536,29 @@ label.check { display: inline-flex; align-items: center; gap: var(--s-2); font-w
 label.check input { width: auto; margin: 0; }
 .graph-progress { display: grid; gap: var(--s-2); padding: var(--s-6); max-width: 28rem; }
 .graph .strip-line { stroke: var(--line-strong); stroke-dasharray: 4 4; }
+
+/* Role-based navigation */
+.nav-role { font-size: 0.72rem; color: var(--shell-muted); padding: var(--s-2) var(--s-3); margin: var(--s-3) 0 0; border-top: 1px solid var(--shell-line); }
+.app.collapsed .nav-role { display: none; }
+.nav-loading { padding: var(--s-3); opacity: 0.4; }
+.page-head .audience { display: inline-flex; margin-top: var(--s-2); font-size: 0.8rem; font-weight: 600; color: var(--accent-text); background: var(--accent-soft); border-radius: var(--radius-pill); padding: 2px 10px; }
+.role-notice { max-width: 40rem; border: 1px solid var(--line); border-left: 4px solid var(--staged); background: var(--surface); border-radius: var(--radius); padding: var(--s-5); box-shadow: var(--shadow); }
+.role-notice strong { font-size: 1.05rem; }
+
+/* Terse page header */
+.page-title { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; }
+.role-chip { font-size: 0.72rem; }
+.help-link { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-strong); color: var(--muted); font-size: 0.78rem; font-weight: 700; text-decoration: none; }
+.help-link:hover { color: var(--accent-text); border-color: var(--accent); }
+.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.id-details { margin-top: var(--s-3); font-size: 0.82rem; color: var(--muted); }
+.id-details summary { cursor: pointer; font-weight: 600; width: max-content; }
+.id-details dl { display: grid; gap: var(--s-1); margin: var(--s-2) 0 0; }
+.id-details dl div { display: grid; grid-template-columns: 9rem 1fr; gap: var(--s-2); align-items: center; }
+.id-details dd { margin: 0; display: flex; align-items: center; gap: var(--s-2); min-width: 0; }
+.id-details code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.copy { margin: 0; padding: 2px 8px; }
+.role-notice { display: flex; align-items: center; gap: var(--s-4); flex-wrap: wrap; }
+.related { display: flex; flex-wrap: wrap; gap: var(--s-2); margin: 0 0 var(--s-4); }
+.related-chip { margin: 0; padding: 4px 10px; }
+.related-count { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-pill); padding: 0 6px; font-size: 0.72rem; }

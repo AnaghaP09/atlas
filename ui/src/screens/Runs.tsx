@@ -17,6 +17,9 @@ import {
   usePaged,
 } from "../components/common";
 import { Icon, ScoutEmblem, SentinelEmblem } from "../components/icons";
+import { Related } from "../components/related";
+import type { Notification, QueueEntry, TaskView } from "../api/types";
+import { IdDetails } from "../components/common";
 import { Link } from "../lib/router";
 
 export function RunList() {
@@ -27,7 +30,7 @@ export function RunList() {
     <Section title="All runs" icon="list" mode={data.data?.data_mode}>
       {data.isLoading ? <Loading what="runs" /> : <ErrorView error={data.error} />}
       {data.data && runs.length === 0 ? (
-        <Empty action={{ to: "/run-now", label: "Start a release close" }}>No runs yet. Start a release close from Run now.</Empty>
+        <Empty action={{ to: "/run-now", label: "Start a release close" }}>No runs yet.</Empty>
       ) : null}
       {runs.length ? (
         <div className="table-wrap">
@@ -134,7 +137,7 @@ function eventText(e: LiveEvent): string {
 }
 
 function Timeline({ events }: { events: LiveEvent[] }) {
-  if (events.length === 0) return <Empty>No live events yet. They appear here while the run is working.</Empty>;
+  if (events.length === 0) return <p className="muted">No live events.</p>;
   return (
     <ol className="timeline" aria-live="polite">
       {events.map((e) => {
@@ -176,6 +179,9 @@ export function RunDetail({ runId }: { runId: string }) {
     },
   });
   const status = useLiveStream(`${path}/stream`, (e) => handlers.current.onEvent(e), () => handlers.current.onReset());
+  const tasks = useApi<{ tasks: TaskView[] }>("/api/tasks");
+  const notes = useApi<{ notifications: Notification[] }>("/api/notifications");
+  const queue = useApi<{ entries: QueueEntry[] }>("/api/queue");
 
   if (run.isLoading) return <Loading what="the run" />;
   if (run.error) return <ErrorView error={run.error} />;
@@ -186,22 +192,31 @@ export function RunDetail({ runId }: { runId: string }) {
     <div className="grid-2">
       <div>
         <Section title={r.run_id} icon="list" mode={r.data_mode} end={<StatusPill status={r.run_status} />}>
+          <Related
+            chips={[
+              { entity: "snapshot", id: r.snapshot_id, label: "Data set" },
+              { entity: "task", id: (tasks.data?.tasks ?? []).find((t) => t.run_id === r.run_id)?.task_id, label: "Tasks", count: (tasks.data?.tasks ?? []).filter((t) => t.run_id === r.run_id).length },
+              { entity: "notification", id: (notes.data?.notifications ?? []).find((n) => n.run_id === r.run_id)?.notification_id, label: "Notifications", count: (notes.data?.notifications ?? []).filter((n) => n.run_id === r.run_id).length },
+              { entity: "queue", id: String((queue.data?.entries ?? []).find((q) => q.run_id === r.run_id)?.entry_id ?? ""), label: "Needs a person", count: (queue.data?.entries ?? []).filter((q) => q.run_id === r.run_id).length },
+            ]}
+          />
           {status !== "live" ? <p className="banner">Live updates paused. Reconnecting…</p> : null}
           {notice ? <p className="banner banner-note">{notice}</p> : null}
           <dl className="facts">
             <dt>Status</dt><dd>{r.run_status}{r.hold_reason ? ` (held: ${r.hold_reason})` : ""}</dd>
             <dt>Started by</dt><dd>{describeStarter(r)}</dd>
-            <dt>Snapshot</dt><dd className="mono">{r.snapshot_id}</dd>
-            <dt>Verification</dt>
+            <dt>Data set</dt><dd className="mono">{r.snapshot_id}</dd>
+            <dt>Version</dt>
             <dd>
               {r.authoritative_generation ? `generation ${r.authoritative_generation}` : "not verified yet"}
               {r.superseded_generations.length ? ` (earlier: ${r.superseded_generations.join(", ")}, kept for audit only)` : ""}
             </dd>
             {r.error ? (<><dt>Error</dt><dd className="state-error">{r.error}</dd></>) : null}
           </dl>
-          <p>
-            Investigated by <AgentName agent="scout" />; every claim checked by <AgentName agent="sentinel" />.
+          <p className="agents-line">
+            <AgentName agent="scout" /> <AgentName agent="sentinel" />
           </p>
+          <IdDetails items={[["Run id", r.run_id], ["Data set", r.snapshot_id], ["Project", r.project_id ?? null]]} />
         </Section>
         <Section title="Progress" icon="pulse" end={<span className="muted">{status === "live" ? "Live" : "Paused"}</span>}>
           <Timeline events={events} />
@@ -212,7 +227,7 @@ export function RunDetail({ runId }: { runId: string }) {
           <Budgets cost={cost} />
         </Section>
         <Section title="Reports" icon="task">
-          {r.reports.length === 0 ? <Empty>No reports yet. They appear when Sentinel has checked the claims.</Empty> : null}
+          {r.reports.length === 0 ? <p className="muted">No reports yet.</p> : null}
           <ul className="list">
             {r.reports.map((rep) => (
               <li key={rep.report_id}>

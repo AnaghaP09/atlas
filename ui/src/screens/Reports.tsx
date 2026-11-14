@@ -5,6 +5,7 @@ import type { Claim, EvidenceRecord, ReportView } from "../api/types";
 import { useApi, useLiveStream } from "../app/context";
 import { AgentName, DataModeBadge, ErrorView, Loading, Section } from "../components/common";
 import { VerdictChip } from "./Runs";
+import { Related } from "../components/related";
 import { Markdown } from "../lib/markdown";
 import { Link } from "../lib/router";
 
@@ -47,6 +48,12 @@ export function ReportDetail({ reportId }: { reportId: string }) {
   const proxy = typeof r.report.proxy_note === "string" ? r.report.proxy_note : null;
   return (
     <Section title={r.report_type.replace(/_/g, " ")} icon="task" mode={r.data_mode}>
+      <Related
+        chips={[
+          { entity: "run", id: r.run_id, label: "Run" },
+          { entity: "evidence", id: claims.flatMap((c) => c.evidence_ids ?? [])[0], label: "Evidence", count: new Set(claims.flatMap((c) => c.evidence_ids ?? [])).size, ctx: { runId: r.run_id } },
+        ]}
+      />
       {notice ? <p className="banner" role="status">{notice}</p> : null}
       {r.superseded_by ? (
         <p className="banner banner-warn" data-testid="superseded">

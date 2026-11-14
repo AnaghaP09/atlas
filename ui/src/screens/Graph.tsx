@@ -493,14 +493,7 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
               {selected ? <Button size="sm" variant="ghost" onClick={() => setSelected(null)}>Clear selection</Button> : null}
             </>
           ) : (
-            <>
-              <h3>How to read this</h3>
-              <p className="muted">
-                Each dot is a component. Components that import each other are pulled together; teams start in their own
-                area. Larger dots are imported by the most components. Hover or click a dot to see what it imports and what
-                uses it. Drag to pan, scroll or use + and − to zoom.
-              </p>
-            </>
+            <p className="muted">Hover or click a dot.</p>
           )}
           <ul className="legend" aria-label="Owner teams">
             {top.map((t, i) => (
@@ -509,7 +502,11 @@ function GraphCanvas({ nodes, edges, limitation }: { nodes: GNode[]; edges: GEdg
             <li><span className="swatch other" aria-hidden="true" /> Other teams</li>
             <li><span className="swatch none" aria-hidden="true" /> No owner team</li>
           </ul>
-          {limitation ? <p className="graph-note">{limitation}</p> : null}
+          {limitation ? (
+            <span className="pill pill-neutral" title={limitation}>
+              Import links only
+            </span>
+          ) : null}
         </aside>
       </div>
     </>

@@ -1,23 +1,35 @@
 import { useState } from "react";
 import type { TaskView } from "../api/types";
 import { useAction, useApi } from "../app/context";
-import { ActionResult, ErrorView, Loading, Section } from "../components/common";
+import type { Approval } from "../api/types";
+import { ActionResult, Button, Empty, ErrorView, IdDetails, Loading, Section, StatusPill } from "../components/common";
+import { EntityLink, Related } from "../components/related";
 import { ExternalLink } from "../components/ExternalLink";
 import { Link } from "../lib/router";
 
 export function TaskList() {
   const data = useApi<{ tasks: TaskView[]; data_mode?: string }>("/api/tasks");
   return (
-    <Section title="Coding-agent tasks" mode={data.data?.data_mode}>
+    <Section title="Coding-agent tasks" icon="task" mode={data.data?.data_mode}>
       {data.isLoading ? <Loading what="tasks" /> : <ErrorView error={data.error} />}
-      {data.data && data.data.tasks.length === 0 ? <p>No tasks.</p> : null}
-      <ul>
-        {(data.data?.tasks ?? []).map((t) => (
-          <li key={t.task_id}>
-            <Link to={`/tasks/${encodeURIComponent(t.task_id)}`}>{t.task_id}</Link> — {t.state}
-          </li>
-        ))}
-      </ul>
+      {data.data && data.data.tasks.length === 0 ? <Empty>No tasks yet.</Empty> : null}
+      {data.data && data.data.tasks.length ? (
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Task</th><th>Action</th><th>Status</th><th>Run</th></tr></thead>
+            <tbody>
+              {data.data.tasks.map((t) => (
+                <tr key={t.task_id}>
+                  <td className="mono"><Link to={`/tasks/${encodeURIComponent(t.task_id)}`}>{t.task_id}</Link></td>
+                  <td>{(t.action ?? "—").replace(/_/g, " ").toLowerCase()}</td>
+                  <td><StatusPill status={t.state} /></td>
+                  <td className="mono"><EntityLink entity="run" id={t.run_id} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
     </Section>
   );
 }
@@ -36,15 +48,21 @@ export function TaskDetail({ taskId }: { taskId: string }) {
   const refresh = useAction<Record<string, never>, unknown>(`${base}/security-refresh`);
   const adjudicate = useAction<{ verdict: string; note: string }, unknown>(`${base}/adjudicate`);
   const [note, setNote] = useState("");
+  const approvals = useApi<{ approvals: Approval[] }>("/api/approvals");
   if (task.isLoading) return <Loading what="the task" />;
   if (task.error) return <ErrorView error={task.error} />;
   const t = task.data;
   if (!t) return null;
   return (
-    <Section title={`Task ${t.task_id}`} mode={t.data_mode}>
+    <Section title={(t.action ?? "Task").replace(/_/g, " ").toLowerCase()} icon="task" mode={t.data_mode} end={<StatusPill status={t.state} />}>
+      <Related
+        chips={[
+          { entity: "run", id: t.run_id, label: "Run" },
+          { entity: "approval", id: (approvals.data?.approvals ?? []).find((a) => a.task_id === t.task_id)?.approval_id, label: "Approvals", count: (approvals.data?.approvals ?? []).filter((a) => a.task_id === t.task_id).length },
+        ]}
+      />
       <dl className="facts">
-        <dt>State</dt><dd data-testid="task-state">{t.state}</dd>
-        <dt>Action</dt><dd>{t.action ?? "—"}</dd>
+        <dt>Status</dt><dd data-testid="task-state">{t.state}</dd>
         {t.support_status ? (<><dt>Support</dt><dd>{t.support_status}</dd></>) : null}
         <dt>Security check</dt><dd>{t.security ? `${t.security.state ?? "unknown"}${t.security.valid_until ? `, valid until ${t.security.valid_until}` : ""}` : "not run"}</dd>
         <dt>Draft pull request</dt>
@@ -60,14 +78,14 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         </>
       ) : null}
       <div className="actions">
-        <button onClick={() => void prepare.run({})}>Prepare in the sandbox</button>
+        <Button variant="primary" icon="play" loading={prepare.state.status === "running"} onClick={() => void prepare.run({})}>Prepare</Button>
+        <Button icon="arrow" loading={publish.state.status === "running"} onClick={() => void publish.run({})}>Publish draft PR</Button>
+        <Button variant="ghost" icon="shield" loading={refresh.state.status === "running"} onClick={() => void refresh.run({})}>Refresh security</Button>
         <ActionResult state={prepare.state} retry={() => void prepare.retrySame()} />
-        <button onClick={() => void publish.run({})}>Publish the draft pull request</button>
         <ActionResult state={publish.state} retry={() => void publish.retrySame()} />
-        <button onClick={() => void refresh.run({})}>Refresh the security check</button>
         <ActionResult state={refresh.state} retry={() => void refresh.retrySame()} />
       </div>
-      {t.run_id ? <p><Link to={`/runs/${encodeURIComponent(t.run_id)}`}>Open the run behind this task</Link></p> : null}
+      <IdDetails items={[["Task id", t.task_id], ["Action id", t.action_id ?? null], ["Run id", t.run_id ?? null], ["Head commit", t.publication?.head_commit ?? null]]} />
       <h3>Does the fix work?</h3>
       <label>
         Note

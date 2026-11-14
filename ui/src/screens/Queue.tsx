@@ -1,20 +1,21 @@
 import type { QueueEntry } from "../api/types";
 import { useApi } from "../app/context";
-import { ErrorView, Loading, Section, Time } from "../components/common";
-import { Link } from "../lib/router";
+import { Empty, ErrorView, Loading, Section, Time } from "../components/common";
+import { EntityLink } from "../components/related";
 
 export function Queue() {
   const data = useApi<{ entries: QueueEntry[]; data_mode?: string }>("/api/queue");
   return (
-    <Section title="Needs a person" mode={data.data?.data_mode}>
-      <p>ATLAS stops and asks a person here: low confidence, a blocking security finding, an injection attempt, any code change, and similar cases.</p>
+    <Section title="Waiting for a person" icon="hand" mode={data.data?.data_mode}>
       {data.isLoading ? <Loading what="the queue" /> : <ErrorView error={data.error} />}
-      {data.data && data.data.entries.length === 0 ? <p>Nothing is waiting.</p> : null}
-      <ul>
+      {data.data && data.data.entries.length === 0 ? <Empty>Nothing is waiting.</Empty> : null}
+      <ul className="list">
         {(data.data?.entries ?? []).map((e, i) => (
           <li key={String(e.entry_id ?? i)}>
-            <strong>{String(e.trigger ?? "review")}</strong> — {String(e.reason ?? "")} <Time iso={e.created_at ?? null} />{" "}
-            {e.run_id ? <Link to={`/runs/${encodeURIComponent(e.run_id)}`}>open run</Link> : null}
+            <span className="pill pill-warn">{String(e.trigger ?? "review").replace(/_/g, " ")}</span>
+            <span className="grow">{String(e.reason ?? "")}</span>
+            {e.run_id ? <EntityLink entity="run" id={e.run_id}>Run</EntityLink> : null}
+            <Time iso={e.created_at ?? null} short />
           </li>
         ))}
       </ul>

@@ -7,25 +7,25 @@ import { Icon, ScoutEmblem, SentinelEmblem, type IconName } from "./icons";
 
 const MODE_TEXT: Record<DataMode, string> = {
   REAL: "Real data",
-  SYNTHETIC: "Synthetic data",
-  STAGED: "Not available in this demo",
-  UNEVALUATED: "Not evaluated",
+  SYNTHETIC: "Sample data",
+  STAGED: "Not in this demo",
+  UNEVALUATED: "Not measured",
 };
 
 const MODE_HELP: Record<DataMode, string> = {
-  REAL: "Built from real public data and real model calls.",
-  SYNTHETIC: "Built from data the team made up for the demo. It is never scored as real.",
-  STAGED: "The code path exists and is tested, but the real-world part is outside this build.",
-  UNEVALUATED: "This quality bar is not measured in this build. It is not a pass.",
+  REAL: "Public data, real model calls",
+  SYNTHETIC: "Made-up data, never scored",
+  STAGED: "Built and tested, not live",
+  UNEVALUATED: "Not measured, not a pass",
 };
 
 export function DataModeBadge({ mode, reason }: { mode: DataMode | string | undefined; reason?: string | null }) {
   const m = (mode ?? "REAL") as DataMode;
   const text = MODE_TEXT[m] ?? String(mode);
   return (
-    <span className={`badge badge-${m.toLowerCase()}`} title={reason ?? MODE_HELP[m] ?? ""} data-testid="data-mode">
+    <span className={`badge badge-${m.toLowerCase()}`} title={reason ? `${MODE_HELP[m] ?? ""}: ${reason}` : (MODE_HELP[m] ?? "")} data-testid="data-mode">
       {text}
-      {reason ? <span className="badge-reason"> — {reason}</span> : null}
+      {reason ? <span className="sr-only"> — {reason}</span> : null}
     </span>
   );
 }
@@ -320,12 +320,17 @@ export function Section({
   );
 }
 
-export function PageHead({ title, sub, actions }: { title: string; sub?: ReactNode; actions?: ReactNode }) {
+export function PageHead({ title, actions, role, help }: { title: string; actions?: ReactNode; role?: string; help?: string | null }) {
   return (
     <div className="page-head">
-      <div>
+      <div className="page-title">
         <h1>{title}</h1>
-        {sub ? <p>{sub}</p> : null}
+        {role ? <span className="pill pill-accent role-chip" data-testid="page-audience" title="Your role">{role}</span> : null}
+        {help ? (
+          <a className="help-link" href={help} target="_blank" rel="noopener noreferrer" aria-label={`Help: ${title}`} title="Help">
+            ?
+          </a>
+        ) : null}
       </div>
       {actions ? <div className="actions">{actions}</div> : null}
     </div>
@@ -362,6 +367,8 @@ const STATUS_TONE: Record<string, string> = {
   passed: "good",
   accepted: "good",
   running: "info",
+  connected: "good",
+  ok: "good",
   admitted: "info",
   queued: "info",
   partial: "warn",
@@ -373,17 +380,102 @@ const STATUS_TONE: Record<string, string> = {
   voided: "critical",
 };
 
+const STATUS_WORD: Record<string, string> = {
+  complete: "Done",
+  completed: "Done",
+  passed: "Passed",
+  accepted: "Accepted",
+  running: "Running",
+  admitted: "Queued",
+  queued: "Queued",
+  partial: "Partial",
+  held: "Needs a person",
+  unverified: "Not verified",
+  awaiting_reapproval: "Needs approval",
+  refused: "Refused",
+  failed: "Failed",
+  voided: "Voided",
+  connected: "Connected",
+  ok: "OK",
+};
+
 /** Run, task or gate status as a pill. The words always carry the meaning, never the colour alone. */
 export function StatusPill({ status }: { status: string | null | undefined }) {
   const s = (status ?? "unknown").toLowerCase();
   const tone = STATUS_TONE[s] ?? "neutral";
-  return <span className={`pill pill-${tone}`}>{s.replace(/_/g, " ")}</span>;
+  return (
+    <span className={`pill pill-${tone}`}>
+      <span className="pill-dot" aria-hidden="true" />
+      {STATUS_WORD[s] ?? s.replace(/_/g, " ")}
+    </span>
+  );
 }
 
-export function Time({ iso }: { iso?: string | null }) {
+const DATE_FMT = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+
+/** "5 min ago", "3 h ago", "2 days ago". */
+export function relative(d: Date, now = new Date()): string {
+  const s = Math.round((now.getTime() - d.getTime()) / 1000);
+  const past = s >= 0;
+  const a = Math.abs(s);
+  const v = a < 60 ? "just now" : a < 3600 ? `${Math.round(a / 60)} min` : a < 86400 ? `${Math.round(a / 3600)} h` : `${Math.round(a / 86400)} days`;
+  if (v === "just now") return v;
+  return past ? `${v} ago` : `in ${v}`;
+}
+
+/** "14 Nov 2026, 14:37 · 5 min ago". */
+export function Time({ iso, short = false }: { iso?: string | null; short?: boolean }) {
   if (!iso) return <span>—</span>;
   const d = new Date(iso);
-  return <time dateTime={iso}>{Number.isNaN(d.getTime()) ? iso : d.toLocaleString()}</time>;
+  if (Number.isNaN(d.getTime())) return <time dateTime={iso}>{iso}</time>;
+  return (
+    <time dateTime={iso} title={DATE_FMT.format(d)}>
+      {short ? relative(d) : `${DATE_FMT.format(d)} · ${relative(d)}`}
+    </time>
+  );
+}
+
+/** Technical ids stay out of the way: a small "Details" disclosure with a copy button. */
+export function IdDetails({ items }: { items: [string, string | null | undefined][] }) {
+  const shown = items.filter(([, v]) => v);
+  if (!shown.length) return null;
+  return (
+    <details className="id-details">
+      <summary>Details</summary>
+      <dl>
+        {shown.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd>
+              <code>{v}</code>
+              <CopyButton text={v ?? ""} />
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+export function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className="btn btn-ghost btn-sm copy"
+      aria-label="Copy"
+      title="Copy"
+      onClick={() => {
+        try {
+          void navigator.clipboard?.writeText(text).then(() => setDone(true));
+        } catch {
+          setDone(false);
+        }
+      }}
+    >
+      {done ? "Copied" : "Copy"}
+    </button>
+  );
 }
 
 export function Confirm({ text, onConfirm, label }: { text: string; onConfirm: () => void; label: string }) {

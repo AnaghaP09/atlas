@@ -113,23 +113,22 @@ export function Dashboard() {
   return (
     <>
       <Section title={`Project ${project}`} icon="pulse" mode={board.data_mode} end={<span className={`mode-pill${status === "live" ? "" : " offline"}`}><span className="pulse" aria-hidden="true" />{status === "live" ? "Live updates on" : "Live updates paused"}</span>}>
-        {board.data_source_note ? <p className="muted">{board.data_source_note}</p> : null}
         <p className="poll-ticker" data-testid="poll-line">
           Updated every {board.interval_seconds} s, last poll{" "}
           {board.last_poll ? <Time iso={board.last_poll} /> : "not yet"} · live updates: {status === "live" ? "on" : "paused"}
         </p>
       </Section>
       <div className="dash-grid">
-        <Section title="Open issues seen on this page" icon="chart">
+        <Section title="Open issues (this visit)" icon="chart">
           <IssueTrend count={issues?.items.filter(isItem).length ?? 0} version={board.dashboard_version} />
         </Section>
-        <Section title="Failing CI runs by workflow" icon="chart">
+        <Section title="Failing CI by workflow" icon="chart">
           <CiBars items={(ci?.items ?? []).filter(isItem)} note={(ci?.items ?? []).find((i) => !isItem(i))} />
         </Section>
         {board.panels.map((p) => (
           <Section key={p.panel_id} title={p.title} icon={PANEL_ICON[p.panel_id] ?? "list"} mode={p.status === "live" ? "REAL" : "STAGED"} reason={p.reason ?? null}>
             {p.items.length === 0 ? (
-              <p className="muted">{p.status === "live" ? "Nothing here right now." : "No data yet. This panel fills in after the first successful poll."}</p>
+              <p className="muted">{p.status === "live" ? "Nothing right now." : "No data yet."}</p>
             ) : (
               <ul className="panel-items">
                 {p.items.map((item, i) => (
@@ -140,7 +139,7 @@ export function Dashboard() {
           </Section>
         ))}
         <Section title="Activity" icon="list">
-          {activity.length === 0 ? <p className="muted">No activity yet. New records appear here as soon as a poll finds them.</p> : null}
+          {activity.length === 0 ? <p className="muted">No activity yet.</p> : null}
           <ul className="feed" data-testid="activity">
             {activity.map((a, i) => {
               const to = evidenceRoute({ ...a, project_id: a.project_id ?? project });
@@ -198,7 +197,6 @@ function IssueTrend({ count, version }: { count: number; version: number }) {
   return (
     <>
       <Sparkline points={points} unit="open issues" />
-      <p className="muted">Counted at each dashboard update since this page opened.</p>
     </>
   );
 }

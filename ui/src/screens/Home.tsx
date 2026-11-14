@@ -16,17 +16,17 @@ export interface SnapshotItem {
 }
 
 const GROUPS: { kind: string; title: string; help: string }[] = [
-  { kind: "releases", title: "Release closes", help: "Open issues frozen at each release. Use these for a release close." },
-  { kind: "cases", title: "Golden cases", help: "Single failures frozen at the moment they were reported." },
-  { kind: "releases-aliased", title: "Release closes, names disguised", help: "Same data with names replaced, to check the model is not recalling history." },
-  { kind: "cases-aliased", title: "Golden cases, names disguised", help: "Same cases with names replaced." },
+  { kind: "releases", title: "Releases", help: "" },
+  { kind: "cases", title: "Test cases", help: "" },
+  { kind: "releases-aliased", title: "Releases, names hidden", help: "" },
+  { kind: "cases-aliased", title: "Test cases, names hidden", help: "" },
 ];
 
 export function groupSnapshots(snaps: SnapshotItem[]) {
   const known = new Set(GROUPS.map((g) => g.kind));
   const groups = GROUPS.map((g) => ({ ...g, items: snaps.filter((s) => s.kind === g.kind) })).filter((g) => g.items.length);
   const other = snaps.filter((s) => !s.kind || !known.has(s.kind));
-  if (other.length) groups.push({ kind: "other", title: "Other snapshots", help: "Snapshots frozen from live data.", items: other });
+  if (other.length) groups.push({ kind: "other", title: "Frozen from live data", help: "", items: other });
   return groups;
 }
 
@@ -36,7 +36,7 @@ function DataAvailable() {
   if (snaps.error) return <ErrorView error={snaps.error} />;
   const list = snaps.data?.snapshots ?? [];
   if (list.length === 0)
-    return <Empty action={{ to: "/run-now", label: "Open Run now" }}>No snapshots for this project yet. Freeze one from live data on Run now.</Empty>;
+    return <Empty action={{ to: "/run-now", label: "Open Run now" }}>No data sets yet.</Empty>;
   return (
     <>
       {groupSnapshots(list).map((g) => (
@@ -44,7 +44,6 @@ function DataAvailable() {
           <h3>
             {g.title} <span className="pill pill-neutral num">{g.items.length}</span>
           </h3>
-          <p className="muted">{g.help}</p>
           {g.items.map((s) => (
             <div className="snap-row" key={s.snapshot_id}>
               <span className="snap-id">{s.snapshot_id}</span>
@@ -68,7 +67,7 @@ function ActivityFeed({ project }: { project: string }) {
   if (act.error) return <ErrorView error={act.error} />;
   const items = (act.data?.activity ?? []).slice(0, 8);
   if (items.length === 0)
-    return <Empty action={{ to: "/dashboard", label: "Open the live dashboard" }}>No live activity yet. The dashboard fills in after the first poll.</Empty>;
+    return <Empty action={{ to: "/dashboard", label: "Live dashboard" }}>No live activity yet.</Empty>;
   return (
     <ul className="feed">
       {items.map((a, i) => (
@@ -102,16 +101,16 @@ export function Home() {
   return (
     <>
       <div className="kpis">
-        <KpiTile icon="database" label="Snapshots" value={snaps.data ? snaps.data.snapshots.length : "—"} hint={snaps.data ? `${records.toLocaleString()} records, ${releaseSnaps.length} release closes` : "Loading…"} />
-        <KpiTile icon="list" tone="teal" label="Runs" value={runs.data ? runList.length : "—"} hint={runs.data ? `${runList.filter((r) => r.run_status === "complete").length} complete` : "Loading…"} />
-        <KpiTile icon="hand" tone={queue.data && queue.data.entries.length ? "warn" : "good"} label="Needs a person" value={queue.data ? queue.data.entries.length : "—"} hint="Items waiting for a decision" />
-        <KpiTile icon="power" tone={tripped ? "critical" : "good"} label="Kill switches tripped" value={containment.data ? tripped : "—"} hint={containment.error ? "Your role cannot see the switches" : `${containment.data?.switches.length ?? 0} switches watched`} />
-        <KpiTile icon="bell" tone={unread ? "warn" : "good"} label="Unread notifications" value={notes.data ? unread : "—"} hint={<Link to="/notifications">Open the inbox</Link>} />
+        <KpiTile icon="database" label="Data sets" value={snaps.data ? snaps.data.snapshots.length : "—"} hint={snaps.data ? `${records.toLocaleString()} records · ${releaseSnaps.length} releases` : undefined} />
+        <KpiTile icon="list" tone="teal" label="Runs" value={runs.data ? runList.length : "—"} hint={runs.data ? `${runList.filter((r) => r.run_status === "complete").length} done` : undefined} />
+        <KpiTile icon="hand" tone={queue.data && queue.data.entries.length ? "warn" : "good"} label="Needs a person" value={queue.data ? queue.data.entries.length : "—"} hint="waiting for a decision" />
+        <KpiTile icon="power" tone={tripped ? "critical" : "good"} label="Kill switches tripped" value={containment.data ? tripped : "—"} hint={containment.error ? "not visible to your role" : `of ${containment.data?.switches.length ?? 0} switches`} />
+        <KpiTile icon="bell" tone={unread ? "warn" : "good"} label="Unread notifications" value={notes.data ? unread : "—"} hint={<Link to="/notifications">Inbox</Link>} />
       </div>
 
       <div className="grid-2">
         <div>
-          <Section title="Data available" icon="database" mode={snaps.data ? "REAL" : undefined} end={project ? <span className="muted">Project {project}</span> : null}>
+          <Section title="Data sets" icon="database" mode={snaps.data ? "REAL" : undefined} >
             <DataAvailable />
           </Section>
         </div>
@@ -119,7 +118,7 @@ export function Home() {
           <Section title="Recent runs" icon="list" end={<Link to="/runs">All runs</Link>}>
             {runs.isLoading ? <Loading what="runs" /> : <ErrorView error={runs.error} />}
             {runs.data && runList.length === 0 ? (
-              <Empty action={{ to: "/run-now", label: "Start a release close" }}>No runs yet. Start a release close from Run now.</Empty>
+              <Empty action={{ to: "/run-now", label: "Start a release close" }}>No runs yet.</Empty>
             ) : null}
             <ul className="list">
               {runList.slice(0, 6).map((r) => (
@@ -133,7 +132,7 @@ export function Home() {
           <Section title="Live activity" icon="pulse">
             {project ? <ActivityFeed project={project} /> : <Empty>No project is configured on this server yet.</Empty>}
           </Section>
-          <Section title="Not available in this demo" icon="shield" mode="STAGED">
+          <Section title="Not in this demo" icon="shield">
             {health.isLoading ? <Loading what="status" lines={2} /> : <ErrorView error={health.error} />}
             <ul className="list">
               {(health.data?.staged ?? []).map((s) => (
