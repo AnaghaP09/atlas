@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from "react";
-import type { Health } from "./api/types";
+import type { Health, RunView } from "./api/types";
 import { useApi, useApp, useIdentity } from "./app/context";
 import { AgentName, ButtonLink, PageHead } from "./components/common";
 import { BrandMark, Icon, type IconName } from "./components/icons";
-import { LatestReport } from "./screens/LatestReport";
+import { LatestReport, latestReport } from "./screens/LatestReport";
 import { LockedChip } from "./components/access";
 import { AccessRequests } from "./screens/AccessRequests";
 import { ObjectView } from "./screens/ObjectView";
@@ -32,6 +32,8 @@ import { RunNow } from "./screens/RunNow";
 import { Schedules } from "./screens/Schedules";
 import { Scorecard } from "./screens/Scorecard";
 import { TaskDetail, TaskList } from "./screens/Tasks";
+import { Help } from "./screens/Help";
+import { Toaster } from "./lib/toast";
 
 interface Page {
   title: string;
@@ -67,6 +69,17 @@ const PAGES: Record<string, Page> = {
   "/latest-report/:type": { title: "Latest report", sub: "The most recent verified report of this kind for the project." },
 };
 
+/** On a page for another role: ask for the item behind it, when there is one to ask for. */
+function LockedPageRequest({ path }: { path: string }) {
+  const type = /^\/latest-report\/([a-z_-]+)$/.exec(path)?.[1];
+  const kind = type === "security" ? "security_gate" : type;
+  const runs = useApi<{ runs: RunView[] }>(kind ? "/api/runs" : null);
+  if (!kind) return <ButtonLink to="/access-requests" variant="secondary" icon="key">Access requests</ButtonLink>;
+  const report = latestReport(runs.data?.runs ?? [], kind);
+  if (!report) return <span className="muted">No report yet.</span>;
+  return <LockedChip objectType="report" objectId={report.report_id} />;
+}
+
 export function Route({ path, search, nav }: { path: string; search: URLSearchParams; nav?: Navigation }): ReactNode {
   const routes: [string, (p: Record<string, string>) => ReactNode][] = [
     ["/", () => <Home />],
@@ -96,6 +109,8 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
     ["/access-requests", () => <AccessRequests />],
     ["/object/:type/:id", (p) => <ObjectView objectType={p.type ?? ""} objectId={p.id ?? ""} />],
     ["/latest-report/:type", (p) => <LatestReport kind={p.type ?? ""} />],
+    ["/help", () => <Help slug="index" />],
+    ["/help/:slug", (p) => <Help slug={p.slug ?? "index"} />],
   ];
   const pageId = pageIdForPath(path);
   const entry = pageId && nav ? findPage(nav, pageId) : undefined;
@@ -106,7 +121,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
         <PageHead title={hidden?.title ?? "Not on your menu"} role={capitalise(nav.role_title)} />
         <div className="role-notice" role="note" data-testid="role-notice">
           <strong>This page is for the {hidden ? joinRoles(hidden.role_titles) : "other roles"}.</strong>
-          <LockedChip objectType="page" objectId={pageId} />
+          <LockedPageRequest path={path} />
           <ButtonLink to="/" variant="ghost" icon="home">Your home</ButtonLink>
         </div>
       </>
@@ -356,8 +371,11 @@ export function App() {
           <div className="agents" aria-label="Agents">
             <span className="agent-line"><AgentName agent="scout" /></span>
             <span className="agent-line"><AgentName agent="sentinel" /></span>
-            <span>Agents: Scout investigates, Sentinel checks every claim.</span>
           </div>
+          <Link to="/help/index" className={`nav-link${path.startsWith("/help") ? " active" : ""}`}>
+            <Icon name="help" size={18} />
+            <span className="nav-label">Guide</span>
+          </Link>
           <button
             type="button"
             className="btn collapse-btn"
@@ -384,6 +402,7 @@ export function App() {
       </header>
       {/* Keyed by the identity epoch: a role or project switch remounts every screen and drops its state. */}
       <MetricsSync />
+      <Toaster />
       <main key={epoch} className="main">
         <ContainmentBanner />
         <Route path={path} search={search} nav={nav.data} />

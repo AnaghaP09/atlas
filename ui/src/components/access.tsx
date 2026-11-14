@@ -91,7 +91,7 @@ export function LockedChip({ objectType, objectId, request }: { objectType: stri
             <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
           </span>
         ) : (
-          <Button size="sm" variant="ghost" icon="lock" onClick={() => setOpen(true)}>Request access</Button>
+          <Button size="sm" variant="secondary" icon="key" onClick={() => setOpen(true)}>Request access</Button>
         )
       ) : null}
       {send.state.status === "failed" ? <span className="state-error">Not sent</span> : null}
