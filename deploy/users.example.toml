@@ -1,0 +1,11 @@
+# Shape of the sign-in user file. Setup writes the real file to your private data directory
+# (data/local/users.toml) with one demo user per role and generated passwords.
+# The real file stores password hashes only. Never commit it.
+
+[users.pm]
+display_name = "Product manager (demo)"
+password_hash = "scrypt$16384$8$1$<salt>$<hash>"
+
+[users.pm.roles]
+kubevirt = "pm"
+"argo-cd" = "pm"
