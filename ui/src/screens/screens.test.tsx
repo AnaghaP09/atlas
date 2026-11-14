@@ -39,7 +39,7 @@ describe("honest labels", () => {
 describe("Evaluation", () => {
   it("always shows the proxy note, even before any evaluation exists", async () => {
     renderWith(<Evaluation />, { "/api/evaluations/latest": () => json({ error: "not_found", reason: "no completed evaluation yet" }, 404) });
-    expect(await screen.findByText("No evaluation has finished yet.")).toBeTruthy();
+    expect(await screen.findByText(/No evaluation has finished yet\./)).toBeTruthy();
     expect(screen.getByTestId("proxy-note-always").textContent).toMatch(/stand-in definition of a release blocker/);
   });
 

@@ -52,12 +52,26 @@ export function matchPath(pattern: string, path: string): Record<string, string>
   return params;
 }
 
-export function Link({ to, children, className }: { to: string; children: ReactNode; className?: string }) {
+export function Link({
+  to,
+  children,
+  className,
+  title,
+  "aria-label": ariaLabel,
+}: {
+  to: string;
+  children: ReactNode;
+  className?: string;
+  title?: string;
+  "aria-label"?: string;
+}) {
   const { navigate } = useRouter();
   return (
     <a
       href={to}
       className={className}
+      title={title}
+      aria-label={ariaLabel}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();

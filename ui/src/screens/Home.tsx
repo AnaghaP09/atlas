@@ -1,69 +1,154 @@
-import type { Envelope, Health, Notification, RunView } from "../api/types";
+import type { ContainmentView, Envelope, Health, Notification, QueueEntry, RunView } from "../api/types";
 import { useApi } from "../app/context";
-import { DataModeBadge, ErrorView, Loading, Section, Time } from "../components/common";
+import { DataModeBadge, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Time } from "../components/common";
 import { Link } from "../lib/router";
+import { useCurrentProject, type ActivityItem } from "./Dashboard";
+
+export interface SnapshotItem {
+  snapshot_id: string;
+  kind?: string;
+  release_or_case?: string;
+  release?: string;
+  cutoff?: string;
+  alias_variant?: string | null;
+  records?: number;
+  data_mode?: string;
+}
+
+const GROUPS: { kind: string; title: string; help: string }[] = [
+  { kind: "releases", title: "Release closes", help: "Open issues frozen at each release. Use these for a release close." },
+  { kind: "cases", title: "Golden cases", help: "Single failures frozen at the moment they were reported." },
+  { kind: "releases-aliased", title: "Release closes, names disguised", help: "Same data with names replaced, to check the model is not recalling history." },
+  { kind: "cases-aliased", title: "Golden cases, names disguised", help: "Same cases with names replaced." },
+];
+
+export function groupSnapshots(snaps: SnapshotItem[]) {
+  const known = new Set(GROUPS.map((g) => g.kind));
+  const groups = GROUPS.map((g) => ({ ...g, items: snaps.filter((s) => s.kind === g.kind) })).filter((g) => g.items.length);
+  const other = snaps.filter((s) => !s.kind || !known.has(s.kind));
+  if (other.length) groups.push({ kind: "other", title: "Other snapshots", help: "Snapshots frozen from live data.", items: other });
+  return groups;
+}
+
+function DataAvailable() {
+  const snaps = useApi<{ snapshots: SnapshotItem[] } & Envelope>("/api/snapshots");
+  if (snaps.isLoading) return <Loading what="snapshots" />;
+  if (snaps.error) return <ErrorView error={snaps.error} />;
+  const list = snaps.data?.snapshots ?? [];
+  if (list.length === 0)
+    return <Empty action={{ to: "/run-now", label: "Open Run now" }}>No snapshots for this project yet. Freeze one from live data on Run now.</Empty>;
+  return (
+    <>
+      {groupSnapshots(list).map((g) => (
+        <div className="data-group" key={g.kind}>
+          <h3>
+            {g.title} <span className="pill pill-neutral num">{g.items.length}</span>
+          </h3>
+          <p className="muted">{g.help}</p>
+          {g.items.map((s) => (
+            <div className="snap-row" key={s.snapshot_id}>
+              <span className="snap-id">{s.snapshot_id}</span>
+              <span className="muted num">{typeof s.records === "number" ? `${s.records.toLocaleString()} records` : ""}</span>
+              {g.kind === "releases" ? (
+                <Link to={`/run-now?snapshot=${encodeURIComponent(s.snapshot_id)}`} className="btn btn-sm btn-secondary">Release close</Link>
+              ) : (
+                <DataModeBadge mode={s.data_mode ?? "REAL"} />
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+    </>
+  );
+}
+
+function ActivityFeed({ project }: { project: string }) {
+  const act = useApi<{ activity: ActivityItem[] }>(`/api/projects/${encodeURIComponent(project)}/activity`);
+  if (act.isLoading) return <Loading what="activity" lines={2} />;
+  if (act.error) return <ErrorView error={act.error} />;
+  const items = (act.data?.activity ?? []).slice(0, 8);
+  if (items.length === 0)
+    return <Empty action={{ to: "/dashboard", label: "Open the live dashboard" }}>No live activity yet. The dashboard fills in after the first poll.</Empty>;
+  return (
+    <ul className="feed">
+      {items.map((a, i) => (
+        <li key={a.activity_id ?? `${a.record_id}-${i}`}>
+          <span className={`dot ${a.kind}`} aria-hidden="true" />
+          <span>
+            <span className="muted">{a.kind}</span> {a.title}
+          </span>
+          {a.at ? <Time iso={a.at} /> : <span />}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export function Home() {
+  const project = useCurrentProject();
   const health = useApi<Health>("/api/health");
   const runs = useApi<{ runs: RunView[] } & Envelope>("/api/runs");
   const notes = useApi<{ notifications: Notification[] }>("/api/notifications");
+  const queue = useApi<{ entries: QueueEntry[] }>("/api/queue");
+  const containment = useApi<ContainmentView>("/api/containment");
+  const snaps = useApi<{ snapshots: SnapshotItem[] }>("/api/snapshots");
+
+  const runList = runs.data?.runs ?? [];
+  const tripped = (containment.data?.switches ?? []).filter((s) => s.state !== "ok").length;
+  const unread = (notes.data?.notifications ?? []).filter((n) => !n.acknowledged).length;
+  const releaseSnaps = (snaps.data?.snapshots ?? []).filter((s) => s.kind === "releases");
+  const records = (snaps.data?.snapshots ?? []).reduce((n, s) => n + (s.records ?? 0), 0);
+
   return (
-    <div className="grid">
-      <Section title="System">
-        {health.isLoading ? <Loading what="status" /> : <ErrorView error={health.error} />}
-        {health.data ? (
-          <dl className="facts">
-            <dt>Mode</dt>
-            <dd>{health.data.mode === "offline" ? "Offline (no outside connections)" : "Connected"}</dd>
-            <dt>Server</dt>
-            <dd>{health.data.environment}</dd>
-            <dt>Components</dt>
-            <dd>
-              <ul className="plain">
-                {Object.entries(health.data.components).map(([k, v]) => (
-                  <li key={k}>
-                    {k}: {v === "not_connected" ? <DataModeBadge mode="STAGED" reason="not connected in this build yet" /> : v}
-                  </li>
-                ))}
-              </ul>
-            </dd>
-          </dl>
-        ) : null}
-      </Section>
-      <Section title="Not available in this demo" mode="STAGED">
-        <ul>{(health.data?.staged ?? []).map((s) => <li key={s}>{s}</li>)}</ul>
-        {health.data?.unevaluated?.length ? (
-          <>
-            <h3>Not evaluated in this build</h3>
-            <ul>{health.data.unevaluated.map((s) => <li key={s}>{s}</li>)}</ul>
-          </>
-        ) : null}
-      </Section>
-      <Section title="Recent runs" mode={runs.data?.data_mode}>
-        {runs.isLoading ? <Loading what="runs" /> : <ErrorView error={runs.error} />}
-        {runs.data && runs.data.runs.length === 0 ? <p>No runs yet. Start one from Run now.</p> : null}
-        <ul>
-          {(runs.data?.runs ?? []).slice(0, 8).map((r) => (
-            <li key={r.run_id}>
-              <Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link> — {r.run_status}
-            </li>
-          ))}
-        </ul>
-      </Section>
-      <Section title="Notifications">
-        {notes.isLoading ? <Loading what="notifications" /> : <ErrorView error={notes.error} />}
-        <p>
-          {(notes.data?.notifications ?? []).filter((n) => !n.acknowledged).length} unread.{" "}
-          <Link to="/notifications">Open the inbox</Link>
-        </p>
-        <ul>
-          {(notes.data?.notifications ?? []).slice(0, 5).map((n) => (
-            <li key={n.notification_id}>
-              <span className={`sev sev-${n.severity}`}>{n.severity}</span> {n.message} <Time iso={n.created_at} />
-            </li>
-          ))}
-        </ul>
-      </Section>
-    </div>
+    <>
+      <div className="kpis">
+        <KpiTile icon="database" label="Snapshots" value={snaps.data ? snaps.data.snapshots.length : "—"} hint={snaps.data ? `${records.toLocaleString()} records, ${releaseSnaps.length} release closes` : "Loading…"} />
+        <KpiTile icon="list" tone="teal" label="Runs" value={runs.data ? runList.length : "—"} hint={runs.data ? `${runList.filter((r) => r.run_status === "complete").length} complete` : "Loading…"} />
+        <KpiTile icon="hand" tone={queue.data && queue.data.entries.length ? "warn" : "good"} label="Needs a person" value={queue.data ? queue.data.entries.length : "—"} hint="Items waiting for a decision" />
+        <KpiTile icon="power" tone={tripped ? "critical" : "good"} label="Kill switches tripped" value={containment.data ? tripped : "—"} hint={containment.error ? "Your role cannot see the switches" : `${containment.data?.switches.length ?? 0} switches watched`} />
+        <KpiTile icon="bell" tone={unread ? "warn" : "good"} label="Unread notifications" value={notes.data ? unread : "—"} hint={<Link to="/notifications">Open the inbox</Link>} />
+      </div>
+
+      <div className="grid-2">
+        <div>
+          <Section title="Data available" icon="database" mode={snaps.data ? "REAL" : undefined} end={project ? <span className="muted">Project {project}</span> : null}>
+            <DataAvailable />
+          </Section>
+        </div>
+        <div>
+          <Section title="Recent runs" icon="list" end={<Link to="/runs">All runs</Link>}>
+            {runs.isLoading ? <Loading what="runs" /> : <ErrorView error={runs.error} />}
+            {runs.data && runList.length === 0 ? (
+              <Empty action={{ to: "/run-now", label: "Start a release close" }}>No runs yet. Start a release close from Run now.</Empty>
+            ) : null}
+            <ul className="list">
+              {runList.slice(0, 6).map((r) => (
+                <li key={r.run_id}>
+                  <span className="grow"><Link to={`/runs/${encodeURIComponent(r.run_id)}`}>{r.run_id}</Link></span>
+                  <StatusPill status={r.run_status} />
+                </li>
+              ))}
+            </ul>
+          </Section>
+          <Section title="Live activity" icon="pulse">
+            {project ? <ActivityFeed project={project} /> : <Empty>No project is configured on this server yet.</Empty>}
+          </Section>
+          <Section title="Not available in this demo" icon="shield" mode="STAGED">
+            {health.isLoading ? <Loading what="status" lines={2} /> : <ErrorView error={health.error} />}
+            <ul className="list">
+              {(health.data?.staged ?? []).map((s) => (
+                <li key={s}><span className="grow">{s}</span></li>
+              ))}
+            </ul>
+            {health.data?.unevaluated?.length ? (
+              <>
+                <h3>Not evaluated in this build</h3>
+                <ul>{health.data.unevaluated.map((s) => <li key={s}>{s}</li>)}</ul>
+              </>
+            ) : null}
+          </Section>
+        </div>
+      </div>
+    </>
   );
 }

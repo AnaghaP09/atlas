@@ -4,7 +4,10 @@ import { App } from "./App";
 import { AppProvider } from "./app/context";
 import { bootstrapIdentity } from "./identity/bootstrap";
 import { RouterProvider } from "./lib/router";
+import { applyTheme, storedTheme } from "./lib/theme";
 import "./styles.css";
+
+applyTheme(storedTheme());
 
 const root = document.getElementById("root");
 if (!root) throw new Error("missing #root");

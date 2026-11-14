@@ -2,7 +2,9 @@ import { useState } from "react";
 import type { DataMode } from "../api/types";
 import type { LiveEvent } from "../api/stream";
 import { useApi, useApp, useIdentity, useLiveStream } from "../app/context";
+import { BarList, Sparkline, type Point } from "../components/charts";
 import { DataModeBadge, Empty, ErrorView, Loading, Section, Time } from "../components/common";
+import type { IconName } from "../components/icons";
 import { Link } from "../lib/router";
 
 export interface DashboardPanel {
@@ -102,48 +104,115 @@ export function Dashboard() {
 
   const status = useLiveStream(project ? `/api/projects/${encodeURIComponent(project)}/stream` : null, onEvent, onReset);
 
-  if (!project) return <Empty>No project is configured on this server yet.</Empty>;
+  if (!project) return <Empty>No project is configured on this server yet. Add one to the projects file and restart ATLAS.</Empty>;
   if (first.isLoading && !board) return <Loading what="the dashboard" />;
   if (first.error && !board) return <ErrorView error={first.error} />;
   if (!board) return null;
+  const issues = board.panels.find((p) => p.panel_id === "open_issues");
+  const ci = board.panels.find((p) => p.panel_id === "failing_ci");
   return (
-    <div className="grid">
-      <Section title={`Live dashboard: ${project}`} mode={board.data_mode}>
+    <>
+      <Section title={`Project ${project}`} icon="pulse" mode={board.data_mode} end={<span className={`mode-pill${status === "live" ? "" : " offline"}`}><span className="pulse" aria-hidden="true" />{status === "live" ? "Live updates on" : "Live updates paused"}</span>}>
         {board.data_source_note ? <p className="muted">{board.data_source_note}</p> : null}
-        <p data-testid="poll-line">
+        <p className="poll-ticker" data-testid="poll-line">
           Updated every {board.interval_seconds} s, last poll{" "}
           {board.last_poll ? <Time iso={board.last_poll} /> : "not yet"} · live updates: {status === "live" ? "on" : "paused"}
         </p>
       </Section>
-      {board.panels.map((p) => (
-        <Section key={p.panel_id} title={p.title} mode={p.status === "live" ? "REAL" : "STAGED"} reason={p.reason ?? null}>
-          {p.items.length === 0 ? (
-            <p className="muted">{p.status === "live" ? "Nothing here right now." : "No data yet."}</p>
-          ) : (
-            <ul>
-              {p.items.map((item, i) => (
-                <li key={i}>{String(item.title ?? item.name ?? JSON.stringify(item))}</li>
-              ))}
-            </ul>
-          )}
+      <div className="dash-grid">
+        <Section title="Open issues seen on this page" icon="chart">
+          <IssueTrend count={issues?.items.filter(isItem).length ?? 0} version={board.dashboard_version} />
         </Section>
-      ))}
-      <Section title="Activity">
-        {activity.length === 0 ? <p className="muted">No activity yet.</p> : null}
-        <ul data-testid="activity">
-          {activity.map((a, i) => {
-            const to = evidenceRoute({ ...a, project_id: a.project_id ?? project });
-            return (
-              <li key={a.activity_id ?? `${a.record_id}-${i}`}>
-                <span className="muted">{a.kind}</span> {to ? <Link to={to}>{a.title}</Link> : a.title}{" "}
-                {a.at ? <Time iso={a.at} /> : null}
-              </li>
-            );
-          })}
-        </ul>
-      </Section>
-    </div>
+        <Section title="Failing CI runs by workflow" icon="chart">
+          <CiBars items={(ci?.items ?? []).filter(isItem)} note={(ci?.items ?? []).find((i) => !isItem(i))} />
+        </Section>
+        {board.panels.map((p) => (
+          <Section key={p.panel_id} title={p.title} icon={PANEL_ICON[p.panel_id] ?? "list"} mode={p.status === "live" ? "REAL" : "STAGED"} reason={p.reason ?? null}>
+            {p.items.length === 0 ? (
+              <p className="muted">{p.status === "live" ? "Nothing here right now." : "No data yet. This panel fills in after the first successful poll."}</p>
+            ) : (
+              <ul className="panel-items">
+                {p.items.map((item, i) => (
+                  <PanelItem key={i} item={item} />
+                ))}
+              </ul>
+            )}
+          </Section>
+        ))}
+        <Section title="Activity" icon="list">
+          {activity.length === 0 ? <p className="muted">No activity yet. New records appear here as soon as a poll finds them.</p> : null}
+          <ul className="feed" data-testid="activity">
+            {activity.map((a, i) => {
+              const to = evidenceRoute({ ...a, project_id: a.project_id ?? project });
+              return (
+                <li key={a.activity_id ?? `${a.record_id}-${i}`}>
+                  <span className={`dot ${a.kind}`} aria-hidden="true" />
+                  <span>
+                    <span className="muted">{a.kind}</span> {to ? <Link to={to}>{a.title}</Link> : a.title}
+                  </span>
+                  {a.at ? <Time iso={a.at} /> : <span />}
+                </li>
+              );
+            })}
+          </ul>
+        </Section>
+      </div>
+    </>
   );
+}
+
+const PANEL_ICON: Record<string, IconName> = { open_issues: "list", failing_ci: "power", latest_release: "database", security: "shield" };
+
+/** A panel row is a real item unless it is only a note from the server. */
+function isItem(item: Record<string, unknown>): boolean {
+  return !("note" in item) || Object.keys(item).length > 1;
+}
+
+function PanelItem({ item }: { item: Record<string, unknown> }) {
+  if ("note" in item && Object.keys(item).length === 1) return <li className="panel-note">{String(item.note)}</li>;
+  const number = item.number ?? item.run_id ?? item.tag ?? null;
+  const title = String(item.title ?? item.name ?? item.tag_name ?? JSON.stringify(item));
+  const labels = Array.isArray(item.labels) ? (item.labels as unknown[]).map((l) => (typeof l === "string" ? l : String((l as { name?: string }).name ?? ""))) : [];
+  return (
+    <li>
+      {number !== null ? <span className="num">{typeof item.number === "number" ? `#${String(number)}` : String(number)}</span> : null}
+      <span>
+        {title}
+        {typeof item.conclusion === "string" ? <> <span className="pill pill-critical">{item.conclusion}</span></> : null}
+        {labels.length ? (
+          <span> {labels.slice(0, 3).map((l) => <span key={l} className="chip">{l}</span>)}</span>
+        ) : null}
+      </span>
+    </li>
+  );
+}
+
+function IssueTrend({ count, version }: { count: number; version: number }) {
+  // Readings are kept for this page only: the server does not store a history of panel sizes.
+  const [points, setPoints] = useState<Point[]>([]);
+  const [seen, setSeen] = useState<number | null>(null);
+  if (seen !== version) {
+    setSeen(version);
+    setPoints((prev) => [...prev, { label: new Date().toLocaleTimeString(), value: count }].slice(-40));
+  }
+  return (
+    <>
+      <Sparkline points={points} unit="open issues" />
+      <p className="muted">Counted at each dashboard update since this page opened.</p>
+    </>
+  );
+}
+
+function CiBars({ items, note }: { items: Record<string, unknown>[]; note?: Record<string, unknown> }) {
+  const counts = new Map<string, number>();
+  for (const it of items) {
+    const name = String(it.name ?? "workflow");
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  const rows = [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
+  if (rows.length === 0)
+    return <p className="muted">{note && typeof note.note === "string" ? note.note : "No failing runs in the latest poll."}</p>;
+  return <BarList rows={rows} unit="failing runs" />;
 }
 
 export function ActivityEvidence({ recordId, project, version }: { recordId: string; project: string; version: string }) {
