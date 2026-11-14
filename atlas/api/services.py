@@ -29,6 +29,7 @@ from atlas.reports import EventProducer
 from atlas.scheduler import AdmissionStore, Dispatcher, Scheduler
 from atlas.services.disposition import FeedbackStore
 from eval.store import EvaluationStore
+from atlas.sqlite_util import connect as safe_connect
 
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST_PATH = ROOT / "demo" / "manifest.json"
@@ -53,7 +54,7 @@ class ManualAudit:
     """Append-only record of every manual trigger and control action."""
 
     def __init__(self, path: str | Path = ":memory:") -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.execute("CREATE TABLE IF NOT EXISTS audit (id TEXT PRIMARY KEY, at TEXT, role TEXT, action TEXT, "
                          "subject TEXT, parameters TEXT)")
         self._lock = threading.Lock()

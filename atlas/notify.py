@@ -23,6 +23,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from atlas.projects import ANY_PROJECT
 from atlas.contracts import EgressPurpose, Mode, Principal
+from atlas.sqlite_util import connect as safe_connect
 
 DEFAULT_CATALOG = Path(__file__).resolve().parents[1] / "schema" / "notification_events.json"
 
@@ -98,7 +99,7 @@ class NotificationService:
         self.max_attempts = max_attempts
         self.backoff = backoff
         self.degraded = False
-        self._db = sqlite3.connect(str(db_path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(db_path), isolation_level=None, check_same_thread=False)
         self._db.executescript(SCHEMA)
         cols = {r[1] for r in self._db.execute("PRAGMA table_info(notifications)").fetchall()}
         if "project_id" not in cols:

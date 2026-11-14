@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
+from atlas.sqlite_util import connect as safe_connect
 
 TASK_FIELDS = ("task", "task_rationale", "patch", "diff", "code_proposal")
 
@@ -38,7 +39,7 @@ class FeedbackStore:
     """Append-only override and debt-acceptance records with lineage to the run."""
 
     def __init__(self, path: str | Path = ":memory:") -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.execute(
             "CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, run_id TEXT, kind TEXT, item_id TEXT, "
             "decision TEXT, rationale TEXT, principal TEXT, golden_candidate INTEGER, created TEXT)"

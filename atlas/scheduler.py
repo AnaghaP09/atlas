@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping
 
 from atlas.contracts import Mode, StartedBy, StartedByKind
+from atlas.sqlite_util import connect as safe_connect
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS admissions (
@@ -87,7 +88,7 @@ class AdmissionStore:
     """The single entry point for every run, automatic or manual."""
 
     def __init__(self, path: str | Path = ":memory:") -> None:
-        self._db = sqlite3.connect(str(path), isolation_level=None, check_same_thread=False)
+        self._db = safe_connect(str(path), isolation_level=None, check_same_thread=False)
         self._db.executescript(SCHEMA)
         cols = {r[1] for r in self._db.execute("PRAGMA table_info(admissions)").fetchall()}
         if "project_id" not in cols:
