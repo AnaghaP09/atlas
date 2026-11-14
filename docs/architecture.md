@@ -16,9 +16,9 @@ trigger (release close, failure, nightly, question; automatic or manual)
   -> admission (one transaction: event key, snapshot, run id, dispatch intent)
   -> input guardrail (flag instruction-like text; redact before any model call)
   -> router (plain code)
-  -> investigator agent  <->  read-only tools over the run's snapshot
+  -> Scout (investigator agent)  <->  read-only tools over the run's snapshot
   -> forecast and workforce services (calculations, not agents)
-  -> verifier agent (sees only the claims and the records they cite)
+  -> Sentinel (verifier agent; sees only the claims and the records they cite)
   -> verified artefact (anything bound to an unsupported claim is removed)
   -> projection per reader  ->  reports, API, live events, notifications
   -> (delegated tasks only) Approval A -> sandboxed coding agent -> Approval B
@@ -41,10 +41,17 @@ security scans for a task live in their own partition, so neither can leak into 
 
 ### Agents
 
-There are two agents. The **investigator** chooses what to read next from what it has just read.
-The **verifier** checks each claim against the records it cites and never sees the
-investigator's reasoning. Everything else (routing, forecasting, allocation, the security gate)
-is ordinary code.
+ATLAS has two AI agents, named Scout and Sentinel. They are software agents, not people.
+
+- **Scout** is the investigator. It reads the evidence, chooses what to read next from what it
+  has just read, finds the likely cause of a failure, and builds the cited findings behind the
+  next-release debt forecast.
+- **Sentinel** is the verifier. It independently checks every claim, in findings, forecast items
+  and allocation rationale, against the records it cites before anything is published. It never
+  sees Scout's reasoning, so it cannot simply agree with it.
+
+Everything else (routing, ranking the forecast, allocation, the security gate) is ordinary
+code.
 
 ### Safety controls
 

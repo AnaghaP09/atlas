@@ -27,11 +27,17 @@ investigation hand-offs and notifications.
 2. **Evidence.** Connectors read the issue tracker, git, CI, a security scanner, an architecture
    graph and, in the demo, synthetic cluster, telemetry and capacity data. Every run reads one
    frozen snapshot, so results can be reproduced.
-3. **Two agents.** An *investigator* decides what to read next from what it has just read. A
-   *verifier* checks every claim against the records it cites and never sees the investigator's
-   reasoning. Anything resting on an unsupported claim is removed before a report is published.
-4. **Calculation services.** Forecasting, allocation and the security gate are ordinary code,
-   not agents.
+3. **Two AI agents, Scout and Sentinel.** These are software agents, not people.
+   - **Scout**, the investigator, reads the evidence, decides what to read next from what it has
+     just read, finds the likely cause of a failure, and builds the cited findings behind the
+     next-release debt forecast.
+   - **Sentinel**, the verifier, independently checks every claim against the records it cites
+     before anything is published. It never sees Scout's reasoning, so it cannot simply agree
+     with it.
+
+   Anything resting on a claim Sentinel rejects is removed before a report is published.
+4. **Calculation services.** Ranking the forecast, allocating work and the security gate are
+   ordinary code, not agents; they work from Scout's verified findings.
 5. **Approvals and the coding agent.** A task delegated to a coding agent needs two
    engineering-manager approvals: one to prepare the change, and one on the exact diff. The
    agent works in a container with no network access and no secrets. The result is opened as a
