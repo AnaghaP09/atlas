@@ -299,11 +299,11 @@ def check_export_people(target: Path, people: People) -> list[str]:
     problems = []
     text = (target / "records.jsonl").read_text(encoding="utf-8")
     for h in people.handles:
-        if len(h) >= 4 and re.search(r"(?<![\w-])@?" + re.escape(h) + r"(?![\w-])", text):
+        if len(h) >= 4 and re.search(r"(?<![A-Za-z0-9_-])@?" + re.escape(h) + r"(?![A-Za-z0-9_-])", text):
             problems.append(f"{target.name}: author handle survived pseudonymisation")
             break
     for h in people.mentioned:
-        if re.search(r"(?<![\w/.-])@" + re.escape(h) + r"(?![\w-])", text):
+        if re.search(r"(?<![A-Za-z0-9_/.-])@" + re.escape(h) + r"(?![A-Za-z0-9_-])", text):
             problems.append(f"{target.name}: mentioned handle survived pseudonymisation")
             break
     if re.search(r"\b[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text):

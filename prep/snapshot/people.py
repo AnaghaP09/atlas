@@ -16,7 +16,7 @@ from typing import Any, Iterable
 from prep.reference import paths, reference
 
 LOCAL = paths()["local"]
-MENTION = re.compile(r"(?<![\w/.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![\w-])")
+MENTION = re.compile(r"(?<![A-Za-z0-9_/.-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![A-Za-z0-9_-])")
 DATA_URI = re.compile(r"data:[A-Za-z0-9.+/-]+;base64,[A-Za-z0-9+/=]+")
 SSH_KEY = re.compile(r"\b(ssh-(?:rsa|ed25519|dss)|ecdsa-sha2-nistp\d+) AAAA[A-Za-z0-9+/=]{20,}")
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
@@ -75,7 +75,7 @@ class People:
             if len(h) < 4 or h.lower() in NOT_HANDLES:
                 continue
             # Bare handles (without @) seen as authors, e.g. "Originally posted by someone".
-            text = re.sub(r"(?<![\w-])" + re.escape(h) + r"(?![\w-])", self.pseudonym(h) or h, text)
+            text = re.sub(r"(?<![A-Za-z0-9_-])" + re.escape(h) + r"(?![A-Za-z0-9_-])", self.pseudonym(h) or h, text)
         return text
 
     def scrub(self, value: Any, key: str | None = None) -> Any:

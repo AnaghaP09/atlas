@@ -72,6 +72,8 @@ def test_pseudonymisation_removes_handles_emails_images_and_keys(tmp_path):
     assert "corp.example.org" not in out and "base64" not in out and "AAAAB3" not in out
     assert people.scrub({"author": "somedev"})["author"].startswith("person-")
     assert people.scrub({"author": "kubevirt-bot"})["author"] == "kubevirt-bot"
+    # Handles directly followed by non-ASCII text are still replaced.
+    assert "somedev" not in people.scrub_text("cc @somedev我们 and somedev说")
 
 
 COMMITTED = Path("data") / "snapshots"
