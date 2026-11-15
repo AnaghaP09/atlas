@@ -250,15 +250,16 @@ export function DecisionLabel({ h, myRole }: { h: Handoff; myRole: string | null
 
 /** Exactly two choices for the engineering manager; the architect accepts the hand-offs sent to them. */
 function HandoffAnswer({ h, myRole }: { h: Handoff; myRole: string | null | undefined }) {
-  const send = useAction<{ status: string; decision?: string }, unknown>(`/api/handoffs/${encodeURIComponent(h.handoff_id)}/answer`);
+  const send = useAction<{ status: string; decision?: string }, { approval_link?: string | null }>(`/api/handoffs/${encodeURIComponent(h.handoff_id)}/answer`);
   const refresh = useInvalidateAll();
+  const { navigate } = useRouter();
   if (h.status !== "waiting" || myRole !== h.to_role) return <DecisionLabel h={h} myRole={myRole} />;
   const busy = send.state.status === "running";
   if (myRole === "em")
     return (
       <span className="inline-tools" data-testid="handoff-decide">
         <DecisionLabel h={h} myRole={myRole} />
-        <Button size="sm" variant="primary" loading={busy} onClick={() => void send.run({ status: "accepted", decision: "coding_agent" }).then(refresh)}>{DECISION_LABEL.coding_agent}</Button>
+        <Button size="sm" variant="primary" loading={busy} onClick={() => void send.run({ status: "accepted", decision: "coding_agent" }).then((r) => { refresh(); const to = (r as { approval_link?: string | null } | undefined)?.approval_link; if (to) navigate(to); })}>{DECISION_LABEL.coding_agent}</Button>
         <Button size="sm" loading={busy} onClick={() => void send.run({ status: "accepted", decision: "oncall" }).then(refresh)}>{DECISION_LABEL.oncall}</Button>
       </span>
     );

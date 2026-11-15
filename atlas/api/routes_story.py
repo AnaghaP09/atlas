@@ -14,6 +14,7 @@ from fastapi import APIRouter, Body, Request
 
 from atlas.api.identity import principal_of, require_role
 from atlas.api.routes_runs import run_view
+from atlas.api.ports import Refused
 from atlas.api.support import ApiError, check_project, envelope, idempotent, services_of
 from atlas.contracts import Principal
 from atlas.projects import ANY_PROJECT
@@ -178,15 +179,41 @@ def answer_handoff(request: Request, handoff_id: str, body: dict[str, Any] = Bod
     fields = {"decision": decision} if decision else {}
 
     def effect(key: str) -> tuple[int, dict[str, Any]]:
+        task_id = _task_for(request, row, role, key) if decision == "coding_agent" else None
         out = _store(request).set_handoff(handoff_id, status=status, reply=reply or None, **fields)
         services_of(request).audit.record(role, f"handoff.{status}", handoff_id, body)
         _notify(request, "handoff.answered", f"{handoff_id}:{status}", out["project_id"],
                 (DECISION_TEXT[decision] if decision else f"Hand-off {status.replace('_', ' ')}") + f": {out['subject_title']}"
                 + (f" ({reply})" if reply else ""),
                 f"/handoffs/{handoff_id}", ["pm"])
-        return 200, envelope(request, principal, {"handoff": _view(out)})
+        return 200, envelope(request, principal, {"handoff": _view(out), "task_id": task_id,
+                                                  "approval_link": f"/approvals?focus=pending-A-{task_id}" if task_id else None})
 
     return idempotent(request, principal, body, effect)
+
+
+def _task_for(request: Request, row: Mapping[str, Any], role: str, key: str) -> str | None:
+    """Delegating an investigation hand-off to the coding agent creates its coding task (waiting for approval)."""
+    run_id = row.get("run_id")
+    s = services_of(request)
+    if not run_id or s.orchestrator is None:
+        return None
+    existing = next((t for t in s.tasks.list(project_id=None) if t.get("run_id") == run_id), None)
+    if existing is not None:
+        return str(existing["task_id"])
+    auth = s.orchestrator.runs.authoritative(run_id)
+    if auth is None:
+        raise ApiError(409, "not_verified", "the investigation has no verified result yet")
+    gen, artefact = auth
+    action = artefact.get("action") or {}
+    if action.get("value") != "DELEGATE_TO_CODING_AGENT":
+        raise ApiError(409, "not_delegable", "ATLAS did not find a bounded code change for the coding agent in this investigation")
+    try:
+        task = s.tasks.create(run_id, gen, action, role, f"{key}:task")
+    except Refused as exc:
+        raise ApiError(exc.status, "refused", exc.reason) from exc
+    s.audit.record(role, "task.create", str(task.get("task_id")), {"run_id": run_id, "from": "handoff"})
+    return str(task.get("task_id"))
 
 
 # ------------------------------------------------------------------ product requests
