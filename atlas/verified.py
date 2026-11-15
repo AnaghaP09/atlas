@@ -21,6 +21,7 @@ LIST_FIELDS = ("items", "options", "findings", "reasoning", "insufficient_eviden
 VALUE_FIELDS = ("classification", "action")
 MIN_SUPPORT = 1
 EXECUTABLE_ACTIONS = frozenset({"DELEGATE_TO_CODING_AGENT"})
+FALLBACK_ACTION = "ASSIGN_DEVELOPER"
 
 
 class DanglingReference(ValueError):
@@ -122,8 +123,14 @@ def build_verified(artefact: Mapping[str, Any]) -> PruneResult:
     if isinstance(act, Mapping):
         touched = bound_to_removed(act)
         executable = act.get("value") in EXECUTABLE_ACTIONS
-        if classification_removed or (executable and (touched or root_cause_removed)):
+        if classification_removed:
             out["action"] = empty(act)
+            removed_fields.append("action")
+        elif executable and (touched or root_cause_removed):
+            # Code work needs full support. With partial support the item still needs an owner, so it
+            # goes to a developer instead of being left without an action.
+            kept = surviving(act) if touched else dict(act)
+            out["action"] = empty(act) if kept is None else {**kept, "value": FALLBACK_ACTION}
             removed_fields.append("action")
         elif touched:
             kept = surviving(act)

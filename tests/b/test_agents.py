@@ -72,12 +72,12 @@ def test_coding_action_needs_every_claim_and_the_root_cause() -> None:
     a = artefact([claim("c1"), claim("c2"), claim("c3", "rejected"), claim("c4")])
     v = build_verified(a).artefact
     assert v["classification"]["value"] == "DEPENDENCY"
-    assert v["action"]["value"] is None and v["evidence_recommendation"] is None
+    assert v["action"]["value"] == "ASSIGN_DEVELOPER"
     b = artefact([claim("c1"), claim("c2"), claim("c3"), claim("c5", "rejected"), claim("c4")])
     b["root_cause"] = bound("cause", ["c5"])
     w = build_verified(b).artefact
     assert w["root_cause"] is None and w["classification"]["value"] == "DEPENDENCY"
-    assert w["action"]["value"] is None
+    assert w["action"]["value"] == "ASSIGN_DEVELOPER"
 
 
 def test_three_hop_chain_pruned_even_when_later_claims_supported() -> None:
@@ -91,7 +91,7 @@ def test_three_hop_chain_pruned_even_when_later_claims_supported() -> None:
 @pytest.mark.parametrize("verdict", ["contradicted", "missing"])
 def test_contradicted_and_missing_prune_like_rejected(verdict) -> None:
     v = build_verified(artefact([claim("c1"), claim("c2"), claim("c3", verdict), claim("c4")])).artefact
-    assert v["action"]["value"] is None and v["classification"]["value"] == "DEPENDENCY"
+    assert v["action"]["value"] == "ASSIGN_DEVELOPER" and v["classification"]["value"] == "DEPENDENCY"
 
 
 def test_dangling_reference_fails() -> None:
@@ -233,6 +233,6 @@ def test_log_cap_and_filter() -> None:
 
 def test_tools_cover_the_planned_list() -> None:
     names = set(build_tools())
-    assert {"get_release_issues", "get_changed_components", "get_failed_pipeline_jobs", "get_cluster_events",
+    assert {"get_pull_request", "get_changed_components", "get_failed_pipeline_jobs", "get_cluster_events",
             "get_blocking_vulnerabilities", "get_error_rate", "trace_dependency_impact", "get_issue",
             "get_issue_timeline", "search_issues"} <= names

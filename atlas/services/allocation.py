@@ -36,7 +36,11 @@ def allocate(classification: str | None, flags: Flags) -> str | None:
         return "ESCALATE_DECISION"
     if flags.special_hardware:
         return "ASSIGN_DEVELOPER"
-    if classification in {"DEPENDENCY", "TEST_DEFECT"} and flags.bounded_change and not flags.cross_component:
+    # Adapting tests is a contained change by nature, so a test defect goes to the coding agent unless
+    # it spans components. A dependency goes there only when the fix is a plain update or pin.
+    if classification == "TEST_DEFECT" and not flags.cross_component:
+        return "DELEGATE_TO_CODING_AGENT"
+    if classification == "DEPENDENCY" and flags.bounded_change and not flags.cross_component:
         return "DELEGATE_TO_CODING_AGENT"
     if classification in {"CODE_DEFECT", "DEPENDENCY", "TEST_DEFECT"}:
         return "ASSIGN_DEVELOPER"

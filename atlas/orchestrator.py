@@ -11,6 +11,7 @@ from __future__ import annotations
 from atlas.contracts import TaskDisposition  # noqa: F401
 
 import json
+import os
 import sqlite3
 import threading
 import uuid
@@ -20,6 +21,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol, Sequence
 
 from atlas.agents import SCOUT, SENTINEL
+from atlas.agents.brief import build_brief, canonical_id
 from atlas.agents.investigator import Budget, Investigator, build_tools
 from atlas.agents.resolver import EvidenceResolver
 from atlas.agents.verifier import Verifier, VerifierFailed
@@ -227,15 +229,20 @@ class Orchestrator:
         task = trigger.get("question") or f"Investigate failure event {trigger.get('event_id')} ({trigger.get('summary', '')})"
         scout = Investigator(self.d.outbound, resolver, build_tools(), clock=self.d.clock, budget=self.d.budget_factory(),
                              on_step=lambda info: self._event("run.progress", run_id, agent=SCOUT, **info))
+        brief = None
+        if not trigger.get("question") and trigger.get("event_id"):
+            # The records linked to the event are gathered (and scanned) by code before Scout starts.
+            brief = build_brief(resolver, str(trigger["event_id"]))
         try:
-            inv = scout.run(task)
+            inv = scout.run(task, brief.text if brief else None)
         except PayloadWithheld:
             out["run_status"] = "failed"
             self.d.queue.add("payload_withheld", run_id, run_id, "a payload could not be made safe", project_id=ctx.project_id)
             self._notify("run.failed", run_id, "Scout stopped: a payload could not be made safe to send")
             return self._finish(run_id, ctx, trigger, sb, out, raw={"claims": []})
         out["cost"].update(steps=inv.steps, tool_calls=inv.tool_calls)
-        injection = bool(inv.flagged_records)
+        # A run is held when instruction-like text sits in a record linked to the event, read or not.
+        injection = bool(inv.flagged_records) or bool(brief and brief.flagged_ids)
         if inv.status == "failed":
             out["run_status"] = "failed"
             self._notify("run.failed", run_id, f"Scout could not complete the investigation ({inv.error})")
@@ -249,6 +256,7 @@ class Orchestrator:
         res = inv.result or {}
         claims = []
         for c in res.get("claims", []):
+            c = {**c, "evidence_ids": [canonical_id(i, resolver.seen) for i in c["evidence_ids"]]}
             claims.append({"id": c["id"], "text": c["text"], "kind": c["kind"], "evidence_ids": list(c["evidence_ids"]),
                            "depends_on": list(c["depends_on"]), "required_scopes": self._scopes_for(c["evidence_ids"], resolver),
                            "verdict": "missing", "verdict_reason": None})
@@ -264,6 +272,14 @@ class Orchestrator:
         out["classification"] = {"value": res.get("classification"), "claim_ids": cls_ids, "required_scopes": scopes(cls_ids)}
         out["confidence"] = res.get("confidence")
         flags = Flags(**(res.get("flags") or {}))
+        if brief is not None:
+            # Facts that code can read from the issue itself do not depend on the model noticing them.
+            duplicate = flags.duplicate_of
+            if not duplicate and res.get("classification") == "DUPLICATE" and brief.duplicate_candidates:
+                duplicate = brief.duplicate_candidates[0]
+            flags = Flags(bounded_change=flags.bounded_change, cross_component=flags.cross_component,
+                          release_blocker=flags.release_blocker or brief.release_blocker,
+                          special_hardware=flags.special_hardware, duplicate_of=duplicate)
         out["action"] = {"value": allocate(res.get("classification"), flags), "claim_ids": cls_ids, "required_scopes": scopes(cls_ids)}
         if res.get("root_cause"):
             rc_ids = [i for i in res.get("root_cause_claim_ids", []) if i in by_id]
@@ -275,6 +291,7 @@ class Orchestrator:
         out["claims"] = claims
         raw = json.loads(json.dumps(out, default=str))
         verified = self._verify(run_id, out, resolver)
+        self._trace(run_id, ctx, task, scout, res, out)
         if verified is None:
             return self._finish(run_id, ctx, trigger, sb, out, raw=raw)
         verified = apply_injection_disposition(verified, injection)
@@ -282,6 +299,25 @@ class Orchestrator:
             gate = self.d.gate.evaluate_for_run(resolver, self.d.components_for(trigger))
             verified["security_check"] = gate.as_security_check()
         return self._finish(run_id, ctx, trigger, sb, verified, raw=raw)
+
+    def _trace(self, run_id: str, ctx: RunContext, task: str, scout: Investigator, res: Mapping[str, Any],
+               out: Mapping[str, Any]) -> None:
+        """Write what the investigation read and concluded to a local folder when one is configured.
+
+        A diagnostic aid for measuring accuracy; it is off unless ATLAS_TRACE_DIR is set.
+        """
+        folder = os.environ.get("ATLAS_TRACE_DIR")
+        if not folder:
+            return
+        try:
+            Path(folder).mkdir(parents=True, exist_ok=True)
+            doc = {"run_id": run_id, "snapshot_id": ctx.snapshot_id, "task": task,
+                   "tool_calls": getattr(scout, "trace", []), "scout_result": res,
+                   "claims": out.get("claims"), "verifier": out.get("verifier"), "verifier_error": out.get("verifier_error"),
+                   "classification": out.get("classification"), "action": out.get("action")}
+            (Path(folder) / f"{run_id}.json").write_text(json.dumps(doc, indent=1, default=str), encoding="utf-8")
+        except OSError:
+            pass
 
     def _verify(self, run_id: str, out: dict[str, Any], resolver: EvidenceResolver) -> dict[str, Any] | None:
         self._event("run.progress", run_id, agent=SENTINEL, stage="verifying", claims=len(out["claims"]))
