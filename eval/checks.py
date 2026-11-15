@@ -94,8 +94,6 @@ def workflow_case(snapshot_dir: Path, issue_numbers: Sequence[int]) -> dict[str,
     wanted = {f"issue/{n}" for n in issue_numbers}
     issues = [json.loads(r["content"]) for r in rows if r.get("entity_type") == "issue" and r.get("source_id") in wanted]
     log = "\n".join(str(json.loads(r["content"]).get("log", "")) for r in rows if r.get("entity_type") == "ci_job")
-    text = "\n".join(str(i.get("body", "")) + "\n" + "\n".join(str(c.get("body", "")) for c in i.get("comments") or [])
-                     for i in issues)
     commits = []
     for r in rows:
         if r.get("entity_type") == "commit":
@@ -103,7 +101,9 @@ def workflow_case(snapshot_dir: Path, issue_numbers: Sequence[int]) -> dict[str,
             commits.append({"sha": content.get("sha") or r.get("commit_sha") or r.get("source_id"),
                             "merged_at": content.get("committed_at") or content.get("merged_at") or ""})
     first_failure = min((str(i.get("created_at")) for i in issues if i.get("created_at")), default=None)
-    return {"log": log + "\n" + text, "failure_ids": [str(n) for n in issue_numbers] if issues else [],
+    # The workflow reads the failure log only. Giving it the report text as well would make its
+    # environment rule fire on ordinary words in a bug report.
+    return {"log": log, "failure_ids": [str(n) for n in issue_numbers] if issues else [],
             "commits": commits, "first_failure_at": first_failure}
 
 
