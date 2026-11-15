@@ -52,7 +52,7 @@ describe("requests", () => {
   it("offers New request to the product manager only", async () => {
     renderAs("pm", <Requests />, { "/api/requests": () => json({ ...envelope, requests: [req] }) });
     expect(await screen.findByText("New request")).toBeTruthy();
-    expect(screen.getByText("Technical dependency")).toBeTruthy();
+    expect(await screen.findByText("Technical dependency")).toBeTruthy();
   });
 
   it("lets the owner answer and marks the other role as for information", async () => {
