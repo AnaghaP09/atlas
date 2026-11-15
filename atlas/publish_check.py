@@ -17,15 +17,36 @@ from pathlib import Path
 from atlas.config import load_settings
 from atlas.contracts import TaskState
 from atlas.execution.db import OpsDB
+from atlas.execution.target import summary_line
 from atlas.tasks import TaskStore
 
 READY = (TaskState.PREPARED, TaskState.APPROVED_B)
 
 
+TITLE_LIMIT = 80  # "Draft: " plus the 72-character summary line
+RE_PREPARE = ("This task was prepared before titles were shortened: its title is the whole task text. The title "
+              "is part of what Approval B covers, so it cannot be changed here. Prepare the task again; the new "
+              "title is shown below.")
+
+
+def stale_title(frozen: dict) -> bool:
+    """True when the frozen title or commit message is not a single short line."""
+    title = str(frozen.get("title") or "")
+    first = str(frozen.get("commit_message") or "").split("\n", 1)[0]
+    return "\n" in title or len(title) > TITLE_LIMIT or len(first) > TITLE_LIMIT
+
+
 def describe(task) -> dict:
     frozen = dict(task.artefact or {})
     files = frozen.get("changed_files") or {}
+    renew = {}
+    if stale_title(frozen):
+        summary = summary_line(task.task_text)
+        renew = {"must_be_prepared_again": True, "reason": RE_PREPARE,
+                 "title_after_preparing_again": f"Draft: {summary}",
+                 "commit_message_after_preparing_again": f"Fix: {summary}"}
     return {
+        **renew,
         "task_id": task.task_id,
         "state": task.state.value,
         "destination_repository": task.destination_repo,
