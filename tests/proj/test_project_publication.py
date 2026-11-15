@@ -39,6 +39,53 @@ def test_setup_fills_the_first_projects_empty_publish_targets(tmp_path):
     assert tomllib.loads(projects.read_text(encoding="utf-8"))["projects"]["argo-cd"]["export"]["publish_targets"] == ["owner/argo-target"]
 
 
+def test_setup_never_grants_a_target_another_project_already_lists(tmp_path):
+    projects = tmp_path / "projects.toml"
+    projects.write_text(EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    assert grant_publish_target(projects, "argo-cd", "owner/shared") is True
+    assert grant_publish_target(projects, "kubevirt", "owner/shared") is False
+    assert grant_publish_target(projects, "kubevirt", "Owner/Shared") is False
+    data = tomllib.loads(projects.read_text(encoding="utf-8"))["projects"]
+    assert data["kubevirt"]["export"]["publish_targets"] == []
+
+
+def test_setup_grants_only_on_its_first_run_and_says_what_it_did(tmp_path):
+    from deploy.init import first_run_publish_grant
+
+    projects = tmp_path / "projects.toml"
+    projects.write_text(EXAMPLE.read_text(encoding="utf-8"), encoding="utf-8")
+    assert first_run_publish_grant(projects, "argo-cd", "", first_run=True) is None
+    said = first_run_publish_grant(projects, "argo-cd", "owner/target", first_run=False)
+    assert "Left publish targets as they are" in said
+    assert all(p["export"]["publish_targets"] == []
+               for p in tomllib.loads(projects.read_text(encoding="utf-8"))["projects"].values())
+    said = first_run_publish_grant(projects, "argo-cd", "owner/target", first_run=True)
+    assert "Let project 'argo-cd' publish to owner/target" in said
+    # A second run, even one that thinks it is first, never hands the same target to another project.
+    said = first_run_publish_grant(projects, "kubevirt", "owner/target", first_run=True)
+    assert "already publishes to owner/target" in said
+    data = tomllib.loads(projects.read_text(encoding="utf-8"))["projects"]
+    assert data["kubevirt"]["export"]["publish_targets"] == []
+    assert "not an owner/repository name" in first_run_publish_grant(projects, "kubevirt", "<owner>/<repo>",
+                                                                     first_run=True)
+
+
+def test_setup_rerun_through_run_keeps_publish_targets(tmp_path, monkeypatch):
+    from deploy import init
+
+    (tmp_path / ".env.example").write_text("ATLAS_PUBLISH_TARGET=owner/target\n", encoding="utf-8")
+    monkeypatch.setattr(init, "find_openssl", lambda _=None: None)  # stop after the project step
+    import io
+    first, second = io.StringIO(), io.StringIO()
+    init.run([], out=first, repo_root=tmp_path)
+    init.run([], out=second, repo_root=tmp_path)
+    data = tomllib.loads((tmp_path / "data" / "local" / "projects.toml").read_text(encoding="utf-8"))["projects"]
+    granted = [pid for pid, p in data.items() if "owner/target" in p["export"]["publish_targets"]]
+    assert granted == ["argo-cd"]
+    assert "Let project 'argo-cd' publish to owner/target" in first.getvalue()
+    assert "already publishes to owner/target" in second.getvalue()
+
+
 def test_the_example_names_no_repository_to_publish_to():
     data = tomllib.loads(EXAMPLE.read_text(encoding="utf-8"))["projects"]
     assert all(p["export"]["publish_targets"] == [] for p in data.values())

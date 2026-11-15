@@ -48,9 +48,9 @@ regression = "regression"
 
 # Where each project may publish and which notification audiences may receive it.
 # Publication is off unless a target is set here and in ATLAS_PUBLISH_TARGET.
-# Setup fills the first project's empty publish_targets from ATLAS_PUBLISH_TARGET when that is set,
-# so you only list a target here by hand for other projects. Use your own test repository, never
-# the upstream project's repository.
+# On its first run, setup fills the first project's empty publish_targets from ATLAS_PUBLISH_TARGET
+# when that is set and no project lists it yet. Later runs never add targets, so list any other
+# target here by hand. Use your own test repository, never the upstream project's repository.
 [projects.kubevirt.export]
 publish_targets = []
 notification_audiences = []
