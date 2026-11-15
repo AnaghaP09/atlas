@@ -1,3 +1,4 @@
+import { HandOff } from "./Requests";
 import { useQueryClient } from "@tanstack/react-query";
 import { useRunTitles } from "./Queue";
 import { useRef, useState } from "react";
@@ -103,6 +104,9 @@ export function ReportBody({ r }: { r: ReportView }) {
   return (
     <>
       <Verdict report={r.report} />
+      {r.report_type === "investigation" ? (
+        <HandOff subjectType="investigation" subjectId={r.run_id} title={String((r.report.root_cause as { text?: string } | undefined)?.text ?? "Investigation").slice(0, 280)} runId={r.run_id} reportId={r.report_id} />
+      ) : null}
       {items.length ? (
         <ItemsTable items={items} runId={r.run_id} kind={r.report_type} claims={claims} />
       ) : (
@@ -263,6 +267,9 @@ function ItemsTable({ items, runId, kind, claims }: { items: ReportItem[]; runId
                 <td className="num">{typeof it.score === "number" ? it.score.toFixed(2) : "—"}</td>
                 <td><VerdictChip verdict={verdictOf(it)} /></td>
                 <td>
+                  {kind === "forecast" ? (
+                    <HandOff subjectType="forecast_item" subjectId={String(it.issue_id ?? it.id ?? i)} title={it.title ?? "Forecast item"} runId={runId} reportId={`${runId}:forecast`} />
+                  ) : null}
                   {(it.evidence ?? []).slice(0, 3).map((id, n) => (
                     <Link key={id} className="chip cite" title="Open the cited record" to={`/evidence/${encodeURIComponent(id)}?run=${encodeURIComponent(runId)}`}>
                       Record {n + 1}

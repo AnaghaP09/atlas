@@ -57,6 +57,8 @@ PAGES: tuple[Page, ...] = (
     Page("schedules", "/schedules", "Automatic runs", "Work", "For the engineering manager: watchers and schedules."),
     Page("runs", "/runs", "Runs", "Work", "Every run with its status and reports."),
     Page("queue", "/queue", "Needs a person", "Work", "Items ATLAS will not decide on its own."),
+    Page("requests", "/requests", "Requests", "Work",
+         "Requests from the product manager to the engineering manager and solution architect."),
     Page("approvals", "/approvals", "Approvals", "Work", "For the engineering manager: approve or reject coding-agent tasks."),
     Page("tasks", "/tasks", "Tasks", "Work", "For the engineering manager: coding-agent tasks from proposal to acceptance."),
     Page("notifications", "/notifications", "Notifications", "Safety", "Errors, reminders and decisions routed to your role."),
@@ -78,11 +80,11 @@ GROUP_ORDER = ("Overview", "Reports", "Work", "Safety", "Insight", "Demo")
 
 # The matrix. Order inside a role's list is the menu order within each group.
 ROLE_PAGES: dict[str, tuple[str, ...]] = {
-    "pm": ("home", "dashboard", "report_forecast", "run_now", "runs", "notifications", "access_requests", "feedback",
+    "pm": ("home", "dashboard", "report_forecast", "requests", "run_now", "runs", "notifications", "access_requests", "feedback",
            "evaluation"),
-    "em": ("home", "dashboard", "report_allocation", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
+    "em": ("home", "dashboard", "report_allocation", "requests", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
            "notifications", "access_requests", "scorecard"),
-    "architect": ("home", "dashboard", "report_architecture", "runs", "notifications", "access_requests", "graph",
+    "architect": ("home", "dashboard", "report_architecture", "requests", "runs", "notifications", "access_requests", "graph",
                   "feedback"),
     "security": ("home", "dashboard", "report_security", "queue", "notifications", "containment", "access_requests"),
     "oncall": ("home", "dashboard", "report_investigation", "run_now", "runs", "notifications", "access_requests"),

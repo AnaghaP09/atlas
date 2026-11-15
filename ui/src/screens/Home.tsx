@@ -7,6 +7,7 @@ import { useCurrentProject, type ActivityItem } from "./Dashboard";
 import { LiveNumber, useMetrics } from "../lib/metrics";
 import type { Navigation } from "../lib/nav";
 import { RoleFocus } from "./RoleHome";
+import { StoryHome } from "./Requests";
 import { DATASET_GROUPS, kindOf, visibleDatasets } from "../components/dataset";
 
 export interface SnapshotItem {
@@ -105,6 +106,7 @@ export function Home() {
   return (
     <>
       <RoleFocus home={nav.data?.home} />
+      <StoryHome />
       <div className="kpis">
         <KpiTile icon="database" label="Open issues at latest release" value={latest && typeof latest.open_issues === "number" ? latest.open_issues : "—"} hint={latest ? `${latest.title} · ${latest.as_of_label}` : undefined} />
         <KpiTile testId="kpi-runs" icon="list" tone="teal" label="Runs" value={<LiveNumber value={m.data?.runs_total} />} hint={m.data?.runs_by_status ? `${m.data.runs_by_status.complete ?? 0} done` : undefined} updated={m.data?.computed_at} />

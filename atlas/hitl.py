@@ -36,6 +36,8 @@ TRIGGERS = frozenset(
         "support_withdrawn",
         "run_unverified",
         "access_request",
+        "handoff",
+        "product_request",
     }
 )
 

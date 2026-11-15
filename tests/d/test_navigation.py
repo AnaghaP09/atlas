@@ -9,11 +9,11 @@ from atlas.api.catalog import MANUAL_TRIGGERS
 from tests.d.conftest import H
 
 EXPECTED = {
-    "pm": {"home", "dashboard", "report_forecast", "run_now", "runs", "feedback", "evaluation", "notifications",
+    "pm": {"home", "dashboard", "report_forecast", "requests", "run_now", "runs", "feedback", "evaluation", "notifications",
            "access_requests"},
-    "em": {"home", "dashboard", "report_allocation", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
+    "em": {"home", "dashboard", "report_allocation", "requests", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
            "scorecard", "notifications", "access_requests"},
-    "architect": {"home", "dashboard", "report_architecture", "graph", "runs", "feedback", "notifications",
+    "architect": {"home", "dashboard", "report_architecture", "requests", "graph", "runs", "feedback", "notifications",
                   "access_requests"},
     "security": {"home", "dashboard", "report_security", "queue", "containment", "notifications", "access_requests"},
     "oncall": {"home", "dashboard", "run_now", "runs", "report_investigation", "notifications", "access_requests"},
