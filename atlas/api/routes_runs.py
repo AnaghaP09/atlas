@@ -19,6 +19,21 @@ from atlas.scheduler import manual_admission
 
 router = APIRouter()
 
+
+def _run_cost(cost: Any) -> Any:
+    """Adds ``spend_recorded``. Runs stored before per-run counting kept a running total, so their
+    spend and token counts are not shown as the run's own."""
+    if not isinstance(cost, dict):
+        return cost
+    out = dict(cost)
+    recorded = bool(out.pop("per_run", False))
+    out["spend_recorded"] = recorded
+    if not recorded:
+        out["usd"] = None
+        out["input_tokens"] = None
+        out["output_tokens"] = None
+    return out
+
 REPORTS_FOR = {
     "forecast": ("forecast", "allocation", "architecture"),
     "investigation": ("investigation", "security_gate"),
@@ -132,7 +147,7 @@ def run_view(request: Request, run_id: str) -> dict[str, Any] | None:
         "superseded_generations": list(range(1, gen)) if gen else [],
         "run_status": (artefact or {}).get("run_status") or ("failed" if run_id in s.run_errors else "pending"),
         "error": s.run_errors.get(run_id),
-        "cost": (artefact or {}).get("cost"),
+        "cost": _run_cost((artefact or {}).get("cost")),
         "reports": [],
     }
     view.update(_run_label(s, adm, snap))

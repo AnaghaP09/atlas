@@ -347,6 +347,8 @@ class Orchestrator:
             out["cost"].update(input_tokens=max(stats.input_tokens - base[0], 0),
                                output_tokens=max(stats.output_tokens - base[1], 0),
                                usd=round(max(stats.cost_usd - base[2], 0.0), 6))
+            # Marks that these figures are this run's own share, not a running total.
+            out["cost"]["per_run"] = True
         if ctx.project_id:
             out["project_id"] = ctx.project_id
         self.runs.save_run(run_id, ctx, trigger, sb, raw)

@@ -88,9 +88,10 @@ interface Cost {
   steps?: number;
   tool_calls?: number;
   seconds?: number;
-  usd?: number;
-  input_tokens?: number;
-  output_tokens?: number;
+  usd?: number | null;
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  spend_recorded?: boolean;
 }
 
 function Budgets({ cost }: { cost: Cost | null }) {
@@ -100,10 +101,14 @@ function Budgets({ cost }: { cost: Cost | null }) {
       <UsageBar label="Steps" used={cost.steps ?? 0} limit={LIMITS.steps} />
       <UsageBar label="Tool calls" used={cost.tool_calls ?? 0} limit={LIMITS.tool_calls} />
       <UsageBar label="Minutes" used={Math.round(((cost.seconds ?? 0) / 60) * 10) / 10} limit={LIMITS.seconds / 60} />
-      <p className="muted num">
-        Model spend ${(cost.usd ?? 0).toFixed(3)} · {(cost.input_tokens ?? 0).toLocaleString()} input tokens ·{" "}
-        {(cost.output_tokens ?? 0).toLocaleString()} output tokens
-      </p>
+      {cost.spend_recorded === false ? (
+        <p className="muted">Model spend not recorded</p>
+      ) : (
+        <p className="muted num">
+          Model spend ${(cost.usd ?? 0).toFixed(3)} · {(cost.input_tokens ?? 0).toLocaleString()} input tokens ·{" "}
+          {(cost.output_tokens ?? 0).toLocaleString()} output tokens
+        </p>
+      )}
     </div>
   );
 }
