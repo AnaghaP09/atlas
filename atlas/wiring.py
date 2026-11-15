@@ -545,6 +545,24 @@ class TaskPortAdapter:
             raise self._refuse(exc) from exc
         return self._view(task_id)
 
+    def one_click(self, task_id: str, principal_role: str, idempotency_key: str) -> Mapping[str, Any]:
+        """One engineering-manager click: approval A, preparation in the sandbox, approval B, draft PR.
+
+        Approval B is still evaluated by the eligibility gate: it is granted only when every sandbox
+        check passed, so a failed check stops here and the task waits for a person.
+        """
+        if principal_role != "em":
+            raise Refused("the one-click path is started by the engineering manager role", 403)
+        if self.w.tasks.get(task_id).state in (TaskState.PROPOSED, TaskState.AWAITING_REAPPROVAL):
+            self.decide(f"pending-A-{task_id}", "approve", 0.0, principal_role, f"{idempotency_key}:a")
+        if self.w.tasks.get(task_id).state == TaskState.APPROVED_A:
+            self.prepare(task_id, principal_role, f"{idempotency_key}:p")
+        if self.w.tasks.get(task_id).state == TaskState.PREPARED:
+            self.decide(f"pending-B-{task_id}", "approve", 0.0, principal_role, f"{idempotency_key}:b")
+        if self.w.tasks.get(task_id).state == TaskState.APPROVED_B:
+            return self.publish(task_id, principal_role, f"{idempotency_key}:u")
+        return self._view(task_id)
+
     def publish(self, task_id: str, principal_role: str, idempotency_key: str) -> Mapping[str, Any]:
         if self.w.publisher is None:
             raise NotWired(NOT_CONNECTED_PUBLICATION)

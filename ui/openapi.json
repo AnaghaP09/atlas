@@ -3159,6 +3159,61 @@
         "summary": "Adjudicate"
       }
     },
+    "/api/tasks/{task_id}/approve-and-publish": {
+      "post": {
+        "operationId": "approve_and_publish_api_tasks__task_id__approve_and_publish_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "required": true,
+            "schema": {
+              "title": "Task Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Approve And Publish"
+      }
+    },
     "/api/tasks/{task_id}/prepare": {
       "post": {
         "operationId": "prepare_api_tasks__task_id__prepare_post",

@@ -176,6 +176,11 @@ def publish(request: Request, task_id: str, body: dict[str, Any] | None = Body(N
     return _task_step(request, task_id, "publish", {"em"}, body)
 
 
+@router.post("/tasks/{task_id}/approve-and-publish")
+def approve_and_publish(request: Request, task_id: str, body: dict[str, Any] | None = Body(None)):
+    return _task_step(request, task_id, "one_click", {"em"}, body)
+
+
 @router.post("/tasks/{task_id}/adjudicate")
 def adjudicate(request: Request, task_id: str, body: dict[str, Any] = Body(...)):
     return _task_step(request, task_id, "adjudicate", {"em", "architect", "audit"}, body)

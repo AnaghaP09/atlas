@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Approval } from "../api/types";
-import { useAction, useApi, useInvalidateAll } from "../app/context";
+import { useAction, useIdentity, useApi, useInvalidateAll } from "../app/context";
 import { ActionResult, Button, ConfirmButton, Empty, ErrorView, IdDetails, Loading, StatusPill, Time } from "../components/common";
 import { LockedChip } from "../components/access";
 import { Icon } from "../components/icons";
@@ -42,6 +42,8 @@ function shortHash(v: unknown): string | null {
 
 function ApprovalCard({ a, focused }: { a: Approval; focused: boolean }) {
   const decide = useAction<{ decision: string; review_minutes?: number }, unknown>(`/api/approvals/${encodeURIComponent(a.approval_id)}/decision`);
+  const oneClick = useAction<Record<string, never>, unknown>(`/api/tasks/${encodeURIComponent(a.task_id)}/approve-and-publish`);
+  const { principal } = useIdentity();
   const refresh = useInvalidateAll();
   const blocked = useBlockedBy(a.kind === "B" ? "publication" : "preparation");
   const pending = a.state === "pending" || a.state === "requested";
@@ -93,6 +95,11 @@ function ApprovalCard({ a, focused }: { a: Approval; focused: boolean }) {
       {a.kind === "B" && typeof a.diff === "string" ? <pre className="diff" aria-label="The change that will be published">{a.diff}</pre> : null}
       {pending ? (
         <div className="approval-actions">
+          {principal?.role === "em" && a.kind === "A" ? (
+            <Button variant="primary" icon={blocked.length ? "lock" : "ok"} disabled={blocked.length > 0}
+              loading={oneClick.state.status === "running"} data-testid="approve-and-publish"
+              onClick={() => void oneClick.run({}).then(refresh)}>Approve and publish draft PR</Button>
+          ) : null}
           <ConfirmButton
             label="Approve"
             title={a.kind === "B" ? "Publish this change as a draft pull request?" : "Let the coding agent prepare this change?"}
@@ -108,6 +115,7 @@ function ApprovalCard({ a, focused }: { a: Approval; focused: boolean }) {
           <Button variant="secondary" onClick={() => void decide.run({ decision: "reject" }).then(refresh)}>Reject</Button>
           <BlockedNote by={blocked} />
           <ActionResult state={decide.state} retry={() => void decide.retrySame()} success="Decision recorded" />
+          <ActionResult state={oneClick.state} retry={() => void oneClick.retrySame()} success="Approved. The coding agent prepared the change, every check passed, and the draft pull request is open. See Tasks." />
         </div>
       ) : null}
       <IdDetails items={[["Approval id", a.approval_id], ["Task id", a.task_id], ["Check number", a.verification_generation != null ? String(a.verification_generation) : null], ["Security decision", a.security_decision_id ?? null], ["Change fingerprint", typeof hash === "string" ? hash : null]]} />
