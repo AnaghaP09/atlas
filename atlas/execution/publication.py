@@ -26,6 +26,15 @@ from atlas.execution.ports import PublicationAPI
 from atlas.tasks import TaskStore
 
 STEPS = ("push", "pull_request", "description")
+BASE_CHANGED = "The target repository changed after the task was prepared. Both approvals are void; prepare the task again."
+
+
+def git_blob_id(text: str) -> str:
+    """The id git gives a file with this content (SHA-1 over a ``blob`` header and the bytes)."""
+    import hashlib
+
+    data = text.encode("utf-8")
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()  # noqa: S324 - a git object id
 
 
 class PublicationRefused(RuntimeError):
@@ -43,7 +52,8 @@ class Publisher:
                  api: PublicationAPI, projection: Projection, base_tree: Callable[[Any], dict[str, str]],
                  containment: ContainmentStore,
                  publish_grant: Callable[[str | None, str], bool] | None = None,
-                 upstream_repositories: frozenset[str] | set[str] = frozenset()) -> None:
+                 upstream_repositories: frozenset[str] | set[str] = frozenset(),
+                 notifier: Any = None, not_compared: frozenset[str] | set[str] = frozenset()) -> None:
         self.db = db
         self.tasks = tasks
         self.approvals = approvals
@@ -56,6 +66,9 @@ class Publisher:
         self.publish_grant = publish_grant
         # Repositories ATLAS reads from (from configuration and the projects file); never written to.
         self.upstream = {r.lower() for r in upstream_repositories}
+        self.notifier = notifier
+        # Files the target repository keeps for itself; they are left out of the base comparison.
+        self.not_compared = set(not_compared)
 
     # -- journal -------------------------------------------------------------------------------
 
@@ -87,6 +100,41 @@ class Publisher:
             commit_message=frozen.get("commit_message", ""), title=frozen.get("title", ""), body=frozen.get("body", ""),
             field_scopes=frozen.get("field_scopes") or None, project_id=task.project_id or None,
         )
+
+    # -- base match ------------------------------------------------------------------------------
+
+    def base_problems(self, task) -> list[str]:
+        """Files of the prepared base tree that are missing or different on the remote base branch.
+
+        The change was prepared against the local copy of the target. If the remote base has moved
+        away from it, the frozen change no longer says what would really be published.
+        """
+        if not hasattr(self.api, "base_blobs"):
+            return []
+        remote = self.api.base_blobs(task.destination_repo, task.base_ref)
+        problems = []
+        for path, text in sorted(self.base_tree(task).items()):
+            if path in self.not_compared:
+                continue
+            if path not in remote:
+                problems.append(f"{path} is missing on the base branch of the target")
+            elif remote[path] != git_blob_id(text):
+                problems.append(f"{path} differs on the base branch of the target")
+        return problems
+
+    def _refuse_base(self, task_id: str, problems: list[str], now: datetime) -> None:
+        task = self.tasks.get(task_id)
+        self.approvals.void_task(task_id, "the base branch of the target no longer matches the prepared change", now)
+        with self.db.transaction() as conn:
+            if self.tasks.get(task_id).state == TaskState.APPROVED_B:
+                self.tasks.transition(task_id, TaskState.APPROVED_A, "target base changed; prepare again", now, conn=conn)
+        if self.notifier is not None:
+            content = {"text": BASE_CHANGED, "task_id": task_id, "required_scopes": ["internal"]}
+            try:
+                self.notifier.emit("approval.voided", task_id, [task_id], frozenset({"internal"}), content)
+            except Exception:  # noqa: BLE001 - a notification fault must not hide the refusal
+                pass
+        raise PublicationRefused(problems)
 
     def _gate(self, task_id: str, now: datetime) -> None:
         task = self.tasks.get(task_id)
@@ -178,6 +226,10 @@ class Publisher:
                 self._gate(task_id, now)
                 task = self.tasks.get(task_id)
                 frozen = task.artefact or {}
+                if step == "push":
+                    drift = self.base_problems(task)
+                    if drift:
+                        self._refuse_base(task_id, drift, now)
                 self._write(task.action_id, step, "intent", now)
                 if step == "push":
                     commit = self.api.push_branch(task.destination_repo, task.publication_ref, task.base_commit,

@@ -9,10 +9,13 @@ The evidence side (snapshot registry, live stores per project, security scans fo
 forecast's open items and the live dashboard pollers) comes from ``atlas.data_wiring``. Without a
 data directory (in-memory test runs) the server falls back to empty stand-ins that say so plainly.
 
+Publication (one branch and one draft pull request in the configured target repository) is
+connected when a publish token and a target are set. Validation evidence is kept in the data
+layer's action store, and a monitor reads the target's CI results for every published task.
+
 What is not connected in this build is said plainly instead of faked:
 
-* **Publication and corrections.** Writing to the target repository needs the publication
-  connector; those endpoints answer "not connected".
+* **Corrections.** Replacing a published description during an incident answers "not connected".
 """
 
 from __future__ import annotations
@@ -58,6 +61,7 @@ from atlas.gateway import PublishGrant
 from atlas.execution.runner import select_runner
 from atlas.execution.target import CHANGE_HEADING, NoTargetMapping, TargetManifest, change_section
 from atlas.execution.validation import ValidationService
+from atlas.execution.validation_store import StoreValidationEvidence, TargetMonitor
 from atlas.orchestrator import Deps, Orchestrator, RunStore
 from atlas.outbound import CeilingGate, OutboundBoundary, SpendMeter, provider_from_env
 from atlas.scorecard import Scorecard
@@ -69,6 +73,7 @@ DEFAULT_TARGET_DIR = ROOT / "target" / "repo"
 POLICY_VERSION = "policy-1"
 NOT_CONNECTED_DATA = "the data layer is not connected in this build yet"
 NOT_CONNECTED_PUBLICATION = "publishing to the target repository is not connected in this build yet"
+NOT_CONNECTED_CORRECTIONS = "replacing a published description during an incident is not connected in this build yet"
 
 # Outbound containment events -> containment table rows.
 EVENT_ROWS = {"outbound_offline_attempt": 4, "outbound_not_allowlisted": 5, "outbound_unredacted_pii": 6}
@@ -434,10 +439,14 @@ class TaskPortAdapter:
                 raise Refused(str(exc), 409) from exc
             task_text, scope = mapped.task_text, mapped.scope or scope
         try:
+            node_id = self.w.resolve_node_id(target)
+        except Exception as exc:  # noqa: BLE001 - the task would bind a destination nobody has seen
+            raise Refused(f"the target repository {target} could not be read: {exc}", 409) from exc
+        try:
             task = self.w.tasks.create(
                 run_id=run_id, generation=generation, action=str(action.get("value")), task_class=classification,
                 task_text=task_text, scope=scope, destination_repo=target,
-                destination_node_id="unresolved", base_ref=self.w.base_ref, base_commit=self.w.base_commit,
+                destination_node_id=node_id, base_ref=self.w.base_ref, base_commit=self.w.base_commit,
                 snapshot_id=stored["ctx"].snapshot_id, policy_version=POLICY_VERSION, scanner=self.w.scanner,
                 gate=self.w.task_gate, now=self.w.clock(), idempotency_key=idempotency_key,
                 project_id=project_id)
@@ -544,6 +553,12 @@ class TaskPortAdapter:
             raise self._refuse(exc) from exc
         except (TaskError, ValueError) as exc:
             raise self._refuse(exc) from exc
+        except Exception as exc:  # noqa: BLE001 - the remote did not answer; the journal keeps the intent
+            raise Refused("the target repository did not confirm the last step. Nothing is repeated blindly: "
+                          f"publish again and ATLAS first reads what is already there ({type(exc).__name__})",
+                          502) from exc
+        if self.w.monitor is not None:
+            self.w.monitor.write_scorecard(task_id, self.w.clock())
         return self._view(task_id)
 
     def adjudicate(self, task_id: str, verdict: str, note: str, principal_role: str,
@@ -553,6 +568,8 @@ class TaskPortAdapter:
             self.w.validation.record_adjudication(task_id, adjudicator=principal_role, correct=(verdict == "correct"),
                                                   reason=note, now=now)
             self.w.validation.apply(task_id, now)
+            if self.w.monitor is not None:
+                self.w.monitor.write_scorecard(task_id, now)
         except (TaskError, ValueError) as exc:
             raise self._refuse(exc) from exc
         return self._view(task_id)
@@ -633,6 +650,13 @@ class ContainmentPortAdapter:
                 "incident": inc, "last_tripped_at": self.store.last_tripped(row), "can_drill": inc is None})
         return {"switches": switches, "incidents": incidents}
 
+    def incident(self, incident_id: str) -> Mapping[str, Any] | None:
+        """One incident by id, open or resumed; None when there is no such incident."""
+        try:
+            return self._incident(incident_id)
+        except (KeyError, ContainmentError):
+            return None
+
     def switch(self, switch_id: str) -> Mapping[str, Any] | None:
         row = self._row(switch_id)
         incidents = [self._incident(r["incident_id"]) for r in self.store.open_incidents() if r["row"] == row]
@@ -691,7 +715,7 @@ class ContainmentPortAdapter:
         return self._incident(incident_id)
 
     def authorise_correction(self, incident_id: str, body: Mapping[str, Any], principal_role: str) -> Mapping[str, Any]:
-        raise NotWired(NOT_CONNECTED_PUBLICATION)
+        raise NotWired(NOT_CONNECTED_CORRECTIONS)
 
     def corrections(self, incident_id: str) -> list[Mapping[str, Any]]:
         try:
@@ -703,7 +727,7 @@ class ContainmentPortAdapter:
         return None
 
     def apply_correction(self, body: Mapping[str, Any], principal_role: str, idempotency_key: str) -> Mapping[str, Any]:
-        raise NotWired(NOT_CONNECTED_PUBLICATION)
+        raise NotWired(NOT_CONNECTED_CORRECTIONS)
 
 
 class ContainmentEvents:
@@ -769,6 +793,8 @@ class Wiring:
     data_layer: str = "not connected"
     target_manifest: Any = None
     publisher: Any = None
+    monitor: Any = None
+    resolve_node_id: Callable[[str], str] = lambda target: "unresolved"
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -782,7 +808,8 @@ def _env_values(settings: Any, env_file: str | Path | None) -> dict[str, str]:
 
 def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = None, provider: Any = None,
             scanner: Any = None, runner: Any = None, clock: Callable[[], datetime] | None = None,
-            persist: bool = True, env_file: str | Path | None = ".env", data_transport: Any = None) -> Wiring:
+            persist: bool = True, env_file: str | Path | None = ".env", data_transport: Any = None,
+            publication_api: Any = None) -> Wiring:
     """Build the real layers and plug them into ``services`` (the API container)."""
     clock = clock or _now
     env = dict(env if env is not None else _env_values(settings, env_file))
@@ -844,9 +871,15 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     coding = CodingAgent(MessageOutbound(outbound, DIFF_SCHEMA))
     reviewer = SentinelDiffReviewer(MessageOutbound(outbound, REVIEW_SCHEMA))
     preparer = Preparer(tasks, eligibility, coding, runner, reviewer, services.projection, trees, containment)
-    validation = ValidationService(tasks, ValidationEvidenceMemory())
+    # Validation evidence lives in the data layer's action store; memory only when there is no data layer.
+    evidence = StoreValidationEvidence(data.action_store, clock) if data is not None else ValidationEvidenceMemory()
+    validation = ValidationService(tasks, evidence)
     scorecard = Scorecard(ops, notifier)
-    disposition = ExecutionDisposition(tasks, approvals, lambda action_id: False, notifier, clock)
+    publisher_box: dict[str, Any] = {}
+    disposition = ExecutionDisposition(
+        tasks, approvals,
+        lambda action_id: bool(publisher_box.get("publisher") and publisher_box["publisher"].complete(action_id)),
+        notifier, clock)
     gate = RunSecurityGate(POLICY_VERSION, clock)
     orchestrator = Orchestrator(Deps(store=store, outbound=outbound, gate=gate, queue=services.queue,
                                      notifier=notifier, events=services.events, approvals=approvals,
@@ -858,7 +891,10 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
 
     target = settings.publish_target if settings.publish_target and "<" not in settings.publish_target else None
     publisher = None
-    if data is not None and target and bool(getattr(settings, "publish_token", "")):
+    manifest = TargetManifest.load(target_dir.parent / "demo_target.toml")
+    monitor = None
+    resolve_node_id: Callable[[str], str] = lambda _target: "unresolved"  # noqa: E731
+    if data is not None and target and (publication_api is not None or bool(getattr(settings, "publish_token", ""))):
         def grant_for(full_name: str) -> PublishGrant | None:
             """The publish grant of the one task approved to write to this repository, if any."""
             for t in tasks.all():
@@ -872,10 +908,28 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
             return None
 
         registry = getattr(services, "projects", None) or ProjectRegistry()
-        publisher = Publisher(ops, tasks, approvals, eligibility, GitHubPublicationAPI(data.gateway, grant_for),
+        api = publication_api or GitHubPublicationAPI(data.gateway, grant_for)
+        publisher = Publisher(ops, tasks, approvals, eligibility, api,
                               services.projection, preparer.base_tree, containment,
                               publish_grant=registry.may_publish,
-                              upstream_repositories=data.gateway.sources.repositories())
+                              upstream_repositories=data.gateway.sources.repositories(),
+                              notifier=notifier, not_compared=frozenset(manifest.not_compared) if manifest else frozenset())
+        publisher_box["publisher"] = publisher
+        base_ref = env.get("ATLAS_PUBLISH_BASE_REF", "main")
+
+        def resolve_node_id(full_name: str) -> str:
+            """The identity of the target, read once when a task is created, so approvals bind it."""
+            if hasattr(api, "identify"):
+                return api.identify(full_name, base_ref, clock()).node_id
+            return api.repo_identity(full_name).node_id
+
+        from atlas.connectors.target_ci import TargetCIAdapter
+        from atlas.gateway import PublicationRecord
+
+        monitor = TargetMonitor(
+            tasks, validation, TargetCIAdapter(data.gateway, data.action_store, clock=clock),
+            lambda t: PublicationRecord(t.destination_repo, t.action_id, t.published_commit, t.pr_number, t.state),
+            scorecard=scorecard, approvals=approvals, clock=clock)
     w = Wiring(settings=settings, clock=clock, ops=ops, spend=spend, containment=containment, outbound=outbound,
                store=store, snapshots=snapshots, security_partition=partition, scanner=scanner, task_gate=task_gate,
                tasks=tasks, approvals=approvals, eligibility=eligibility, runner=runner, preparer=preparer,
@@ -883,7 +937,7 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                publish_target=target, base_ref=env.get("ATLAS_PUBLISH_BASE_REF", "main"),
                base_commit=_tree_commit(trees) if target_dir.exists() else "unknown",
                task_scope=tuple(s for s in (env.get("ATLAS_TASK_SCOPE") or "*.go").split(",") if s),
-               target_manifest=TargetManifest.load(target_dir.parent / "demo_target.toml"), publisher=publisher,
+               target_manifest=manifest, publisher=publisher, monitor=monitor, resolve_node_id=resolve_node_id,
                default_project=default_project, projects=getattr(services, "projects", None) or ProjectRegistry(),
                data_layer="connected" if data else "not connected")
     w.extra["data"] = data
@@ -900,12 +954,10 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     services.model_configured = provider is not None and bool(getattr(settings, "anthropic_api_key", "") or
                                                                settings.model_provider != "anthropic")
     staged = () if publisher is not None else ("publication (set ATLAS_PUBLISH_TOKEN and a publish target to connect it)",)
-    staged = staged + ("corrections (" + NOT_CONNECTED_PUBLICATION + ")",)
+    staged = staged + ("corrections (" + NOT_CONNECTED_CORRECTIONS + ")",)
     if data is None:
         staged = ("evidence data (" + NOT_CONNECTED_DATA + ")",) + staged
     services.staged = tuple(services.staged) + staged
-    if data is not None and data.pollers and env.get("ATLAS_DASHBOARD_POLL", "on").lower() not in ("off", "false", "0"):
-        data.poll_loop.start()
     variables = dict(getattr(services, "demo_variables", {}) or {})
     if getattr(settings, "peer_ui_url", ""):
         variables.setdefault("peer_ui_url", settings.peer_ui_url)
@@ -915,6 +967,11 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
         variables.setdefault("base_url", settings.base_url)
     services.demo_variables = variables
     services.wiring = w
+    # Automatic runs: the scheduler loop (started by the server) polls these; nothing starts here.
+    from atlas.watchers import register_watchers
+
+    w.extra["watchers"] = register_watchers(services, env=env, nightly_time=getattr(settings, "nightly_time", "02:00"),
+                                            clock=clock)
     return w
 
 

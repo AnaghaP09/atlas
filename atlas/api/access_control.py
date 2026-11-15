@@ -13,7 +13,7 @@ from typing import Any, Mapping
 from fastapi import Request
 
 from atlas.access import GRANTED, PENDING, Policy, policy_for, requester_key
-from atlas.api.ports import NotWired
+from atlas.api.ports import NotWired, Refused
 from atlas.api.support import ApiError, check_project, services_of
 from atlas.contracts import Principal
 from atlas.projection import granted_principal
@@ -102,7 +102,21 @@ def _load(request: Request, object_type: str, object_id: str) -> tuple[dict[str,
             snap = s.snapshots.get(object_id)
             return (dict(snap) if snap else None), None, []
         if object_type == "kill_switch":
-            sw = s.containment.switch(object_id)
+            # A switch exists whether or not it is tripped; word ids and row numbers both work.
+            state = s.containment.state()
+            wanted = str(object_id)
+            for sw in state.get("switches", []):
+                if not isinstance(sw, Mapping):
+                    continue
+                if wanted in (str(sw.get("switch_id")), str(sw.get("switch"))):
+                    return dict(sw, incidents=[sw["incident"]] if sw.get("incident") else []), None, ["internal"]
+            if wanted.isdigit() and 1 <= int(wanted) <= len(state.get("switches", [])):
+                sw = state["switches"][int(wanted) - 1]
+                return dict(sw, incidents=[sw["incident"]] if sw.get("incident") else []), None, ["internal"]
+            try:
+                sw = s.containment.switch(object_id) if hasattr(s.containment, "switch") else None
+            except Refused:  # an id that names no switch
+                sw = None
             return (dict(sw) if sw else None), None, ["internal"]
         if object_type == "incident":
             state = s.containment.state()
@@ -111,7 +125,29 @@ def _load(request: Request, object_type: str, object_id: str) -> tuple[dict[str,
                 inc = sw.get("incident") if isinstance(sw, Mapping) else None
                 if isinstance(inc, Mapping) and inc.get("incident_id") == object_id:
                     found.append(inc)
+            if not found and hasattr(s.containment, "incident"):  # a resumed incident is still an item
+                closed = s.containment.incident(object_id)
+                if closed:
+                    found.append(closed)
             return (dict(found[0]) if found else None), None, ["internal"]
+        if object_type == "scorecard_row":
+            for row in s.tasks.scorecard().get("rows", []):
+                if object_id in (str(row.get("row_id")), str(row.get("task_id"))):
+                    return dict(row, required_scopes=["internal"]), None, ["internal"]
+            return None, None, ["internal"]
+        if object_type == "evidence":
+            # ``<run id>::<record id>``: evidence is always read inside the run that used it.
+            if "::" not in object_id:
+                return None, None, []
+            run_id, record_id = object_id.split("::", 1)
+            view = run_view(request, run_id)
+            rec = s.snapshots.evidence(view["snapshot_id"], record_id, None, ()) if view else None
+            if rec is None:
+                return None, None, []
+            rec = dict(rec)
+            rec.setdefault("required_scopes", list(rec.get("access_scopes", ["internal"])))
+            rec.update(run_id=run_id, project_id=view.get("project_id"))
+            return rec, None, ["internal"]
         if object_type == "dead_letter":
             return ({"dead_letter": object_id} if object_id == "list" else None), None, ["internal"]
     except NotWired:
@@ -130,6 +166,15 @@ def resolve(request: Request, principal: Principal, object_type: str, object_id:
     return Item(object_type, object_id, obj, scopes, policy, obj.get("project_id") or None)
 
 
+def _project_key(principal: Principal, item: Item) -> str:
+    """The project a request or grant for this item is filed under (the same rule as when it is made)."""
+    from atlas.projects import ANY_PROJECT
+
+    if item.project_id:
+        return item.project_id
+    return "" if principal.project_id in (None, ANY_PROJECT) else str(principal.project_id)
+
+
 def readable_without_grant(principal: Principal, item: Item) -> bool:
     if principal.role is None or item.scopes is None:
         return False
@@ -139,7 +184,7 @@ def readable_without_grant(principal: Principal, item: Item) -> bool:
 def grant_of(request: Request, principal: Principal, item: Item) -> dict[str, Any] | None:
     if principal.role is None or not item.policy.grantable:
         return None
-    return services_of(request).access.active_grant(who(principal), item.project_id or principal.project_id or "",
+    return services_of(request).access.active_grant(who(principal), _project_key(principal, item),
                                                     item.object_type, item.object_id)
 
 
@@ -147,7 +192,7 @@ def request_state(request: Request, principal: Principal, item: Item) -> dict[st
     """The caller's own latest request for this item, if any (id and status only)."""
     if principal.role is None:
         return None
-    latest = services_of(request).access.latest_for(who(principal), item.project_id or principal.project_id or "",
+    latest = services_of(request).access.latest_for(who(principal), _project_key(principal, item),
                                                     item.object_type, item.object_id)
     if latest is None:
         return None

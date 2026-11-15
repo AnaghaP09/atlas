@@ -81,7 +81,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     import uvicorn
 
-    housekeeper = build_housekeeper(app.state.services, sessions, interval=_interval())
+    from atlas.watchers import SchedulerLoop, housekeeping_watcher
+
+    services = app.state.services
+    housekeeper = build_housekeeper(services, sessions, interval=_interval())
+    # Housekeeping runs as one of the schedules, so it shows on the Automatic runs page.
+    services.scheduler.add(housekeeping_watcher(housekeeper.run_once, housekeeper.interval))
+    housekeeper = SchedulerLoop(services)
     housekeeper.start()
     try:
         if site is not None:

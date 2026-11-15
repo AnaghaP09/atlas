@@ -35,7 +35,13 @@ describe("page load", () => {
     expect(await bootstrapIdentity(f.impl)).toEqual({ kind: "redirect", to: "/login" });
   });
 
-  it("uses the demo role header when the server has no sign-in", async () => {
+  it("uses the demo role header when the server says sign-in is off", async () => {
+    const f = fakeFetch({ "/api/session": () => json({ sign_in: false, identity: "header" }) });
+    const boot = await bootstrapIdentity(f.impl);
+    expect(boot.kind === "ready" && boot.identity.provider.mode).toBe("header");
+  });
+
+  it("uses the demo role header when an older server has no session route", async () => {
     const f = fakeFetch({});
     const boot = await bootstrapIdentity(f.impl);
     expect(boot.kind === "ready" && boot.identity.provider.mode).toBe("header");

@@ -3,7 +3,8 @@
 // - The server answers GET /api/session: sign-in mode. The session gives the user, their projects
 //   with a role in each, and the CSRF token for writes.
 // - The server answers 401: sign-in mode, but there is no session; go to the sign-in page.
-// - The server has no such route (404): the demo role header mode.
+// - The server answers that sign-in is off ({ sign_in: false }): the demo role header mode.
+//   An older server has no such route (404), which means the same.
 
 import { IdentityStore, ROLES, headerIdentity, sessionIdentity, type Role, type SessionInfo } from "./identity";
 import { rememberDemoIdentity, storedDemoProject, storedDemoRole } from "../lib/theme";
@@ -28,7 +29,9 @@ export async function bootstrapIdentity(
   }
   if (res.status === 401) return { kind: "redirect", to: "/login" };
   if (!res.ok) return { kind: "ready", identity: headerStore() };
-  const session = (await res.json()) as SessionInfo;
+  const body = (await res.json()) as SessionInfo | { sign_in: false };
+  if ("sign_in" in body && body.sign_in === false) return { kind: "ready", identity: headerStore() };
+  const session = body as SessionInfo;
   return { kind: "ready", identity: IdentityStore.fromSession(sessionIdentity(navigate), session) };
 }
 

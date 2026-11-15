@@ -250,9 +250,13 @@ def reverify(request: Request, run_id: str, body: dict[str, Any] | None = Body(N
 def _schedule_view(s: Any, watcher_id: str) -> dict[str, Any]:
     st = s.scheduler.state(watcher_id)
     w = s.scheduler.watchers[watcher_id]
-    state = "enabled" if st["enabled"] and not st.get("paused_reason") else ("paused" if st["enabled"] or st.get("paused_reason") else "disabled")
-    return {"schedule_id": watcher_id, "kind": w.kind, "state": state, "reason": st.get("paused_reason"),
-            "last_run": st.get("last_run"), "last_event_id": st.get("last_event"), "next_run": None,
+    state = "enabled" if st["enabled"] and not st.get("paused_reason") else "paused"
+    return {"schedule_id": watcher_id, "kind": w.kind, "title": getattr(w, "title", "") or watcher_id,
+            "state": state, "reason": st.get("paused_reason"),
+            "last_run": st.get("last_run"), "last_event_id": st.get("last_event"), "next_run": st.get("next_run"),
+            "interval_seconds": getattr(w, "interval_seconds", 0) or None,
+            "spends_model_budget": bool(getattr(w, "spends_model_budget", False)),
+            "external": bool(getattr(w, "external", False)),
             "project_id": getattr(w, "project_id", "") or None}
 
 
