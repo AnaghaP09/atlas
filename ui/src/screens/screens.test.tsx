@@ -135,28 +135,29 @@ describe("Automatic runs", () => {
 });
 
 describe("Approvals", () => {
-  it("shows destination, generation, security validity, change hash and expiry", async () => {
+  it("shows one approval per task, with no A or B, its destination and when it was requested", async () => {
     renderWith(<Approvals />, {
       "/api/approvals": () =>
         json({
           approvals: [
             {
-              approval_id: "ap1", task_id: "t1", kind: "B", state: "pending",
-              destination_repository: "example/target", base_ref: "main", publication_ref: "atlas/a1", base_commit: "abc123",
-              verification_generation: 2, security_decision_id: "sd1", security_valid_until: "2026-11-15T00:00:00Z",
-              diff_hash: "sha256:feed", diff: "--- a/x\n+++ b/x\n", expires_at: "2099-01-01T00:00:00Z",
+              approval_id: "pending-A-t1", task_id: "t1", kind: "A", state: "requested", created_at: "2026-11-15T12:00:00Z",
+              destination_repository: "example/target", base_ref: "main", base_commit: "abc123", security_decision_id: "sd1",
+            },
+            {
+              approval_id: "apra-old", task_id: "t1", kind: "A", state: "voided", created_at: "2026-11-14T12:00:00Z",
+              destination_repository: "example/target", approver_role: "em",
             },
           ],
           ...envelope,
         }),
     });
-    const card = await screen.findByTestId("approval");
+    const cards = await screen.findAllByTestId("approval");
+    expect(cards).toHaveLength(1);
+    const card = cards[0]!;
     expect(card.textContent).toContain("example/target");
-    expect(card.textContent).toContain("2");
-    expect(card.textContent).toContain("sd1");
-    expect(screen.getByTestId("diff-hash").textContent).toBe("sha256:feed");
-    expect(card.textContent).toMatch(/h \d+ min left/);
-    expect(card.textContent).toContain("+++ b/x");
+    expect(card.textContent).toContain("Requested");
+    expect(card.textContent).not.toMatch(/Approval [AB] /);
   });
 });
 

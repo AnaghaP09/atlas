@@ -399,6 +399,15 @@ class TaskPortAdapter:
         view = self.w.tasks.view(task_id, security_summary=summary, validation=validation)
         view["project_id"] = self._task_project(task)
         view["required_scopes"] = ["internal"]
+        if not view.get("pull_request") and self.w.publisher is not None and task.destination_repo:
+            try:  # the publication journal holds the pull request number once it is opened
+                row = self.w.publisher._last(task.action_id, "pull_request")
+            except Exception:  # noqa: BLE001 - the link is a convenience; the task view must still load
+                row = None
+            if row and row.get("remote_id"):
+                number = int(row["remote_id"])
+                view["pull_request"] = {"number": number, "status": row.get("status"),
+                                        "url": f"https://github.com/{task.destination_repo}/pull/{number}"}
         manifest = self.w.target_manifest
         if manifest is not None and CHANGE_HEADING in str(task.task_text):
             view["target_label"] = manifest.label
