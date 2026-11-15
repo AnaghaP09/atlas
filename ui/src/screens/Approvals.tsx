@@ -50,8 +50,11 @@ function ApprovalCard({ a, focused, pr, task }: { a: Approval; focused: boolean;
   const blocked = useBlockedBy("preparation");
   const pending = a.state === "pending" || a.state === "requested";
   const isEm = principal?.role === "em";
-  const status = pending ? "Waiting for approval" : a.state === "granted" ? "Approved" : a.state === "voided" ? "Cancelled" : a.state === "rejected" ? "Rejected" : a.state;
-  const tone = pending ? "held" : a.state === "granted" ? "granted" : a.state;
+  // An approval that was used to publish is closed by the system afterwards; it still counts as approved.
+  const used = ["published", "awaiting_validation", "accepted"].includes(String((task as { state?: string } | undefined)?.state ?? ""));
+  const approved = a.state === "granted" || (a.state === "voided" && used);
+  const status = pending ? "Waiting for approval" : approved ? "Approved" : a.state === "voided" ? "Cancelled" : a.state === "rejected" ? "Rejected" : a.state;
+  const tone = pending ? "held" : approved ? "granted" : a.state;
   return (
     <article className={`card approval${focused ? " is-focus" : ""}`} data-testid="approval">
       <header className="approval-head">

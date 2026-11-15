@@ -196,7 +196,7 @@ def _task_for(request: Request, row: Mapping[str, Any], role: str, key: str) -> 
     """Delegating an investigation hand-off to the coding agent creates its coding task (waiting for approval)."""
     run_id = row.get("run_id")
     s = services_of(request)
-    if not run_id or s.orchestrator is None:
+    if not run_id or s.orchestrator is None or row.get("subject_type") != "investigation":
         return None
     existing = next((t for t in s.tasks.list(project_id=None) if t.get("run_id") == run_id), None)
     if existing is not None:
