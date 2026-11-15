@@ -78,6 +78,20 @@ def _bounded_records(records: Mapping[str, Mapping[str, Any]]) -> dict[str, dict
     return out
 
 
+def ci_tail(content: str) -> str:
+    """Keep the end of a job log excerpt, where the test summary is, within the record size limit."""
+    import json as _json
+    try:
+        doc = _json.loads(content)
+    except ValueError:
+        return content[-(RECORD_MAX_CHARS - 200):]
+    excerpt = str(doc.get("log_excerpt") or "")
+    limit = RECORD_MAX_CHARS - 1_000
+    if len(excerpt) > limit:
+        doc["log_excerpt"] = "[earlier lines cut]\n" + excerpt[-limit:]
+    return _json.dumps(doc, sort_keys=True, default=str)
+
+
 class VerifierFailed(RuntimeError):
     """The verifier could not produce verdicts; the run is unverified."""
 
@@ -136,7 +150,7 @@ class Verifier:
                         if rec.record.source == "ci" and isinstance(data.get("content"), str):
                             # A job log is judged by its failure lines, not by its first characters
                             # (setup output), which a size cut would otherwise keep.
-                            data["content"] = log_excerpt(data["content"], None)
+                            data["content"] = ci_tail(log_excerpt(data["content"], None))
                         records[rec.record_id] = data
             checked.append(c)
 
