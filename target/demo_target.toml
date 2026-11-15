@@ -10,8 +10,9 @@ data_mode = "SYNTHETIC"
 
 [[mapping]]
 id = "ipv6-host-port"
+title = "Format IPv6 hosts correctly in netaddr.JoinHostPort"
 classifications = ["TEST_DEFECT"]
 keywords = ["ipv6"]
 scope = ["netaddr/*.go"]
 behaviour_check = ".atlas/behaviour/netaddr_behaviour_test.go"
-change = "In the netaddr package, make JoinHostPort format IPv6 hosts correctly: an IPv6 host must be wrapped in square brackets before the port is added (for example [::1]:8080). IPv4 addresses and host names must keep their current format. Add or adjust tests in the package for the IPv6 cases."
+change = "In the netaddr package, make JoinHostPort format IPv6 hosts correctly: an IPv6 host must be wrapped in square brackets before the port is added (for example [::1]:8080). IPv4 addresses and host names must keep their current format. Change only netaddr/netaddr.go unless a test in the package needs updating; a separate behaviour test already covers the IPv6 cases, so new tests are optional."

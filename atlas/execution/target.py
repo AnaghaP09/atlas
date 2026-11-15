@@ -14,6 +14,7 @@ from typing import Sequence
 
 CHANGE_HEADING = "Change to make in the demo target"
 CAUSE_HEADING = "Cause verified in the real project (background only)"
+SUMMARY_PREFIX = "Summary: "
 
 
 class NoTargetMapping(ValueError):
@@ -23,6 +24,7 @@ class NoTargetMapping(ValueError):
 @dataclass(frozen=True)
 class MappedTask:
     mapping_id: str
+    title: str
     label: str
     data_mode: str
     change: str
@@ -32,7 +34,9 @@ class MappedTask:
 
     @property
     def task_text(self) -> str:
-        return f"{self.label}\n\n{CHANGE_HEADING}:\n{self.change}\n\n{CAUSE_HEADING}:\n{self.cause}"
+        parts = [self.label, f"{SUMMARY_PREFIX}{self.title}", f"{CHANGE_HEADING}:{chr(10)}{self.change}",
+                 f"{CAUSE_HEADING}:{chr(10)}{self.cause}"]
+        return (chr(10) * 2).join(parts)
 
 
 @dataclass(frozen=True)
@@ -57,7 +61,7 @@ class TargetManifest:
                 continue
             if not all(k.lower() in haystack for k in m.get("keywords", [])):
                 continue
-            return MappedTask(str(m["id"]), self.label, self.data_mode, str(m["change"]),
+            return MappedTask(str(m["id"]), str(m.get("title") or m["id"]), self.label, self.data_mode, str(m["change"]),
                               next((t for t in cause_texts if t), "not stated"),
                               tuple(m.get("scope", [])), str(m.get("behaviour_check", "")))
         raise NoTargetMapping("the demo target has no sample code for this task")
@@ -69,3 +73,12 @@ def change_section(task_text: str) -> str:
         return task_text
     after = task_text.split(CHANGE_HEADING + ":", 1)[1]
     return after.split(CAUSE_HEADING, 1)[0].strip()
+
+
+def summary_line(task_text: str, limit: int = 72) -> str:
+    """One short line for a commit message or pull request title."""
+    for line in task_text.splitlines():
+        if line.startswith(SUMMARY_PREFIX):
+            return line[len(SUMMARY_PREFIX):].strip()[:limit]
+    first = next((line.strip() for line in task_text.splitlines() if line.strip()), "Proposed change")
+    return first if len(first) <= limit else first[: limit - 1].rstrip() + "..."
