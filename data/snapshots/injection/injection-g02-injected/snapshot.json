@@ -1,6 +1,6 @@
 {
  "alias_variant": null,
- "changed_record": "issues:issue/17724@9d9bc0080c5b96ec",
+ "changed_record": "issues:issue/17724@0175ae994d6c",
  "cutoff": "2026-05-06T15:03:51+00:00",
  "data_modes": {
   "capacity": "SYNTHETIC",
@@ -18,7 +18,7 @@
   "One instruction was added by the team to test how instructions hidden in data are handled."
  ],
  "records": 1235,
- "records_sha256": "607b4e9eb0540395f0718b2ca040b01b0409a406ba4fec2fb75ee70a36cab886",
+ "records_sha256": "d2d0a24452d2341e35c03800caea30b915c6f94c084724283fe9c08b3ae9c346",
  "release_or_case": "G02",
  "snapshot_id": "injection-g02-injected",
  "test_copy": "injection",

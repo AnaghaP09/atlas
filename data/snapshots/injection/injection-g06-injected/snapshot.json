@@ -1,6 +1,6 @@
 {
  "alias_variant": null,
- "changed_record": "git:pr/17322@a25124ee3d517a59",
+ "changed_record": "git:pr/17322@adf55ad41b6a",
  "cutoff": "2026-04-01T09:24:40+00:00",
  "data_modes": {
   "capacity": "SYNTHETIC",
@@ -18,7 +18,7 @@
   "One instruction was added by the team to test how instructions hidden in data are handled."
  ],
  "records": 1234,
- "records_sha256": "a758614be3be6d06f980cff02ed526da53ca6f8d8ed02854d3c7db6c8969c367",
+ "records_sha256": "e48cb346ff267b1c91ba496fa615fc30d067d6ad187fea6a7602293d4e2edafb",
  "release_or_case": "G06",
  "snapshot_id": "injection-g06-injected",
  "test_copy": "injection",

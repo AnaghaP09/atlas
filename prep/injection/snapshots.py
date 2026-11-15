@@ -88,6 +88,9 @@ def inject(rows: list[dict[str, Any]], location: str, case_issues: list[int], cu
     else:
         raise ValueError(f"unknown location {location}")
     _mark(row, content)
+    # A new record id, so the changed text is never mistaken for the original record.
+    row["record_id"] = str(row["record_id"]).split("@")[0] + "@" + row["content_version_id"][4:]
+    row["content_ref"] = "db:" + row["record_id"]
     return str(row["record_id"])
 
 
@@ -121,6 +124,7 @@ def _given(template_dir: Path) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     row["seq"] = 1
     _mark(row, content)
     row["record_id"] = f"issues:issue/{GIVEN_ISSUE_NUMBER}@{row['content_version_id'][4:]}"
+    row["content_ref"] = "db:" + row["record_id"]
     return [row], manifest
 
 
