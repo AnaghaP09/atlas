@@ -633,6 +633,13 @@ class ContainmentPortAdapter:
                 "incident": inc, "last_tripped_at": self.store.last_tripped(row), "can_drill": inc is None})
         return {"switches": switches, "incidents": incidents}
 
+    def incident(self, incident_id: str) -> Mapping[str, Any] | None:
+        """One incident by id, open or resumed; None when there is no such incident."""
+        try:
+            return self._incident(incident_id)
+        except (KeyError, ContainmentError):
+            return None
+
     def switch(self, switch_id: str) -> Mapping[str, Any] | None:
         row = self._row(switch_id)
         incidents = [self._incident(r["incident_id"]) for r in self.store.open_incidents() if r["row"] == row]

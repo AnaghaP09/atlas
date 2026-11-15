@@ -122,6 +122,12 @@ def _related_ids(request: Request, item: ac.Item) -> list[tuple[str, str]]:
                     out.append(("approval", str(a["approval_id"])))
         except NotWired:
             pass
+        try:
+            for row in s.tasks.scorecard(project_id=item.project_id).get("rows", []):
+                if str(row.get("task_id")) == item.object_id:
+                    out.append(("scorecard_row", str(row.get("row_id") or row.get("task_id"))))
+        except (NotWired, TypeError):
+            pass
     elif item.object_type == "approval":
         if obj.get("task_id"):
             out.append(("task", str(obj["task_id"])))
@@ -135,6 +141,15 @@ def _related_ids(request: Request, item: ac.Item) -> list[tuple[str, str]]:
         for inc in obj.get("incidents", []) or []:
             if inc.get("incident_id"):
                 out.append(("incident", str(inc["incident_id"])))
+    elif item.object_type == "incident":
+        if obj.get("switch_id"):
+            out.append(("kill_switch", str(obj["switch_id"])))
+    elif item.object_type == "scorecard_row":
+        if obj.get("task_id"):
+            out.append(("task", str(obj["task_id"])))
+    elif item.object_type == "evidence":
+        if obj.get("run_id"):
+            out.append(("run", str(obj["run_id"])))
     seen: set[tuple[str, str]] = set()
     unique = []
     for pair in out:
@@ -181,6 +196,10 @@ def _content(request: Request, item: ac.Item, reader: Principal) -> tuple[dict[s
         return {"switch": item.obj}, "REAL"
     if item.object_type == "incident":
         return {"incident": item.obj}, "REAL"
+    if item.object_type == "scorecard_row":
+        return {"row": dict(item.obj)}, str(item.obj.get("data_mode", "REAL"))
+    if item.object_type == "evidence":
+        return {"record": dict(item.obj)}, "SYNTHETIC" if item.obj.get("provenance") == "synthetic" else "REAL"
     return {"deliveries": [dict(d, required_scopes=["internal"]) for d in s.notifier.deliveries("dead_letter")]}, "REAL"
 
 
