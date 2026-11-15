@@ -82,6 +82,7 @@ def findings_as_of(vulns_by_module: Mapping[str, Sequence[str]], details: Mappin
 def gate_scan_records(*, scope_id: str, revision: str, inventory: Sequence[tuple[str, str]], complete: bool,
                       findings: Sequence[Mapping[str, Any]], at: datetime, fetched_at: datetime | None,
                       reconstructed: bool, excluded_after_cutoff: int = 0,
+                      scanner: str = "OSV.dev query over the Go module list",
                       ) -> list[tuple[Record, dict[str, Any], str]]:
     """A scan-run record and its finding records in the form the security gate reads.
 
@@ -101,7 +102,7 @@ def gate_scan_records(*, scope_id: str, revision: str, inventory: Sequence[tuple
         "kind": "scan_run", "scan_run_id": scan_run_id, "status": "success" if complete else "partial_failure",
         "coverage": [ROOT_COMPONENT] if complete else [], "finding_ids": [fid for fid, _ in out_findings],
         "target_revision": revision, "modules_scanned": len(inventory),
-        "scanner": "OSV.dev query over the Go module list", "reconstructed": reconstructed, "as_of": at.isoformat(),
+        "scanner": scanner, "reconstructed": reconstructed, "as_of": at.isoformat(),
     }
     if reconstructed:
         run.update(as_of_rule=AS_OF_RULE, advisories_excluded_after_cutoff=excluded_after_cutoff)
@@ -126,14 +127,15 @@ def _record(source_id: str, version: str, at: datetime, fetched_at: datetime | N
 
 
 def query_advisories(gateway: Gateway, rctx: RequestContext, inventory: Sequence[tuple[str, str]],
-                     known: Mapping[str, Mapping[str, Any]] | None = None,
+                     known: Mapping[str, Mapping[str, Any]] | None = None, ecosystem: str = "Go",
                      ) -> tuple[dict[str, list[str]], dict[str, dict[str, Any]], bool]:
     """Ask OSV about every module. Returns (advisory ids per module, advisory details, complete)."""
     by_module: dict[str, list[str]] = {}
     complete = True
     for start in range(0, len(inventory), BATCH):
         chunk = inventory[start:start + BATCH]
-        body = {"queries": [{"package": {"name": m, "ecosystem": "Go"}, "version": v.lstrip("v")} for m, v in chunk]}
+        body = {"queries": [{"package": {"name": m, "ecosystem": ecosystem},
+                             "version": v.lstrip("v") if ecosystem == "Go" else v} for m, v in chunk]}
         try:
             resp = gateway.request("security", "POST", f"{OSV}/v1/querybatch", rctx, body)
         except (GatewayRefused, SourceUnavailable):

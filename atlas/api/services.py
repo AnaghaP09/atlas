@@ -154,6 +154,9 @@ class Services:
     projects: ProjectRegistry = field(default_factory=ProjectRegistry)
     feed: Any = None
     access: AccessRequestStore = field(default_factory=AccessRequestStore)
+    projects_file: Path | None = None
+    add_project_prefill: str = ""  # ATLAS_ADD_PROJECT: the repository link the Add project screen starts with
+    data_copies: Any = None
 
     @property
     def is_scenario(self) -> bool:

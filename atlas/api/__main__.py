@@ -41,6 +41,8 @@ def build_server(env_file: str, scenario: bool, *, site_identity: tuple | None =
     services.default_project_id = env.get("ATLAS_DEFAULT_PROJECT") or None
     projects_file = env.get("ATLAS_PROJECTS_FILE") or default_projects_path(settings.data_dir)
     services.projects = ProjectRegistry.load(projects_file)
+    services.projects_file = Path(projects_file)
+    services.add_project_prefill = env.get("ATLAS_ADD_PROJECT", "").strip()
     services.identity = HeaderIdentity(projects=services.projects, default_project=services.default_project_id)
     services.demo_variables = demo_variables(env)
     services.config_presence = settings.presence()

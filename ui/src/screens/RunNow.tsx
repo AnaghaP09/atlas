@@ -9,8 +9,11 @@ import { toast } from "../lib/toast";
 import type { SnapshotItem } from "./Home";
 import { DatasetPicker } from "../components/dataset";
 
-/** "release-close-v1.9.0" -> "v1.9.0", so a chosen snapshot also fills in its release. */
+/** "release-close-v1.9.0" -> "v1.9.0" (also "<project>.release-close-3.1.3" -> "3.1.3"), so a chosen
+ * snapshot also fills in its release. */
 export function releaseOf(snapshotId: string): string {
+  const close = /release-close-([A-Za-z0-9._-]+)$/.exec(snapshotId);
+  if (close?.[1]) return close[1];
   const m = /v\d+\.\d+\.\d+/.exec(snapshotId);
   return m ? m[0] : "";
 }

@@ -36,6 +36,7 @@ To run the tests and the dependency audit, install `requirements-dev.txt` the sa
 |---|---|---|
 | `ATLAS_WATCH_REPOSITORY` | `<owner>/<repo>` (off) | The repository that the automatic watchers follow. |
 | `ATLAS_PUBLISH_TARGET` | `<owner>/<repo>` (off) | The only repository ATLAS may open draft pull requests in. It must not be a watched repository or an upstream project. |
+| `ATLAS_ADD_PROJECT` | empty | A public repository link that the Add project page starts with. The audit role still reviews and confirms it. See [Add project](guide/add-project.md). |
 | `ATLAS_ORG_SLUG` | `demo` | Your organisation's short name. It is used in host names such as `atlas.<slug>.internal`. |
 
 ## Models
