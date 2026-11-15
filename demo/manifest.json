@@ -19,6 +19,7 @@
  "rows": [
   {
    "row_id": "T1",
+   "estimated_cost_usd": 0.10,
    "title": "Release close",
    "data_mode": "REAL",
    "server": "normal",
@@ -101,6 +102,7 @@
   },
   {
    "row_id": "T2",
+   "estimated_cost_usd": 0.30,
    "title": "Investigate a failure",
    "data_mode": "REAL",
    "server": "normal",
@@ -143,6 +145,7 @@
   },
   {
    "row_id": "T3",
+   "estimated_cost_usd": 0.30,
    "title": "Nightly sweep",
    "data_mode": "REAL",
    "server": "normal",
@@ -200,6 +203,7 @@
   },
   {
    "row_id": "T4",
+   "estimated_cost_usd": 0.05,
    "title": "Questions",
    "data_mode": "REAL",
    "server": "normal",
@@ -247,6 +251,7 @@
   },
   {
    "row_id": "T6a",
+   "estimated_cost_usd": 0.30,
    "title": "Run now",
    "data_mode": "REAL",
    "server": "normal",
@@ -673,6 +678,7 @@
   },
   {
    "row_id": "X1-X5",
+   "estimated_cost_usd": 0.30,
    "title": "Coding task",
    "data_mode": "REAL",
    "server": "normal",
@@ -779,6 +785,7 @@
   },
   {
    "row_id": "E1",
+   "estimated_cost_usd": 0.05,
    "title": "Live updates",
    "data_mode": "REAL",
    "server": "normal",
