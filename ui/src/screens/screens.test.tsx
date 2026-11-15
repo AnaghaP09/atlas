@@ -9,6 +9,7 @@ import { fakeFetch, json, type Handler } from "../test/fakes";
 import { Approvals } from "./Approvals";
 import { Evaluation } from "./Evaluation";
 import { RunNow } from "./RunNow";
+import { Schedules } from "./Schedules";
 
 const envelope = { data_mode: "REAL", environment: "normal", server_time: "2026-11-14T00:00:00Z" };
 const health = json({ ...envelope, status: "ok", environment: "normal", server: "127.0.0.1:8000", mode: "connected", identity: "header", components: {}, staged: [], unevaluated: [] });
@@ -60,6 +61,76 @@ describe("Evaluation", () => {
     expect(g5.textContent).not.toContain("Passed");
     expect(screen.getByTestId("g13-proxy").textContent).toMatch(/stand-in definition/);
     expect(screen.getByTestId("gate-G-13").textContent).toContain("60%");
+  });
+
+  it("puts the forecast note beside each release, says not measurable for empty releases, and names one checker", async () => {
+    renderWith(<Evaluation />, {
+      "/api/evaluations/latest": () =>
+        json({
+          evaluation_id: "ev2",
+          gates: [
+            { gate_id: "G-3", status: "passed", checked_by: "one person", summary: "Checked by one person" },
+            {
+              gate_id: "G-13", status: "failed", checked_by: "one person", summary: "not measurable: v1.6.0; Checked by one person",
+              pooled: { matched: 3, blockers: 5, named_blockers: 2, predictions: 4, recall: 0.6, precision: 0.5 },
+              per_close: [
+                { close: "v1.5.0", matched: 3, blockers: 5, named_blockers: 2, predictions: 4, recall: 0.6, precision: 0.5 },
+                { close: "v1.6.0", matched: 0, blockers: 0, named_blockers: 0, predictions: 3, recall: null, precision: 0 },
+              ],
+            },
+          ],
+          ...envelope,
+        }),
+    });
+    const close = await screen.findByTestId("g13-close-v1.5.0");
+    expect(close.textContent).toContain("recall 3 of 5 (60%)");
+    expect(close.textContent).toContain(
+      "Counts only blockers already open when the forecast was made; uses a substitute for release blockers because KubeVirt does not record them.",
+    );
+    expect(screen.getByTestId("g13-close-v1.6.0").textContent).toContain("recall not measurable");
+    expect(screen.getByTestId("g13-close-v1.6.0").textContent).toContain("Counts only blockers already open");
+    expect(screen.getByTestId("g13-pooled").textContent).toContain("precision 2 of 4 (50%)");
+    expect(screen.getByTestId("checked-G-13").textContent).toBe("Checked by one person");
+    expect(screen.getByTestId("checked-G-3").textContent).toBe("Checked by one person");
+    expect(screen.getByTestId("gate-G-13").textContent?.match(/Checked by one person/g)?.length).toBe(1);
+  });
+});
+
+describe("Automatic runs", () => {
+  const schedules = () =>
+    json({
+      ...envelope,
+      schedules: [
+        {
+          schedule_id: "kubevirt-nightly", kind: "nightly", title: "Nightly sweep of new failures", state: "paused",
+          reason: "Offline mode: automatic runs wait until the server is connected", last_run: "2026-11-14T02:00:00Z",
+          last_event_id: "18234", next_run: null, interval_seconds: 86400, spends_model_budget: true, external: true,
+        },
+        { schedule_id: "release-watch", kind: "release", title: "release-watch", state: "enabled", interval_seconds: 300, spends_model_budget: false },
+      ],
+    });
+
+  it("shows plain titles, interval, spend, state reason and last event, with controls for the engineering manager", async () => {
+    renderWith(<Schedules />, { "/api/schedules": schedules }, new IdentityStore(headerIdentity, { role: "em" }));
+    const row = await screen.findByTestId("schedule-kubevirt-nightly");
+    expect(row.textContent).toContain("Nightly sweep of new failures");
+    expect(row.textContent).toContain("Every day");
+    expect(row.textContent).toContain("spends model budget");
+    expect(row.textContent).toContain("reads outside data");
+    expect(row.textContent).toContain("Offline mode");
+    expect(row.textContent).toContain("last event 18234");
+    expect(row.textContent).toContain("Turn on");
+    expect(row.textContent).not.toContain("kubevirt-nightly");
+    const other = screen.getByTestId("schedule-release-watch");
+    expect(other.textContent).toContain("New release");
+    expect(other.textContent).toContain("Every 5 minutes");
+    expect(other.textContent).toContain("Pause");
+  });
+
+  it("is read-only for roles that cannot control automatic runs", async () => {
+    renderWith(<Schedules />, { "/api/schedules": schedules });
+    expect(await screen.findByTestId("schedules-read-only")).toBeTruthy();
+    expect(screen.queryByText("Run once")).toBeNull();
   });
 });
 
