@@ -66,36 +66,40 @@ More detail: [architecture](docs/architecture.md), [data sources](docs/data-sour
 
 ## Status
 
-ATLAS is still being built. The shared data formats, interfaces and settings are done. The
-connectors, agents, code-change steps, the API and the user interface are in progress. The API
-is the set of web addresses that the user interface calls. This
-page will say when each part works. Until then, read everything here as the design.
+ATLAS runs on one computer. You can start it, open the user interface and try it with real
+public data. It is not finished. The table shows what works today.
 
-The demo labels each result with the source of its data:
+| Part | State |
+|---|---|
+| Scout and Sentinel, the forecast and the three planning reports | Works with real data and real AI model calls. |
+| Investigation of a reported failure | Works. Results still vary between runs. |
+| User interface with a menu for each role | Works. |
+| Live dashboard for two public projects | Works. It checks GitHub at a fixed interval and shows the interval. |
+| Access requests and kill-switch drills | Work. |
+| Sign-in over HTTPS on your own computer | Works after a one-time setup. See the [guide](docs/guide/install.md). |
+| Coding agent in a container, with two approvals | Works up to the second approval. |
+| Draft pull request in a test repository | Not connected yet. |
+| Quality tests against the targets | Not run yet. No result is claimed. |
+| Self-hosted AI model for offline use | Not in this build. Offline mode blocks all outside connections. |
+
+The user interface labels each result with the kind of data behind it:
 
 | Label | Meaning |
 |---|---|
-| `REAL` | Real public data and real AI model calls. |
-| `SYNTHETIC` | Data that the team made up. ATLAS marks it and never counts it as a real result. |
-| `STAGED` | The code exists, but the real-world part is not in this build. One example is a self-hosted AI model for offline use. |
-| `UNEVALUATED` | A quality target that this build cannot measure. |
+| Real data | Real public data and real AI model calls. |
+| Sample data | Data made up for the demo. ATLAS marks it and never counts it as a real result. |
+| Not in this demo | The code exists, but the real-world part is not in this build. |
+| Not measured | A quality target that this build cannot measure, or has not measured yet. |
 
 ATLAS works with any software project. The demo and the tests use public data from
-[KubeVirt](https://github.com/kubevirt/kubevirt), an open-source project.
+[KubeVirt](https://github.com/kubevirt/kubevirt), an open-source project. A second public
+project, [Argo CD](https://github.com/argoproj/argo-cd), appears in the live views to show that
+ATLAS is not tied to one project.
 
 KubeVirt does not record which issues blocked each release. So ATLAS measures its forecast
 accuracy against a substitute definition of a blocking issue. The
 [data sources](docs/data-sources.md) page gives the definition. Every accuracy result says that
 it uses this substitute.
-
-Two additions are in progress:
-
-- **A second public project.** ATLAS is being extended to
-  [Argo CD](https://github.com/argoproj/argo-cd). This shows that ATLAS is not tied to one
-  project. Argo CD appears only in the live views. The quality tests still use KubeVirt.
-- **A dashboard that refreshes itself.** The dashboard checks GitHub for changes at a fixed
-  interval. The screen shows the interval. The data is as recent as the last check, so it is
-  close to real time but not instant.
 
 ## Quick start
 
@@ -107,17 +111,20 @@ cd atlas
 python -m venv .venv
 .venv/Scripts/python -m pip install --require-hashes -r requirements.txt   # Windows
 .venv/bin/python -m pip install --require-hashes -r requirements.txt       # macOS / Linux
-cp .env.example .env
+python -m atlas.setup      # writes .env and asks for your values
+cd ui && npm ci --ignore-scripts && npm run build && cd ..
+python -m atlas.doctor     # checks your setup and explains any problem
+python -m atlas.serve      # starts ATLAS
 ```
 
-Open `.env` and enter your own values. The [configuration](docs/configuration.md) page explains
-each setting. Git ignores `.env`. Never commit it.
+Then open <http://127.0.0.1:8000>. The [user guide](docs/guide/index.md) explains each screen and
+each role. The [configuration](docs/configuration.md) page explains each setting. Git ignores
+`.env`. Never commit it.
 
-The command that starts the server does not exist yet. This page will show it when the server
-is built. The user interface will then be at <http://127.0.0.1:8000>. In this build, ATLAS
-accepts connections only from your own computer. The reason is that the demo has no real
-sign-in. It uses a role switcher instead. The [deployment](docs/deployment.md) page explains how
-an organisation would run ATLAS on its own network.
+In this mode, ATLAS accepts connections only from your own computer and uses a role switcher in
+place of sign-in. The [install guide](docs/guide/install.md) shows how to turn on sign-in over
+HTTPS. The [deployment](docs/deployment.md) page explains how an organisation would run ATLAS on
+its own network.
 
 To run the tests, install `requirements-dev.txt` in the same way. Then run `python -m pytest`.
 
