@@ -4,8 +4,8 @@ KubeVirt does not record which issues blocked a release. The proxy counts an iss
 release 1.N when it is a bug or flake that is (a) fixed by a pull request merged into ``release-1.N``
 between ``v1.N.0-beta.0`` and ``v1.N.0``, or (b) critical-urgent and still open at ``v1.N.0``.
 Features, chores, documentation, dependency bumps without a linked bug or flake, and tracker issues
-are left out. This script only lists candidates; two people then label each one with
-``python -m eval.adjudicate proxy`` and the final labels go into ``data/evaluator/proxy_blockers.csv``.
+are left out. This script only lists candidates; a person then labels each one with
+``python -m eval.proxy_label`` and the labels go into ``data/evaluator/proxy_blockers.csv``.
 
 Input (from the data layer's release history export, one JSON file per release):
 ``{"release": "1.6", "beta_at": ..., "released_at": ..., "backports": [{"pr", "merged_at", "issues": [

@@ -764,7 +764,7 @@
    ]
   }
  ],
- "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: two people adjudicate every candidate (features and chores are excluded).",
+ "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: a person confirms every candidate (features and chores are excluded).",
  "limitation": "The project does not record release blockers, so this proxy is used.",
  "release": "1.7",
  "window": {

@@ -7,7 +7,6 @@ import copy
 import pytest
 
 from eval import baseline_workflow, gates
-from eval.adjudicate import resolve_proxy
 from eval.canonical import LIMITATION, canonical_predictions, g13
 from eval.store import EvaluationStore
 
@@ -86,16 +85,14 @@ def test_g2_counts_contradicted_controls_as_failures_and_each_id_once():
     assert any("p0 evaluated 2 times" in f for f in twice["failures"])
 
 
-def test_g3_needs_two_agreeing_adjudications_bound_to_versions():
+def test_g3_needs_one_check_bound_to_versions():
     claims = [{"claim_id": "c1", "verdict": "supported", "output_version": "o1", "evidence_versions": ["cv1"]}]
-    adj = [{"claim_id": "c1", "output_version": "o1", "evidence_versions": ["cv1"], "adjudicator": a, "label": "supported"}
-           for a in ("x", "y")]
-    assert gates.g3(claims, adj)["status"] == "passed"
-    assert gates.g3(claims, adj[:1])["counts"]["missing_adjudication"] == 1
-    disputed = adj[:1] + [dict(adj[1], label="unsupported")]
-    assert gates.g3(claims, disputed)["counts"]["unsupported"] == 1
-    stale = [dict(a, output_version="o0") for a in adj]
-    assert gates.g3(claims, stale)["status"] == "failed"
+    ok = [{"claim_id": "c1", "output_version": "o1", "evidence_versions": ["cv1"], "label": "supported"}]
+    passed = gates.g3(claims, ok)
+    assert passed["status"] == "passed" and passed["checked_by"] == "one person"
+    assert gates.g3(claims, [])["counts"]["missing_check"] == 1
+    assert gates.g3(claims, ok + [dict(ok[0], label="unsupported")])["counts"]["unsupported"] == 1
+    assert gates.g3(claims, [dict(ok[0], output_version="o0")])["status"] == "failed"
 
 
 def test_g4_injected_and_clean_twins():
@@ -207,19 +204,6 @@ def test_baseline_workflow_rules():
     blame = baseline_workflow.run({"log": "panic", "failure_ids": ["j"], "first_failure_at": "2026-05-02",
                                    "commits": [{"sha": "a", "merged_at": "2026-05-01"}, {"sha": "b", "merged_at": "2026-05-03"}]})
     assert blame.blamed_commit == "a" and blame.action == "ASSIGN_DEVELOPER"
-
-
-def test_proxy_label_resolution():
-    labels = [{"release": "1.6", "issue_id": "1", "adjudicator": "x", "label": "blocker"},
-              {"release": "1.6", "issue_id": "1", "adjudicator": "y", "label": "blocker"},
-              {"release": "1.6", "issue_id": "2", "adjudicator": "x", "label": "blocker"},
-              {"release": "1.6", "issue_id": "2", "adjudicator": "y", "label": "not_blocker"},
-              {"release": "1.6", "issue_id": "3", "adjudicator": "x", "label": "blocker"}]
-    res = resolve_proxy(labels, {("1.6", "2"): "not_blocker"})
-    assert res[("1.6", "1")]["status"] == "agreed"
-    assert res[("1.6", "2")] == {"final": "not_blocker", "labels": {"x": "blocker", "y": "not_blocker"},
-                                 "status": "settled_by_pm"}
-    assert res[("1.6", "3")]["status"] == "incomplete"
 
 
 def test_evaluations_are_immutable():
