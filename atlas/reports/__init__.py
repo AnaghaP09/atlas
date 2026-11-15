@@ -136,7 +136,10 @@ def render(report_type: str, artefact: Mapping[str, Any], principal: Principal, 
     if report_type == "security_gate":
         sc = data.get("security_check") or {}
         lines += [f"State: {sc.get('state')}", f"Valid until: {sc.get('valid_until')}"]
-        lines += [f"- {f.get('finding_id')} {f.get('severity')} ({'blocking' if f.get('blocking') else 'not blocking'})"
+        lines += [f"- {f.get('advisory') or f.get('finding_id')} in {f.get('module') or 'a dependency'} "
+                  f"{f.get('version') or ''}: {f.get('severity') or 'severity not given'}"
+                  f"{', fixed in ' + str(f.get('fix_version')) if f.get('fix_version') else ''} "
+                  f"({'blocking' if f.get('blocking') else 'not blocking'})"
                   for f in sc.get("findings", [])]
     if report_type == "scorecard":
         for row in extra.get("rows", []):

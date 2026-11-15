@@ -2,9 +2,15 @@
  "alias_variant": "aliased",
  "counts": {
   "architecture": 1094,
+  "churn_commits_total": 1224,
+  "churn_components": 121,
   "excluded_label": 0,
   "excluded_not_open": 6,
   "issues": 153,
+  "security_complete": true,
+  "security_excluded_after_cutoff": 47,
+  "security_findings": 5,
+  "security_modules": 170,
   "synthetic": 7,
   "unknown_state": 0
  },
@@ -12,13 +18,15 @@
  "data_modes": {
   "architecture": "REAL",
   "capacity": "SYNTHETIC",
-  "issues": "REAL"
+  "git": "REAL (commits per component in the 120 days before the tag)",
+  "issues": "REAL",
+  "security": "REAL (rebuilt as of the tag from the Go module list; later advisories are left out)"
  },
  "notes": [
   "Identifiers are aliased; provenance holds opaque references only."
  ],
- "records": 1254,
- "records_sha256": "1104165eb5b14671a1e093a6b6ce07eb2b4a3aedb5950cb81ceb07cfef760eee",
+ "records": 1381,
+ "records_sha256": "e51b3ab3386ada857ec32b41ffaac9ba3f2756dfded9ce1408dbb50dbdc2fe9a",
  "release_or_case": "aliased",
  "snapshot_id": "release-close-v1.8.0-aliased"
 }

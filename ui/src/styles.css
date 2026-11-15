@@ -916,3 +916,19 @@ td .time, td time { white-space: nowrap; }
 .demo-card-foot { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; margin-top: auto; padding-top: var(--s-2); }
 .demo-calls { margin: var(--s-2) 0 0; padding-left: 1.1rem; font-size: 0.8rem; overflow-wrap: anywhere; }
 .demo-calls .fail { color: var(--critical); }
+
+/* Guided demo: progress and step results */
+.demo-progress { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; margin-bottom: var(--s-4); font-size: 0.86rem; color: var(--text-2); }
+.demo-progress progress { width: min(22rem, 100%); height: 8px; accent-color: var(--good); }
+.demo-card.demo-passed { border-color: var(--good); }
+.demo-card.demo-attention { border-color: var(--warn); }
+.demo-passed .demo-num { background: var(--good-soft); color: var(--good); }
+.demo-why { color: var(--warn); font-size: 0.82rem; }
+
+/* Run timeline: the connecting line stops at the last step, so no loose line hangs below it. */
+.timeline::before { content: none; }
+.timeline li:not(:last-child)::after { content: ""; position: absolute; left: 13px; top: 34px; bottom: -6px; width: 2px; background: var(--line); }
+
+/* Offline bar */
+.offline-banner { display: flex; align-items: center; gap: var(--s-2); margin: calc(-1 * var(--s-5)) calc(-1 * var(--s-6)) var(--s-4); padding: var(--s-2) var(--s-6); background: var(--warn-soft); color: var(--warn); font-weight: 600; font-size: 0.9rem; border-bottom: 1px solid var(--line); }
+.containment-banner + .offline-banner { margin-top: calc(-1 * var(--s-4)); }

@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
+from atlas.connectors.dependency_scan import query_advisories
 from atlas.connectors.github import GitHubReader
 from atlas.contracts import EgressPurpose, Mode, RunMode
 from atlas.gateway import Gateway, GatewayRefused, RequestContext, Response, httpx_transport
@@ -101,6 +102,45 @@ class RawCache:
 
     def tag(self, tag: str) -> dict[str, Any]:
         return self._cached("tags", tag, lambda: self.git_reader.tag_commit_time(tag), {"connector": "git", "tag": tag})
+
+    def commit_before(self, branch: str, until: str) -> dict[str, Any]:
+        """The newest commit on ``branch`` at or before ``until``."""
+        key = hashlib.sha256(f"{branch}|{until}".encode()).hexdigest()[:24]
+        return self._cached("commit_before", key, lambda: {"sha": self.git_reader.commit_before(branch, until)},
+                            {"connector": "git", "path": "/commits", "branch": branch, "until": until})
+
+    def file_at(self, path: str, ref: str) -> dict[str, Any]:
+        """Text of one repository file at a commit or tag."""
+        key = hashlib.sha256(f"{path}|{ref}".encode()).hexdigest()[:24]
+
+        def fetch() -> Any:
+            got = self.git_reader.file_text(path, ref)
+            return {"text": got[0], "blob": got[1]} if got else {"text": None}
+
+        return self._cached("files", key, fetch, {"connector": "git", "path": f"/contents/{path}", "ref": ref})
+
+    def osv_scan(self, key: str, inventory: list[tuple[str, str]]) -> dict[str, Any]:
+        """Advisories known for every module version (queried once; details shared between scans)."""
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", key)
+        known_path = self.raw / "osv" / "details.json"
+        known = json.loads(known_path.read_text(encoding="utf-8")) if known_path.exists() else {}
+
+        def fetch() -> Any:
+            by_module, details, complete = query_advisories(self.gateway, LIVE_CTX, inventory, known)
+            known.update(details)
+            known_path.parent.mkdir(parents=True, exist_ok=True)
+            known_path.write_text(json.dumps(known, sort_keys=True), encoding="utf-8")
+            wanted = {v for ids in by_module.values() for v in ids}
+            return {"by_module": by_module, "details": {k: details[k] for k in sorted(wanted) if k in details},
+                    "complete": complete, "modules": len(inventory)}
+
+        return self._cached("osv", safe, fetch, {"connector": "security", "operation": "querybatch", "modules": len(inventory)})
+
+    def churn(self, key: str, ref: str, since: str, until: str, components: list[str]) -> dict[str, Any]:
+        """Commits touching each component path between ``since`` and ``until`` on ``ref``."""
+        safe = re.sub(r"[^A-Za-z0-9._-]+", "_", key)
+        return self._cached("churn", safe, lambda: self.git_reader.component_churn(ref, since, until, components),
+                            {"connector": "git", "operation": "ComponentChurn", "ref": ref, "since": since, "until": until})
 
     def prow_artifact(self, prow_path: str, name: str, max_lines: int = 50_000) -> dict[str, Any]:
         """Fetch a Prow job artefact (build log or job metadata) from public storage."""

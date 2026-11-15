@@ -34,6 +34,8 @@ from atlas.snapshots import normalized_sha256
 from prep.fetch.cases import GOLDEN_CASES, TRIAGE_WINDOW
 from prep.fetch.raw import RAW, prow_paths
 from prep.reference import paths, reference
+from prep.fetch.raw import RawCache
+from prep.snapshot.extras import add_security_scan
 from prep.snapshot.people import People
 
 LOCAL = paths()["local"]
@@ -185,6 +187,12 @@ def build_issue_case(case_id: str, people: People) -> tuple[EvidenceDB, dict[str
         graph = ArchitectureGraph.from_json(json.loads((paths()["data"] / "snapshots" / "architecture" / f"{arch_tag}.json").read_text(encoding="utf-8")))
         for record, content, etype in architecture_records(graph, cutoff - timedelta(seconds=1)):
             _put(db, record, {"content": content, "entity_type": etype, "freshness_basis": "identity"})
+    cache = RawCache()
+    main_branch = REF.windows.get("main_branch", "main")
+    head = (cache.commit_before(main_branch, cutoff.isoformat())["data"] or {}).get("sha")
+    if head:
+        stats.update(add_security_scan(db, cache, key=f"case-{case_id.lower()}", ref=head, cutoff=cutoff))
+    cache.manifest.save()
     for record, content, etype in all_synthetic(case_id, cutoff):
         _put(db, record, {"content": content, "entity_type": etype, "freshness_basis": "series_end" if record.source == "telemetry" else "per_run"})
         stats["synthetic"] += 1
@@ -371,7 +379,7 @@ def build_golden(root: Path = EXPORT) -> dict[str, Any]:
 DATA_MODES = {
     "issues": "REAL", "git": "REAL", "ci": "REAL",
     "kubernetes": "SYNTHETIC", "telemetry": "SYNTHETIC", "capacity": "SYNTHETIC",
-    "security": "not captured for historical cases; investigation security checks return not_run",
+    "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
 }
 
 

@@ -96,7 +96,7 @@ function TriggerForm({ trigger, snapshots, preset, presetIssue }: { trigger: Man
         </button>
         {!available ? (
           <span className="blocked-note" data-testid="unavailable-reason" title={trigger.reason ?? undefined}>
-            <Icon name="lock" size={12} /> {trigger.reason ? trigger.reason.replace(/^kill switch /i, "Stopped by kill switch: ").replace(/^./, (c) => c.toUpperCase()) : `For: ${rolesText(trigger.allowed_roles)}`}
+            <Icon name="lock" size={12} /> {trigger.reason === "offline" ? "Paused while offline" : trigger.reason ? trigger.reason.replace(/^kill switch /i, "Stopped by kill switch: ").replace(/^./, (c) => c.toUpperCase()) : `For: ${rolesText(trigger.allowed_roles)}`}
           </span>
         ) : null}
       </div>

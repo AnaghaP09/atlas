@@ -190,6 +190,29 @@ class GitHubReader:
             "files": [{"path": f.get("filename"), "additions": f.get("additions"), "deletions": f.get("deletions")} for f in body.get("files", [])][:300],
         }
 
+    def component_churn(self, ref: str, since: str, until: str, paths: list[str], batch: int = 40) -> dict[str, int]:
+        """Commits touching each path between ``since`` and ``until`` on the history of ``ref``."""
+        out: dict[str, int] = {}
+        for start in range(0, len(paths), batch):
+            chunk = paths[start:start + batch]
+            data = self.graphql(Q.component_churn(chunk), self._vars(ref=ref, since=since, until=until))
+            obj = ((data.get("repository") or {}).get("object")) or {}
+            for n, path in enumerate(chunk):
+                out[path] = int((obj.get(f"c{n}") or {}).get("totalCount") or 0)
+        return out
+
+    def commit_before(self, branch: str, until: str) -> str | None:
+        """The newest commit on ``branch`` at or before ``until`` (ISO time)."""
+        body = self.rest("/commits", {"sha": branch, "until": until, "per_page": 1})
+        return body[0]["sha"] if isinstance(body, list) and body else None
+
+    def file_text(self, path: str, ref: str | None = None) -> tuple[str, str] | None:
+        """Text of one file at ``ref`` (default branch when omitted). Returns (text, blob sha)."""
+        body = self.rest(f"/contents/{path}", {"ref": ref} if ref else None)
+        if not isinstance(body, dict) or body.get("encoding") != "base64":
+            return None
+        return _b64(body.get("content") or ""), str(body.get("sha") or "")
+
     def tag_commit_time(self, tag: str) -> dict[str, Any] | None:
         ref = self.rest(f"/git/ref/tags/{tag}")
         if ref is None:
@@ -205,6 +228,12 @@ class GitHubReader:
         commit = self.rest(f"/commits/{sha}")
         committed = ((commit or {}).get("commit") or {}).get("committer", {}).get("date")
         return {"tag": tag, "commit": sha, "tagged_at": tagged_at or committed, "committed_at": committed}
+
+
+def _b64(text: str) -> str:
+    import base64
+
+    return base64.b64decode(text).decode("utf-8", errors="replace")
 
 
 def safe_reader(gateway: Gateway, ctx: RequestContext, **kwargs: Any) -> GitHubReader:

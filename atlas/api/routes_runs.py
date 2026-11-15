@@ -19,8 +19,23 @@ from atlas.scheduler import manual_admission
 
 router = APIRouter()
 
+
+def _run_cost(cost: Any) -> Any:
+    """Adds ``spend_recorded``. Runs stored before per-run counting kept a running total, so their
+    spend and token counts are not shown as the run's own."""
+    if not isinstance(cost, dict):
+        return cost
+    out = dict(cost)
+    recorded = bool(out.pop("per_run", False))
+    out["spend_recorded"] = recorded
+    if not recorded:
+        out["usd"] = None
+        out["input_tokens"] = None
+        out["output_tokens"] = None
+    return out
+
 REPORTS_FOR = {
-    "forecast": ("forecast", "allocation", "architecture"),
+    "forecast": ("forecast", "allocation", "architecture", "security_gate"),
     "investigation": ("investigation", "security_gate"),
     "question": ("question",),
 }
@@ -132,7 +147,7 @@ def run_view(request: Request, run_id: str) -> dict[str, Any] | None:
         "superseded_generations": list(range(1, gen)) if gen else [],
         "run_status": (artefact or {}).get("run_status") or ("failed" if run_id in s.run_errors else "pending"),
         "error": s.run_errors.get(run_id),
-        "cost": (artefact or {}).get("cost"),
+        "cost": _run_cost((artefact or {}).get("cost")),
         "reports": [],
     }
     view.update(_run_label(s, adm, snap))
@@ -235,9 +250,13 @@ def reverify(request: Request, run_id: str, body: dict[str, Any] | None = Body(N
 def _schedule_view(s: Any, watcher_id: str) -> dict[str, Any]:
     st = s.scheduler.state(watcher_id)
     w = s.scheduler.watchers[watcher_id]
-    state = "enabled" if st["enabled"] and not st.get("paused_reason") else ("paused" if st["enabled"] or st.get("paused_reason") else "disabled")
-    return {"schedule_id": watcher_id, "kind": w.kind, "state": state, "reason": st.get("paused_reason"),
-            "last_run": st.get("last_run"), "last_event_id": st.get("last_event"), "next_run": None,
+    state = "enabled" if st["enabled"] and not st.get("paused_reason") else "paused"
+    return {"schedule_id": watcher_id, "kind": w.kind, "title": getattr(w, "title", "") or watcher_id,
+            "state": state, "reason": st.get("paused_reason"),
+            "last_run": st.get("last_run"), "last_event_id": st.get("last_event"), "next_run": st.get("next_run"),
+            "interval_seconds": getattr(w, "interval_seconds", 0) or None,
+            "spends_model_budget": bool(getattr(w, "spends_model_budget", False)),
+            "external": bool(getattr(w, "external", False)),
             "project_id": getattr(w, "project_id", "") or None}
 
 

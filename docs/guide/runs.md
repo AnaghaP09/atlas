@@ -22,3 +22,9 @@ Product manager, engineering manager, solution architect, on-call engineer and a
 | Partial | The run reached a time or step limit. The report says what is missing. |
 | Unverified | Sentinel could not finish. Nothing was published. A person must look. |
 | Failed | The run stopped with an error. A notification says why. |
+
+## Good to know
+
+- A run shows its own AI model spend. Older runs show **Model spend not recorded**, because their
+  spend was not counted per run.
+- After a run ends, the Progress box shows no steps. Steps are shown while the run is in progress.

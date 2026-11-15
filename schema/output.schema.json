@@ -157,7 +157,7 @@
         "usd": {"type": "number", "minimum": 0},
         "steps": {"type": "integer", "minimum": 0},
         "tool_calls": {"type": "integer", "minimum": 0},
-        "seconds": {"type": "number", "minimum": 0}
+        "seconds": {"type": "number", "minimum": 0}, "per_run": {"type": "boolean"}
       }
     },
     "required_scopes": {"$ref": "#/$defs/scopes"}

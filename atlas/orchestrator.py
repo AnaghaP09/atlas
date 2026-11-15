@@ -361,6 +361,10 @@ class Orchestrator:
         verified = self._verify(run_id, out, resolver)
         if verified is None:
             return self._finish(run_id, ctx, trigger, sb, out, raw=raw)
+        if self.d.gate is not None:
+            # A release close carries the dependency scan result for the release, like an investigation.
+            gate = self.d.gate.evaluate_for_run(resolver, self.d.components_for(trigger))
+            verified["security_check"] = gate.as_security_check()
         return self._finish(run_id, ctx, trigger, sb, verified, raw=raw)
 
     def _note_usage_start(self, run_id: str) -> None:
@@ -383,6 +387,8 @@ class Orchestrator:
             out["cost"].update(input_tokens=max(stats.input_tokens - base[0], 0),
                                output_tokens=max(stats.output_tokens - base[1], 0),
                                usd=round(max(stats.cost_usd - base[2], 0.0), 6))
+            # Marks that these figures are this run's own share, not a running total.
+            out["cost"]["per_run"] = True
         if ctx.project_id:
             out["project_id"] = ctx.project_id
         self.runs.save_run(run_id, ctx, trigger, sb, raw)

@@ -43,6 +43,7 @@ GRAPHQL_OPERATIONS = frozenset(
         "PullRequestTimeline",
         "ContentEditsProbe",
         "RateLimit",
+        "ComponentChurn",
     }
 )
 
@@ -281,6 +282,7 @@ _PUBLICATION_ROUTES = [
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)$"), "repo"),
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/ref/heads/(?P<ref>[A-Za-z0-9._/-]+)$"), "ref"),
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/commits/(?P<sha>[0-9a-f]{40})$"), "commit"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/trees/(?P<sha>[0-9a-f]{40})$"), "tree"),
     ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/(blobs|trees|commits)$"), "object"),
     ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/refs$"), "new_ref"),
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls$"), "pulls"),
@@ -312,6 +314,8 @@ def _publication_rule(connector: str, method: str, host: str, path: str, body: A
         if repo in sources.repositories():
             return "a repository that ATLAS reads from can never be written to"
         payload = body if isinstance(body, Mapping) else {}
+        if not grant.branch and kind != "repo":
+            return "an identity read may only read the repository itself"
         if kind == "ref" and m.group("ref") not in (grant.branch, grant.base_ref):
             return "only the approved branch and its base may be read"
         if kind == "new_ref" and payload.get("ref") != f"refs/heads/{grant.branch}":
@@ -328,6 +332,7 @@ def _publication_rule(connector: str, method: str, host: str, path: str, body: A
 _PR_PATH = re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls/(?P<number>\d+)$")
 _REPO_PATH = re.compile(r"^/repos/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 _SAFE_PATH = re.compile(r"^[A-Za-z0-9._~/-]+$")
+_LISTING_KEYS = frozenset({"prefix", "delimiter", "marker", "max-keys"})
 NO_SOURCES = SourceSet()
 _OSV_VULN = re.compile(r"^/v1/vulns/[A-Za-z0-9._-]+$")
 
@@ -378,6 +383,17 @@ def policy_check(
             for rule_host, rule_prefix in sources.ci_artifact_rules() | sources.ci_view_rules():
                 if host == rule_host and _under(path, rule_prefix):
                     return None
+            # Folder listing of the project's own job folders (read-only, bounded by prefix).
+            query = parse_qs(parts.query, keep_blank_values=True)
+            for rule_host, bucket, prefixes in sources.ci_listing_rules():
+                if host != rule_host or path.rstrip("/") != (bucket or "").rstrip("/"):
+                    continue
+                if set(query) - _LISTING_KEYS or query.get("delimiter") != ["/"]:
+                    return "CI folder listing allows only prefix, delimiter, marker and max-keys"
+                wanted = (query.get("prefix") or [""])[0]
+                if _SAFE_PATH.match(wanted or "") and any(wanted.startswith(p) for p in prefixes if p):
+                    return None
+                return "CI folder listing prefix is not configured for this project"
             return "host or path not allowed for CI artefacts"
         if connector == "security":
             return _security_rule(method, host, path, body)

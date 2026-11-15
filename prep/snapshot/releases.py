@@ -27,6 +27,7 @@ from atlas.store import AUTHORITATIVE_WRITERS, EvidenceDB, from_iso
 from prep.fetch.raw import RawCache
 from prep.reference import paths, reference
 from prep.snapshot.build import LeakageError, _load, check_export_people, collect_people, export
+from prep.snapshot.extras import add_component_churn, add_security_scan
 from prep.snapshot.people import People
 
 REF = reference()
@@ -57,7 +58,7 @@ def close_candidates(cache: RawCache, tag: str, labels: str) -> list[int]:
     return nums
 
 
-def build_close(tag: str, numbers: list[int], *, label_filter: set[str], people: People) -> tuple[EvidenceDB, dict[str, Any]]:
+def build_close(tag: str, numbers: list[int], *, label_filter: set[str], people: People, cache: RawCache | None = None) -> tuple[EvidenceDB, dict[str, Any]]:
     cutoff = tag_time(tag)
     build = paths()["build"]
     build.mkdir(parents=True, exist_ok=True)
@@ -92,6 +93,13 @@ def build_close(tag: str, numbers: list[int], *, label_filter: set[str], people:
         for record, content, etype in architecture_records(graph, cutoff - timedelta(seconds=1)):
             db.put(record, AUTHORITATIVE_WRITERS["architecture"], content=content, entity_type=etype, freshness_basis="identity")
             stats["architecture"] += 1
+        if cache is not None:
+            commit = _load("tags", tag)["data"]["commit"]
+            stats.update(add_component_churn(db, cache, key=f"release-close-{tag}", ref=commit, cutoff=cutoff,
+                                             components=graph.components))
+    if cache is not None:
+        commit = _load("tags", tag)["data"]["commit"]
+        stats.update(add_security_scan(db, cache, key=f"release-close-{tag}", ref=commit, cutoff=cutoff))
     for record, content, etype in capacity_records(cutoff):
         db.put(record, AUTHORITATIVE_WRITERS["capacity"], content=content, entity_type=etype, freshness_basis="per_run")
         stats["synthetic"] += 1
@@ -170,7 +178,7 @@ def main(argv: list[str]) -> int:
     for tag in closes:
         nums = close_candidates(cache, tag, rel["candidate_labels"])
         label_filter = set(rel["candidate_labels"].split(","))
-        db, info = build_close(tag, nums, label_filter=label_filter, people=people)
+        db, info = build_close(tag, nums, label_filter=label_filter, people=people, cache=cache)
         later_backports = set()
         for m in rel["minors"]:
             for b in _numbers(f"backports-{major}.{m}"):
@@ -195,7 +203,9 @@ def main(argv: list[str]) -> int:
             "alias_variant": None,
             "counts": info["stats"],
             "notes": ["Open bug and flaky-test issues as they stood at the release tag; capacity is synthetic."],
-            "data_modes": {"issues": "REAL", "architecture": "REAL", "capacity": "SYNTHETIC"},
+            "data_modes": {"issues": "REAL", "architecture": "REAL", "git": "REAL (commits per component in the 120 days before the tag)",
+                           "security": "REAL (rebuilt as of the tag from the Go module list; later advisories are left out)",
+                           "capacity": "SYNTHETIC"},
         }
         target = export(db, f"release-close-{tag}", "releases", manifest, people, root=out_root)
         db.close()

@@ -8,6 +8,7 @@ an unclear outcome by reading the remote state before any retry.
 from __future__ import annotations
 
 import base64
+from datetime import datetime, timedelta
 from typing import Any, Callable, Mapping
 from urllib.parse import quote
 
@@ -25,6 +26,7 @@ class GitHubPublicationAPI:
     def __init__(self, gateway: Gateway, grant_for: Callable[[str], PublishGrant | None]) -> None:
         self.gateway = gateway
         self.grant_for = grant_for
+        self._verified_base: dict[str, str] = {}
 
     def _call(self, method: str, full_name: str, path: str, body: Any = None, *, missing_ok: bool = False) -> Any:
         grant = self.grant_for(full_name)
@@ -37,6 +39,30 @@ class GitHubPublicationAPI:
         if response.status >= 300:
             raise PublicationUnavailable(f"{method} {path} answered {response.status}")
         return response.body
+
+    def identify(self, full_name: str, base_ref: str, now: datetime) -> RepoIdentity:
+        """Read the repository identity before any approval exists (task creation binds it).
+
+        The request carries a grant with no branch, which the gateway accepts for this one read only.
+        """
+        probe = PublishGrant(full_name, "", base_ref, now + timedelta(minutes=5))
+        ctx = RequestContext(purpose=EgressPurpose.PUBLICATION, publish=probe)
+        response = self.gateway.request("publication", "GET", f"{API}/repos/{full_name}", ctx, None)
+        if response.status >= 300 or not isinstance(response.body, Mapping):
+            raise PublicationUnavailable(f"the target repository {full_name} could not be read ({response.status})")
+        return RepoIdentity(str(response.body["node_id"]), str(response.body["full_name"]))
+
+    def base_blobs(self, full_name: str, base_ref: str) -> dict[str, str]:
+        """Path -> git blob id of every file at the head of the base branch (one tree read)."""
+        base_sha = self.branch_head(full_name, base_ref)
+        if base_sha is None:
+            raise PublicationUnavailable(f"base branch {base_ref} not found")
+        tree_sha = self._call("GET", full_name, f"/git/commits/{base_sha}")["tree"]["sha"]
+        tree = self._call("GET", full_name, f"/git/trees/{tree_sha}?recursive=1")
+        if tree.get("truncated"):
+            raise PublicationUnavailable("the target repository is too large to compare")
+        self._verified_base[full_name.lower()] = base_sha
+        return {str(e["path"]): str(e["sha"]) for e in tree.get("tree", []) if e.get("type") == "blob"}
 
     def repo_identity(self, full_name: str) -> RepoIdentity:
         body = self._call("GET", full_name, "")
@@ -53,7 +79,8 @@ class GitHubPublicationAPI:
         grant = self.grant_for(full_name)
         if grant is None:
             raise PublicationUnavailable(f"no approved publication for {full_name}")
-        base_sha = self.branch_head(full_name, grant.base_ref)
+        # The commit is made on the base that was just compared with the prepared tree, if any.
+        base_sha = self._verified_base.pop(full_name.lower(), None) or self.branch_head(full_name, grant.base_ref)
         if base_sha is None:
             raise PublicationUnavailable(f"base branch {grant.base_ref} not found")
         base_tree = self._call("GET", full_name, f"/git/commits/{base_sha}")["tree"]["sha"]
