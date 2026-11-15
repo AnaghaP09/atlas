@@ -34,6 +34,18 @@ const STATE_WORD: Record<string, string> = {
   awaiting_reapproval: "Needs approval again",
 };
 
+/** What happens next when there is no button to press at this step. */
+const STEP_NOTE: Record<string, string> = {
+  proposed: "Next: approval A on the Approvals page starts the coding agent.",
+  prepared: "The change is ready. Next: approval B on the Approvals page.",
+  published: "The draft pull request is open. CI is running on it.",
+  awaiting_validation: "The draft pull request is open and being checked. Next: record whether the fix works.",
+  accepted: "Done: the fix was checked and accepted.",
+  failed: "This task stopped. Start a new one from the investigation.",
+  voided: "This task was cancelled.",
+  awaiting_reapproval: "Something changed. Approve again on the Approvals page.",
+};
+
 export function taskStateWord(state: string | null | undefined): string {
   const s = String(state ?? "");
   return STATE_WORD[s] ?? s.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -227,8 +239,15 @@ export function TaskDetail({ taskId }: { taskId: string }) {
         </div>
         {t.checks ? <CheckList checks={t.checks} /> : null}
         <div className="actions-row">
-          <Button variant="primary" icon={prepBlock.length ? "lock" : "play"} disabled={readOnly || prepBlock.length > 0} title={prepBlock.length ? `Stopped by: ${prepBlock[0]!.title}` : undefined} loading={prepare.state.status === "running"} onClick={() => void prepare.run({}).then(reload)}>Prepare the change</Button>
-          <Button icon={pubBlock.length ? "lock" : "arrow"} disabled={readOnly || pubBlock.length > 0} title={pubBlock.length ? `Stopped by: ${pubBlock[0]!.title}` : undefined} loading={publish.state.status === "running"} onClick={() => void publish.run({}).then(reload)}>Publish draft pull request</Button>
+          {t.state === "approved_a" ? (
+            <Button variant="primary" icon={prepBlock.length ? "lock" : "play"} disabled={readOnly || prepBlock.length > 0} title={prepBlock.length ? `Stopped by: ${prepBlock[0]!.title}` : undefined} loading={prepare.state.status === "running"} onClick={() => void prepare.run({}).then(reload)}>Prepare the change</Button>
+          ) : null}
+          {t.state === "approved_b" ? (
+            <Button variant="primary" icon={pubBlock.length ? "lock" : "arrow"} disabled={readOnly || pubBlock.length > 0} title={pubBlock.length ? `Stopped by: ${pubBlock[0]!.title}` : undefined} loading={publish.state.status === "running"} onClick={() => void publish.run({}).then(reload)}>Publish draft pull request</Button>
+          ) : null}
+          {t.state !== "approved_a" && t.state !== "approved_b" ? (
+            <span className="muted small">{STEP_NOTE[t.state] ?? "Nothing to run at this step."}</span>
+          ) : null}
           <Button variant="ghost" icon="shield" disabled={readOnly} loading={refresh.state.status === "running"} onClick={() => void refresh.run({}).then(reload)}>Refresh security check</Button>
           <BlockedNote by={[...prepBlock, ...pubBlock]} />
         </div>
