@@ -82,7 +82,9 @@ def describe(snapshots: Any, snap: Mapping[str, Any], project_name: str | None) 
     name = project_name or str(snap.get("project_id") or "Project")
     release = str(snap.get("release_or_case") or snap.get("release") or "")
     release_tag = re.search(r"v\d+\.\d+\.\d+", str(snap.get("snapshot_id", "")))
-    if kind == "release":
+    if kind == "release" and snap.get("title"):
+        title = str(snap["title"])  # a copy built by Add project names itself
+    elif kind == "release":
         title = f"{name} at release {release_tag.group(0) if release_tag else release}"
     elif kind == "case":
         title = f"Example case: {summary.get('case_title') or release}"

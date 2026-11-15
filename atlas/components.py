@@ -62,6 +62,7 @@ class Layout:
             parts = PurePosixPath(path).parts[:-1]
             for i in range(len(parts)):
                 self.dirs["/".join(parts[:i])].add(parts[i])
+        self.opened: set[str] = set()  # containers that were opened; files directly inside belong to them
         self.roots = self._roots()
 
     def _expand(self, folder: str) -> bool:
@@ -78,6 +79,7 @@ class Layout:
                 if child in SKIP_DIRS or child.startswith("."):
                     continue
                 if self._expand(path) and self.dirs.get(path):
+                    self.opened.add(path)
                     visit(path, True)
                 elif opened_by_container and len(children) == 1 and self.dirs.get(path):
                     # src/<package>: the only package below a container is opened one level more.
@@ -94,10 +96,10 @@ class Layout:
         best = "root"
         for i in range(1, len(parts) + 1):
             prefix = "/".join(parts[:i])
-            if prefix in self.roots:
+            if prefix in self.roots or prefix in self.opened:
                 best = prefix
         if best == "root" and parts:
-            best = parts[0]  # files directly inside an opened container count as the container
+            best = parts[0]
         return best
 
 
