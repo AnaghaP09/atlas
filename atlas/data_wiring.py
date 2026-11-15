@@ -413,8 +413,9 @@ class ProjectPoller:
 
     * Issues: one conditional GET per label of the recently updated open issues. The first poll
       walks every page so the panel shows the real open count at once. With a token, changed
-      issues are enriched with their full history (at most ``max_enrich`` per poll, the rest in
-      later polls); without one, the REST content is stored, marked as having no edit history.
+      issues are enriched with their full history (at most ``max_enrich`` per poll); the others,
+      and every issue when there is no token, are stored from their REST view, marked as having no
+      edit history. An issue stored that way gets its full history the next time it changes.
     * CI: GitHub Actions runs for ``ci = "github_actions"``; for ``ci = "prow"`` the latest result
       of each periodic job below the project's configured job folders. Otherwise: not polled.
     * Releases: the latest release.
@@ -444,12 +445,11 @@ class ProjectPoller:
         self.jobs: JobListing | None = None
         if config.ci == "prow" and src.ci_artifact_base and src.ci_listing_prefixes:
             self.jobs = JobListing(gateway, artifact_base=src.ci_artifact_base,
-                                   listing_prefixes=src.ci_listing_prefixes, clock=clock)
+                                   listing_prefixes=src.ci_listing_prefixes, clock=clock, checks_per_poll=80)
         self.last_error: str | None = None
         self.history_path = history_path
         self.history: list[dict[str, Any]] = self._load_history()
         self._backfilled = False
-        self._needs_history: set[int] = set()
         self._last_scan: datetime | None = None
         self._security_items: list[dict[str, Any]] | None = None
         self._advisories: dict[str, dict[str, Any]] = {}
@@ -584,14 +584,16 @@ class ProjectPoller:
                     current = self.store.current_live("issues", f"issue/{issue['number']}")
                     if current is not None and (_dt(issue.get("updated_at")) or self.clock()) <= current.observed_at:
                         continue
+                    records = []
                     if self.authenticated and enriched < self.max_enrich and not self._rate_low():
                         enriched += 1
-                        records = self.issues.fetch_live({"number": issue["number"]}, live_ctx)
-                        self._needs_history.discard(issue["number"])
-                    else:
+                        try:
+                            records = self.issues.fetch_live({"number": issue["number"]}, live_ctx)
+                        except ValueError:
+                            # The detailed view is not newer than what is stored: keep the stored version.
+                            records = []
+                    if not records:
                         records = self.issues.store_rest_issue(issue, live_ctx)
-                        if self.authenticated:
-                            self._needs_history.add(issue["number"])
                     for rec in records:
                         out.append({"kind": "issue", "title": f"#{issue['number']} {issue.get('title', '')}",
                                     "record_id": rec.record_id, "content_version_id": rec.content_version_id,
@@ -599,13 +601,6 @@ class ProjectPoller:
             if result.validator_pending:
                 self.reader.commit_validator(result.url)
         self._backfilled = True
-        # Issues stored without their edit history get it in later polls, a bounded number at a time.
-        for number in sorted(self._needs_history, reverse=True):
-            if enriched >= self.max_enrich or self._rate_low():
-                break
-            enriched += 1
-            self.issues.fetch_live({"number": number}, live_ctx)
-            self._needs_history.discard(number)
         return out
 
     def _open_issue_panel(self) -> tuple[list[dict[str, Any]], int]:
