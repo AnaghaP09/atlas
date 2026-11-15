@@ -14,6 +14,7 @@ import { ReadOnlyBanner, type AccessGrantView } from "../components/access";
 import { useIdentity } from "../app/context";
 import { Markdown } from "../lib/markdown";
 import { Link } from "../lib/router";
+import { dayLabel, OWNER_LABEL, ownerSplit } from "../lib/outlook";
 
 export const PROXY_NOTE =
   "Forecast accuracy is measured against a stand-in definition of a release blocker, because the public KubeVirt project does not record which issues blocked each release.";
@@ -91,8 +92,32 @@ export function ReportDetail({ reportId }: { reportId: string }) {
           <ul>{r.corrections.map((c, i) => <li key={c.correction_id ?? i}>{c.text ?? "A correction was applied."}</li>)}</ul>
         </div>
       ) : null}
+      {isForecast && r.report_type !== "architecture" ? <PredictedHeader r={r} /> : null}
       <ReportBody r={r} />
     </Section>
+  );
+}
+
+/** Forecast and allocation items are predictions: say so, say when the data is from, and give the split. */
+function PredictedHeader({ r }: { r: ReportView }) {
+  const run = useApi<{ snapshot_id?: string }>(`/api/runs/${encodeURIComponent(r.run_id)}`);
+  const sid = run.data?.snapshot_id;
+  const snap = useApi<{ snapshot?: { cutoff?: string; frozen_at?: string } }>(sid ? `/api/snapshots/${encodeURIComponent(sid)}` : null);
+  const asOf = dayLabel(snap.data?.snapshot?.cutoff ?? snap.data?.snapshot?.frozen_at);
+  const items: ReportItem[] = Array.isArray(r.report.items) ? (r.report.items as ReportItem[]) : [];
+  const split = ownerSplit(items);
+  return (
+    <p className="report-meta" data-testid="predicted-header">
+      <span className="pill pill-neutral" title="Predicted from the release close, not measured">Predicted</span>
+      <span className="muted">Data as of {asOf ?? "—"}</span>
+      {r.report_type === "allocation" ? (
+        <span data-testid="allocation-split">
+          {OWNER_LABEL.developers} <strong className="num">{split.developers}</strong> · {OWNER_LABEL.coding_agents}{" "}
+          <strong className="num">{split.coding_agents}</strong> · {OWNER_LABEL.decide_first} <strong className="num">{split.decide_first}</strong>
+          {split.not_allocated ? <> · {OWNER_LABEL.not_allocated} <strong className="num">{split.not_allocated}</strong></> : null}
+        </span>
+      ) : null}
+    </p>
   );
 }
 
@@ -179,6 +204,7 @@ interface ReportItem {
   score?: number | null;
   allocation?: string | null;
   allocation_reason?: string | null;
+  owner_team?: string | null;
   evidence?: string[];
   claim_ids?: string[];
 }
@@ -250,7 +276,10 @@ function ItemsTable({ items, runId, kind, claims }: { items: ReportItem[]; runId
                   <span className="row-title"><Truncate text={it.title ?? "Untitled item"} max={84} /></span>
                   {it.issue_id ? <span className="row-sub num">#{it.issue_id}</span> : null}
                 </td>
-                <td>{it.component ?? <span className="muted">—</span>}</td>
+                <td>
+                  {it.component ?? <span className="muted">—</span>}
+                  {kind === "allocation" && it.owner_team ? <span className="row-sub">Owner team {it.owner_team}</span> : null}
+                </td>
                 {kind === "allocation" ? (
                   <td>
                     {ownerName(it.allocation) ? (
@@ -258,6 +287,7 @@ function ItemsTable({ items, runId, kind, claims }: { items: ReportItem[]; runId
                     ) : (
                       <span className="pill pill-neutral">No proposal</span>
                     )}
+                    {it.allocation_reason ? <span className="row-sub" data-testid="allocation-reason">{it.allocation_reason}</span> : null}
                   </td>
                 ) : null}
                 <td className="num">{typeof it.score === "number" ? it.score.toFixed(2) : "—"}</td>

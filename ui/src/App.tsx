@@ -34,6 +34,8 @@ import { Scorecard } from "./screens/Scorecard";
 import { TaskDetail, TaskList } from "./screens/Tasks";
 import { Help } from "./screens/Help";
 import { Toaster } from "./lib/toast";
+import { BetaPill, OutlookStrip } from "./components/OutlookStrip";
+import { ShipReadiness } from "./screens/ShipReadiness";
 
 interface Page {
   title: string;
@@ -45,6 +47,7 @@ interface Page {
 const PAGES: Record<string, Page> = {
   "/": { title: "Overview", sub: "What ATLAS knows about this project right now.", action: { to: "/run-now", label: "Run now", icon: "play" } },
   "/dashboard": { title: "Live dashboard", sub: "New issues, CI results and releases, polled from the project's public sources." },
+  "/ship-readiness": { title: "Ship readiness", sub: "What stops the release now, which services it touches, and whether we can still deliver." },
   "/activity-evidence/:id": { title: "Activity record", sub: "The exact version of a record that appeared on the live dashboard." },
   "/run-now": { title: "Run now", sub: "Start a run by hand. Every run gets the same checks, limits and audit record as an automatic one." },
   "/schedules": { title: "Automatic runs", sub: "Watchers and schedules that start runs on their own.", action: { to: "/run-now", label: "Run now", icon: "play" } },
@@ -84,6 +87,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
   const routes: [string, (p: Record<string, string>) => ReactNode][] = [
     ["/", () => <Home />],
     ["/dashboard", () => <Dashboard />],
+    ["/ship-readiness", () => <ShipReadiness />],
     [
       "/activity-evidence/:id",
       (p) => <ActivityEvidence recordId={p.id ?? ""} project={search.get("project") ?? ""} version={search.get("version") ?? ""} />,
@@ -408,6 +412,7 @@ export function App() {
         <SpendMeter />
         <RoleSwitcher />
         <SessionBar />
+        {nav.data?.beta ? <BetaPill /> : null}
         <Bell />
         <ThemeToggle />
       </header>
@@ -415,6 +420,7 @@ export function App() {
       <MetricsSync />
       <Toaster />
       <main key={epoch} className="main">
+        <OutlookStrip />
         <ContainmentBanner />
         <OfflineBanner />
         <Route path={path} search={search} nav={nav.data} />

@@ -7,6 +7,7 @@ import { useCurrentProject, type ActivityItem } from "./Dashboard";
 import { LiveNumber, useMetrics } from "../lib/metrics";
 import type { Navigation } from "../lib/nav";
 import { RoleFocus } from "./RoleHome";
+import { OutlookHomeLead } from "./ShipReadiness";
 import { DATASET_GROUPS, kindOf, visibleDatasets } from "../components/dataset";
 
 export interface SnapshotItem {
@@ -104,6 +105,7 @@ export function Home() {
 
   return (
     <>
+      <OutlookHomeLead />
       <RoleFocus home={nav.data?.home} />
       <div className="kpis">
         <KpiTile icon="database" label="Open issues at latest release" value={latest && typeof latest.open_issues === "number" ? latest.open_issues : "—"} hint={latest ? `${latest.title} · ${latest.as_of_label}` : undefined} />

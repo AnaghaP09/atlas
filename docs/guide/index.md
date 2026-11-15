@@ -64,6 +64,7 @@ If Sentinel rejects a claim, ATLAS removes the claim and everything that depends
 
 - [Home](home.md)
 - [Live dashboard](live-dashboard.md)
+- [Release outlook and ship readiness](release-outlook.md)
 - [Run now](run-now.md)
 - [Automatic runs](automatic-runs.md)
 - [Runs](runs.md)
