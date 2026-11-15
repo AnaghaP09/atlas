@@ -49,11 +49,11 @@ GRAPHQL_OPERATIONS = frozenset(
 )
 
 # Repository facts read once, before a project is added, to propose its settings. GET only, on
-# public repository metadata; never issue or pull request content.
+# public repository data; the issue list is read only to count the open issues per suggested label.
 _DETECT_PATH = re.compile(
     r"^/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
     r"(|/tags|/releases|/releases/latest|/labels|/languages|/actions/workflows|/contents|/contents/[A-Za-z0-9._/-]+"
-    r"|/commits/[0-9a-f]{40})$"
+    r"|/commits/[0-9a-f]{40}|/issues)$"
 )
 
 OSV_QUERY_KEYS = {"package", "version"}
