@@ -12,6 +12,7 @@ Expected keys (all optional unless a connector needs them)::
       artifact_base: https://storage.example/bucket   # job artefacts: <base>/<job path>/build-log.txt
       view_hosts: [ci.example.org]                     # hosts of job-view links found in issues
       view_prefix: /view/gs/bucket                     # path prefix of job-view links
+      listing_prefixes: [logs/periodic-project-]       # job folders to list for the live CI panel
     bot_accounts: [project-bot]            # automation accounts that are not people
     source_url: https://forge.example/owner/name.git   # read-only clone URL for preparation
 """
@@ -33,6 +34,7 @@ class ProjectSources:
     ci_artifact_base: str | None = None
     ci_view_hosts: tuple[str, ...] = ()
     ci_view_prefix: str | None = None
+    ci_listing_prefixes: tuple[str, ...] = ()
     bot_accounts: tuple[str, ...] = ()
     source_url: str | None = None
 
@@ -69,6 +71,7 @@ class ProjectSources:
             ci_artifact_base=base.rstrip("/") if base else None,
             ci_view_hosts=tuple(ci.get("view_hosts") or ()),
             ci_view_prefix=ci.get("view_prefix"),
+            ci_listing_prefixes=tuple(str(x).lstrip("/") for x in (ci.get("listing_prefixes") or ())),
             bot_accounts=tuple(data.get("bot_accounts") or ()),
             source_url=data.get("source_url"),
         )
@@ -91,6 +94,11 @@ class SourceSet:
 
     def ci_artifact_rules(self) -> set[tuple[str, str]]:
         return {(p.ci_artifact_host, p.ci_artifact_prefix) for p in self.projects if p.ci_artifact_base}
+
+    def ci_listing_rules(self) -> set[tuple[str, str, tuple[str, ...]]]:
+        """(host, bucket path, allowed listing prefixes) for projects that list their CI job folders."""
+        return {(p.ci_artifact_host, p.ci_artifact_prefix, p.ci_listing_prefixes)
+                for p in self.projects if p.ci_artifact_base and p.ci_listing_prefixes}
 
     def ci_view_rules(self) -> set[tuple[str, str]]:
         out = set()

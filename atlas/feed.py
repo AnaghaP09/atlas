@@ -51,7 +51,7 @@ class ProjectFeed:
     def _board(self, project_id: str) -> dict[str, Any]:
         board = self._dash.get(project_id)
         if board is None:
-            board = {"dashboard_version": 0, "last_poll": None,
+            board = {"dashboard_version": 0, "last_poll": None, "history": [],
                      "panels": {pid: {"panel_id": pid, "title": title, "status": "not_connected",
                                       "items": [], "updated_at": None} for pid, title in PANELS}}
             self._dash[project_id] = board
@@ -63,8 +63,16 @@ class ProjectFeed:
         with self._lock:
             self._board(project_id)["last_poll"] = (at or self.clock()).isoformat()
 
-    def update_panels(self, project_id: str, panels: Mapping[str, Sequence[Mapping[str, Any]]]) -> int:
-        """Replace the items of the named panels and announce one dashboard change."""
+    def set_history(self, project_id: str, points: Sequence[Mapping[str, Any]]) -> None:
+        """Counts per poll (oldest first), kept by the data layer across restarts."""
+        with self._lock:
+            self._board(project_id)["history"] = [dict(p) for p in points]
+
+    def update_panels(self, project_id: str, panels: Mapping[str, Sequence[Mapping[str, Any]]],
+                      totals: Mapping[str, int] | None = None) -> int:
+        """Replace the items of the named panels and announce one dashboard change.
+
+        ``totals`` gives the full count behind a panel that shows only its newest rows."""
         now = self.clock().isoformat()
         with self._lock:
             board = self._board(project_id)
@@ -73,6 +81,8 @@ class ProjectFeed:
                 if pid not in board["panels"]:
                     raise KeyError(f"unknown panel {pid}")
                 board["panels"][pid].update(status="live", items=[dict(i) for i in items], updated_at=now)
+                if totals and pid in totals:
+                    board["panels"][pid]["total"] = int(totals[pid])
                 changed.append(pid)
             board["dashboard_version"] += 1
             version = board["dashboard_version"]
@@ -119,6 +129,7 @@ class ProjectFeed:
                 panels.append(panel)
             return {"project_id": project_id, "dashboard_version": board["dashboard_version"],
                     "last_poll": board["last_poll"], "interval_seconds": self.interval_seconds,
+                    "history": [dict(p) for p in board.get("history", [])],
                     "panels": panels, "data_mode": "REAL" if self.connected else "STAGED"}
 
     def activity(self, project_id: str, limit: int = 50) -> list[dict[str, Any]]:

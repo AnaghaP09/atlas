@@ -17,6 +17,9 @@ from typing import Any, Mapping, Sequence
 TRACKER_TITLE = re.compile(r"(?i)quarantine (transition )?tracker")
 
 
+CHURN_WEIGHT = 1.0  # most the churn term can add to a score
+
+
 def is_tracker(item: OpenItem) -> bool:
     return bool(TRACKER_TITLE.search(item.title)) or "lifecycle/frozen" in item.labels and "tracker" in item.title.lower()
 
@@ -29,7 +32,9 @@ def score(item: OpenItem, at: datetime) -> float:
     s += 0.5 if any(l.startswith("lifecycle/stale") or l == "lifecycle/rotten" for l in item.labels) else 0.0
     s += min(stale_days / 60, 1.0)
     s += min(item.ci_recurrences / 5, 1.5)
-    s += min(item.component_churn / 20, 1.0)
+    # Component churn: 0 to 20, where 20 is the owner team with the most commits in the 120 days
+    # before the release. It adds at most CHURN_WEIGHT to the score.
+    s += CHURN_WEIGHT * min(item.component_churn / 20, 1.0)
     s += min(item.fan_in / 5, 1.0)
     return round(s, 3)
 
@@ -81,6 +86,7 @@ def forecast(items: Sequence[OpenItem], at: datetime, top: int = 10, threshold: 
             "kind": "carry_over",
             "probability_range": "illustrative",
             "score": score(i, at),
+            "component_churn": i.component_churn,
             "evidence": list(i.record_ids),
             "provenance": "derived",
             "synthetic_ancestry": False,
