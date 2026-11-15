@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://atlas.invalid/schema/events.json",
   "title": "Live event",
-  "description": "Every event on /api/runs/{id}/stream, /api/notifications/stream and /api/projects/{project_id}/stream. Producers, the API stream and the UI use exactly these names and fields. project.activity data: {project_id, kind, title, record_id, content_version_id, source_revision, link}. project.dashboard_changed data: {project_id, dashboard_version, changed_panels}. project.metrics_changed data: {project_id, metrics_version, changed}.",
+  "description": "Every event on /api/runs/{id}/stream, /api/notifications/stream and /api/projects/{project_id}/stream. Producers, the API stream and the UI use exactly these names and fields. project.activity data: {project_id, kind, title, record_id, content_version_id, source_revision, link}. project.dashboard_changed data: {project_id, dashboard_version, changed_panels}. project.metrics_changed data: {project_id, metrics_version, changed}. project.outlook_changed data: {project_id, outlook_version, changed}.",
   "streams": [
     "/api/runs/{id}/stream",
     "/api/notifications/stream",
@@ -23,6 +23,7 @@
     "project.activity",
     "project.dashboard_changed",
     "project.metrics_changed",
+    "project.outlook_changed",
     "stream.reset"
   ],
   "type": "object",
@@ -54,6 +55,7 @@
         "project.activity",
         "project.dashboard_changed",
         "project.metrics_changed",
+        "project.outlook_changed",
         "stream.reset"
       ]
     },
