@@ -284,7 +284,7 @@ export function CreateTask({ runId }: { runId: string }) {
   if (made) {
     return (
       <p className="state state-done toast-inline">
-        Task created. <Link to={`/tasks/${encodeURIComponent(made)}`}>Open the task</Link>
+        Sent to the coding agent. It is waiting for approval. <Link to={`/approvals?focus=${encodeURIComponent(`pending-A-${made}`)}`}>Open approvals</Link>
       </p>
     );
   }
@@ -296,11 +296,11 @@ export function CreateTask({ runId }: { runId: string }) {
         onClick={() =>
           void create.run({ run_id: runId }).then((r) => {
             const id = (r as { task?: TaskView } | undefined)?.task?.task_id;
-            if (id) navigate(`/tasks/${encodeURIComponent(id)}`);
+            if (id) navigate(`/approvals?focus=${encodeURIComponent(`pending-A-${id}`)}`);
           })
         }
       >
-        Create coding task
+        Send to the coding agent
       </Button>
       <ActionResult state={create.state} retry={() => void create.retrySame()} done={() => "Task created"} />
     </>

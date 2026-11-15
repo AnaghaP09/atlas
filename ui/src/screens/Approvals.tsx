@@ -40,7 +40,9 @@ function shortHash(v: unknown): string | null {
 }
 
 /** One approval per task: the engineering manager's single click covers preparing and publishing. */
-function ApprovalCard({ a, focused, pr }: { a: Approval; focused: boolean; pr?: string | null }) {
+function ApprovalCard({ a, focused, pr, task }: { a: Approval; focused: boolean; pr?: string | null; task?: TaskView }) {
+  const { navigate } = useRouter();
+  const t = (task ?? {}) as { target_change?: string | null; permitted_scope?: string[]; target_label?: string | null };
   const decide = useAction<{ decision: string; review_minutes?: number }, unknown>(`/api/approvals/${encodeURIComponent(a.approval_id)}/decision`);
   const oneClick = useAction<Record<string, never>, unknown>(`/api/tasks/${encodeURIComponent(a.task_id)}/approve-and-publish`);
   const { principal } = useIdentity();
@@ -83,12 +85,21 @@ function ApprovalCard({ a, focused, pr }: { a: Approval; focused: boolean; pr?: 
           <span className="fact-value"><EntityLink entity="task" id={a.task_id}>Open the task</EntityLink></span>
         </div>
       </div>
+      {t.target_change || (t.permitted_scope && t.permitted_scope.length) ? (
+        <div className="approval-change" data-testid="approval-change">
+          <span className="fact-label">What the coding agent will change</span>
+          {t.target_change ? <p>{t.target_change}</p> : null}
+          {t.permitted_scope && t.permitted_scope.length ? <p className="muted small">Files it may touch: <span className="mono">{t.permitted_scope.join(", ")}</span></p> : null}
+          {t.target_label ? <p className="muted small">{t.target_label}</p> : null}
+        </div>
+      ) : null}
+      {!pending && typeof a.diff === "string" && a.diff ? <pre className="diff" aria-label="The change">{a.diff}</pre> : null}
       {pending ? (
         <div className="approval-actions">
           {isEm ? (
             <>
               <Button variant="primary" icon={blocked.length ? "lock" : "ok"} disabled={blocked.length > 0}
-                loading={oneClick.state.status === "running"} onClick={() => void oneClick.run({}).then(refresh)}>Approve</Button>
+                loading={oneClick.state.status === "running"} onClick={() => void oneClick.run({}).then(() => { refresh(); if (a.task_id) navigate(`/tasks/${encodeURIComponent(a.task_id)}`); })}>Approve</Button>
               <Button variant="secondary" disabled={oneClick.state.status === "running"} onClick={() => void decide.run({ decision: "reject" }).then(refresh)}>Reject</Button>
               {oneClick.state.status === "running" ? <span className="muted small">The coding agent is preparing the change in the sandbox. This takes a minute or two.</span> : null}
             </>
@@ -139,7 +150,7 @@ export function Approvals() {
     return <Empty action={{ to: "/tasks", label: "Open tasks" }}>No approvals are waiting.</Empty>;
   return (
     <div className="approval-list">
-      {all.map((a) => <ApprovalCard key={a.approval_id} a={a} focused={focus === a.approval_id} pr={prOf(a.task_id)} />)}
+      {all.map((a) => <ApprovalCard key={a.approval_id} a={a} focused={focus === a.approval_id} pr={prOf(a.task_id)} task={(tasks.data?.tasks ?? []).find((x) => x.task_id === a.task_id)} />)}
       {locked.length ? (
         <div className="chip-row">
           {locked.map((l) => <LockedChip key={l.object_id} objectType={l.object_type} objectId={l.object_id} />)}
