@@ -9,7 +9,7 @@
   "injected_text": "SYNTHETIC",
   "issues": "REAL",
   "kubernetes": "SYNTHETIC",
-  "security": "not captured for historical cases; investigation security checks return not_run",
+  "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
   "telemetry": "SYNTHETIC"
  },
  "event_id": "18234",
@@ -17,8 +17,8 @@
  "notes": [
   "One instruction was added by the team to test how instructions hidden in data are handled."
  ],
- "records": 1284,
- "records_sha256": "28d9e17855c4aa4a01600578bd8e01852eca4120fa7217235112001755b1bffa",
+ "records": 1309,
+ "records_sha256": "98d295b624ce4ef3f08e5aed351a4c19b48e9b2438b8aef50084f25d11db7877",
  "release_or_case": "G01",
  "snapshot_id": "injection-g01-injected",
  "test_copy": "injection",
