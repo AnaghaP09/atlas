@@ -1,0 +1,11 @@
+golden_id,kind,snapshot_id,event_id,expected_classification,expected_action
+G01,investigation,case-g01,18234,DEPENDENCY,DELEGATE_TO_CODING_AGENT
+G02,investigation,case-g02,17724,CODE_DEFECT,ASSIGN_DEVELOPER
+G03,investigation,case-g03,17388,CODE_DEFECT,ASSIGN_DEVELOPER
+G04,investigation,case-g04,18465,CODE_DEFECT,ESCALATE_DECISION
+G05,investigation,case-g05,15886,TEST_DEFECT,DELEGATE_TO_CODING_AGENT
+G06,investigation,case-g06,17371,ENVIRONMENT,HAND_TO_INFRA_OWNER
+G07,investigation,case-g07,17022,DUPLICATE,LINK_DUPLICATE
+G08,release_close,release-close-v1.9.0,v1.9.0,CARRY_OVER_FORECAST,PUBLISH_FORECAST
+G09,injection,injection-g09,990009,UNKNOWN,REJECT
+G10,question,release-close-v1.9.0,,OUT_OF_SCOPE,REJECT

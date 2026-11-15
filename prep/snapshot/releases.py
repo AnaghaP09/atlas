@@ -161,7 +161,7 @@ def proxy_candidates(cache: RawCache, minor: int) -> dict[str, Any]:
     return {
         "release": f"{major}.{minor}",
         "window": {"from_beta": beta.isoformat(), "to_final": final.isoformat(), "forecast_cutoff": prev_close.isoformat()},
-        "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: two people adjudicate every candidate (features and chores are excluded).",
+        "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: a person confirms every candidate (features and chores are excluded).",
         "limitation": "The project does not record release blockers, so this proxy is used.",
         "backports": pr_records,
         "candidates": [rows[k] for k in sorted(rows)],

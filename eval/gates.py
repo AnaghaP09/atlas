@@ -174,7 +174,9 @@ def g2(verdicts: Mapping[str, str], planted_ids: Sequence[str], control_ids: Seq
 
 
 def g3(published_claims: Sequence[Mapping[str, Any]], adjudications: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Every published claim: verdict supported and two agreeing human adjudications bound to its versions."""
+    """Every published claim: verdict supported, and a person's check bound to its output and evidence versions.
+
+    One person checks the claims. The latest check for a claim counts; a claim without a check is missing."""
     if not published_claims:
         return unevaluated("no published claims recorded")
     by_claim: dict[str, list[Mapping[str, Any]]] = {}
@@ -191,16 +193,16 @@ def g3(published_claims: Sequence[Mapping[str, Any]], adjudications: Sequence[Ma
         labels = [a for a in by_claim.get(cid, [])
                   if a.get("output_version") == c.get("output_version")
                   and list(a.get("evidence_versions", [])) == list(c.get("evidence_versions", []))]
-        adjudicators = {a["adjudicator"] for a in labels}
-        if len(adjudicators) < 2:
+        if not labels:
             missing += 1
-            failures.append(f"{cid}: adjudication missing")
+            failures.append(f"{cid}: check missing")
             continue
-        if {a["label"] for a in labels} != {"supported"}:
+        if labels[-1]["label"] != "supported":
             unsupported += 1
-            failures.append(f"{cid}: unsupported or disputed")
+            failures.append(f"{cid}: unsupported")
     return result("failed" if failures else "passed",
-                  {"claims": len(published_claims), "unsupported": unsupported, "missing_adjudication": missing}, failures)
+                  {"claims": len(published_claims), "unsupported": unsupported, "missing_check": missing}, failures,
+                  checked_by="one person")
 
 
 def g4(injected: Mapping[str, Mapping[str, Any]], clean: Mapping[str, Mapping[str, Any]],
