@@ -68,7 +68,7 @@ def test_query_parameters_cannot_widen_the_reader(client, services):
     run_id = r.json()["run_id"]
     for extra in ({"reader": "security"}, {"role": "audit"}, {"principal": "audit"}):
         r = client.get("/api/evidence/rec-restricted", params={"run_id": run_id, **extra},
-                       headers={"X-Atlas-Role": "pm"})
+                       headers={"X-Atlas-Role": "oncall"})
         assert r.status_code == 200
         assert "SECRET-FINDING-MARKER" not in r.text
         assert r.json()["record"] is None and r.json()["restricted_items"] >= 1
@@ -110,7 +110,7 @@ def test_every_get_route_returns_the_envelope_and_never_leaks(client, services):
     for path in _get_routes(client.app):
         url = re.sub(r"\{(\w+)\}", lambda m: fill.get(m.group(1), "x"), path)
         r = client.get(url, params={k: v for k, v in params.items() if k in path or k in ("run_id", "incident_id")},
-                       headers={"X-Atlas-Role": "pm"})
+                       headers={"X-Atlas-Role": "oncall"})
         assert "SECRET-FINDING-MARKER" not in r.text, url
         if r.status_code == 200:
             assert ENVELOPE <= set(r.json()), url

@@ -151,7 +151,7 @@ def test_graph_per_snapshot(client):
     a = client.get("/api/graph/snap-v1.9.0", headers=H("architect")).json()
     b = client.get("/api/graph/snap-v1.9.0-aliased", headers=H("architect")).json()
     assert a["nodes"] != b["nodes"]
-    assert "SECRET-FINDING-MARKER" not in client.get("/api/graph/snap-v1.9.0", headers=H("pm")).text
+    assert "SECRET-FINDING-MARKER" not in client.get("/api/graph/snap-v1.9.0", headers=H("oncall")).text
 
 
 def test_feedback_becomes_candidate(client, services, tmp_path):

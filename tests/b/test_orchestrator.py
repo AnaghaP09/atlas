@@ -264,7 +264,8 @@ def test_event_producer_rules(run_context) -> None:
         ev.emit("run.made_up", run_id="r", authoritative_generation=1)
     first = ev.emit("report.corrected", run_id="r", authoritative_generation=2, correction_version=1)
     ev.emit("report.withdrawn", run_id="r", authoritative_generation=2, required_scopes=["restricted:security"])
-    assert ev.since(first["event_id"], principal_for("pm")) == []  # restricted event withheld
+    assert ev.since(first["event_id"], principal_for("oncall")) == []  # restricted event withheld
+    assert len(ev.since(first["event_id"], principal_for("pm"))) == 1
     assert len(ev.since(first["event_id"], principal_for("security"))) == 1
     names = json.loads((SCHEMA / "events.json").read_text(encoding="utf-8"))
     flat = json.dumps(names)
