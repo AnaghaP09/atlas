@@ -105,6 +105,13 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
     if services.is_scenario:
         api.include_router(routes_eval.scenario_router)
     app.include_router(api)
+    if site is None:
+        # Without sign-in there is no session. Say so plainly, so the UI does not have to guess
+        # from a missing route (the sign-in site serves the real ``/api/session``).
+        @app.get("/api/session", include_in_schema=False)
+        async def _no_session() -> dict[str, Any]:
+            return {"sign_in": False, "identity": "header"}
+
     from atlas.api import guide
 
     app.include_router(guide.router)
