@@ -82,7 +82,7 @@ function RowCard({
   vars: Record<string, string>;
   setVars: (v: Record<string, string>) => void;
   outcome: RowOutcome | undefined;
-  setOutcome: (o: RowOutcome) => void;
+  setOutcome: (o: RowOutcome | null) => void;
   savedBy: Record<string, number>;
 }) {
   const { identity } = useApp();
@@ -95,6 +95,7 @@ function RowCard({
   async function run() {
     const { epoch, signal } = identity.snapshot;
     setRunning(true);
+    setOutcome(null); // an earlier result must not stay on screen while the step runs again
     const out: StepResult[] = [];
     const saved = { ...vars };
     const keys: Record<string, string> = {};
@@ -254,7 +255,7 @@ export function GuidedDemo() {
         {rows.map((row, i) => (
           <RowCard
             key={row.row_id} row={row} index={start + i + 1} thisServer={m.this_server} vars={v} setVars={setVars}
-            outcome={outcomes[row.row_id]} setOutcome={(o) => setOutcomes((prev) => ({ ...prev, [row.row_id]: o }))} savedBy={savedBy}
+            outcome={outcomes[row.row_id]} setOutcome={(o) => setOutcomes((prev) => { const next = { ...prev }; if (o) next[row.row_id] = o; else delete next[row.row_id]; return next; })} savedBy={savedBy}
           />
         ))}
       </div>
