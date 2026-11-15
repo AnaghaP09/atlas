@@ -80,6 +80,7 @@ If Sentinel rejects a claim, ATLAS removes the claim and everything that depends
 - [Quality checks](quality-checks.md)
 - [Guided demo](guided-demo.md)
 - [Sign-in and projects](sign-in-and-projects.md)
+- [Add project](add-project.md)
 
 ## More help
 

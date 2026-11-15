@@ -69,6 +69,12 @@ class ProjectRegistry:
             )
         return cls(out)
 
+    def add(self, project: Project) -> None:
+        """Add a project to the running registry (after it was written to the projects file)."""
+        if project.project_id in self._projects:
+            raise ValueError(f"project {project.project_id} already exists")
+        self._projects = {**self._projects, project.project_id: project}
+
     # -- reads ---------------------------------------------------------------------------------
 
     @property

@@ -14,8 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from atlas.api import (metrics, navigation, outlook, routes_access, routes_eval, routes_ops, routes_projects, routes_runs,
-                       routes_tasks)
+from atlas.api import (metrics, navigation, outlook, routes_access, routes_eval, routes_onboarding, routes_ops,
+                       routes_projects, routes_runs, routes_tasks)
 from atlas.api.guard import HostOriginGuard
 from atlas.api.identity import IdentityError
 from atlas.api.idempotency import IdempotencyError
@@ -99,6 +99,7 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
     api.include_router(routes_tasks.router)
     api.include_router(routes_ops.router)
     api.include_router(routes_eval.router)
+    api.include_router(routes_onboarding.router)
     api.include_router(routes_projects.router)
     api.include_router(navigation.router)
     api.include_router(metrics.router)

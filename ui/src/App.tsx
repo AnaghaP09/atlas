@@ -6,6 +6,7 @@ import { BrandMark, Icon, type IconName } from "./components/icons";
 import { LatestReport, latestReport } from "./screens/LatestReport";
 import { LockedChip } from "./components/access";
 import { AccessRequests } from "./screens/AccessRequests";
+import { AddProject } from "./screens/AddProject";
 import { ObjectView } from "./screens/ObjectView";
 import { ContainmentBanner } from "./screens/Containment";
 import { MetricsSync, useMetrics } from "./lib/metrics";
@@ -67,6 +68,7 @@ const PAGES: Record<string, Page> = {
   "/evaluation": { title: "Quality checks", sub: "The quality bars ATLAS must pass. A check that is not measured is never shown as passed." },
   "/demo": { title: "Guided demo", sub: "Walk through each part of ATLAS in order, on the right server for each step." },
   "/access-requests": { title: "Access requests", sub: "" },
+  "/add-project": { title: "Add project", sub: "Paste a public repository link. ATLAS proposes the settings; you confirm them." },
   "/object/:type/:id": { title: "Read-only view", sub: "" },
   "/system": { title: "System and mode", sub: "Health, Connected or Offline mode, open incidents and failed notification deliveries." },
   "/latest-report/:type": { title: "Latest report", sub: "The most recent verified report of this kind for the project." },
@@ -111,6 +113,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
     ["/demo", () => <GuidedDemo />],
     ["/system", () => <SystemScreen />],
     ["/access-requests", () => <AccessRequests />],
+    ["/add-project", () => <AddProject />],
     ["/object/:type/:id", (p) => <ObjectView objectType={p.type ?? ""} objectId={p.id ?? ""} />],
     ["/latest-report/:type", (p) => <LatestReport kind={p.type ?? ""} />],
     ["/help", () => <Help slug="index" />],

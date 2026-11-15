@@ -44,7 +44,16 @@ GRAPHQL_OPERATIONS = frozenset(
         "ContentEditsProbe",
         "RateLimit",
         "ComponentChurn",
+        "SourceFiles",
     }
+)
+
+# Repository facts read once, before a project is added, to propose its settings. GET only, on
+# public repository data; the issue list is read only to count the open issues per suggested label.
+_DETECT_PATH = re.compile(
+    r"^/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
+    r"(|/tags|/releases|/releases/latest|/labels|/languages|/actions/workflows|/contents|/contents/[A-Za-z0-9._/-]+"
+    r"|/commits/[0-9a-f]{40}|/issues)$"
 )
 
 OSV_QUERY_KEYS = {"package", "version"}
@@ -397,6 +406,13 @@ def policy_check(
             return "host or path not allowed for CI artefacts"
         if connector == "security":
             return _security_rule(method, host, path, body)
+        if connector == "onboarding":
+            # Detection for "Add project": read-only repository facts of any public repository.
+            if host != "api.github.com" or method != "GET":
+                return "detection reads are GET requests to api.github.com only"
+            if ".." in path or not _DETECT_PATH.match(path):
+                return "route not allowed for detection"
+            return None
         if connector == "actions":
             # GitHub Actions CI of a configured upstream project: read-only run and job listings.
             if host != "api.github.com" or method != "GET":
@@ -597,7 +613,7 @@ class Gateway:
 
     def _headers(self, connector: str, ctx: RequestContext) -> dict[str, str]:
         headers = {"Accept": "application/json", "User-Agent": "atlas-backend"}
-        if connector in ("issues", "git", "actions"):
+        if connector in ("issues", "git", "actions", "onboarding"):
             token_name = "github"
         elif connector in ("target_ci", "correction", "publication"):
             token_name = "publish"

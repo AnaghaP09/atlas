@@ -69,6 +69,8 @@ PAGES: tuple[Page, ...] = (
     Page("graph", "/graph", "Knowledge graph", "Insight", "For the solution architect: components and their import links."),
     Page("feedback", "/feedback", "Record a decision", "Insight", "Overrides and debt-acceptance decisions."),
     Page("evaluation", "/evaluation", "Quality checks", "Insight", "The quality bars ATLAS must pass."),
+    Page("add_project", "/add-project", "Add project", "Work",
+         "For the audit role: watch a new public repository and build its Data as of copies."),
     Page("access_requests", "/access-requests", "Access requests", "Safety",
          "Your requests to open locked items; security and audit also decide on sensitive ones."),
     Page("demo", "/demo", "Guided demo", "Demo", "A walk through every part of ATLAS."),

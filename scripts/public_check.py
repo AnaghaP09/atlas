@@ -159,6 +159,16 @@ def scan_paths(paths: list[Path]) -> list[str]:
     return hits
 
 
+# A co-author trailer naming a coding assistant with the vendor's no-reply address is tool metadata,
+# not personal data. Only that exact trailer shape is skipped; any other address is still checked.
+TOOL_TRAILER = re.compile(r"^\s*Co-Authored-By:\s*[^<>\n]+<noreply@anthropic\.com>\s*$", re.IGNORECASE)
+
+
+def commit_message_text(message: str) -> str:
+    """The commit message without tool co-author trailers."""
+    return "\n".join("" if TOOL_TRAILER.match(line) else line for line in message.splitlines())
+
+
 def scan_history() -> list[str]:
     hits: list[str] = []
     handles = frozenset(load_handles())
@@ -168,7 +178,7 @@ def scan_history() -> list[str]:
         if not entry:
             continue
         sha, _, message = entry.partition("\x00")
-        hits += scan_text(message, f"commit {sha[:10]}", handles=handles)
+        hits += scan_text(commit_message_text(message), f"commit {sha[:10]}", handles=handles)
     return hits
 
 

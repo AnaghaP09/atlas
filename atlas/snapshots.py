@@ -62,6 +62,8 @@ class SnapshotRegistry:
                  sources: SourceSet | None = None, reference_repository: str | None = None) -> None:
         self.data_dir = Path(data_dir)
         self.snapshots_root = self.data_dir / "snapshots"
+        # "Data as of" copies built in this server (Add project) live in the private data directory.
+        self.local_snapshots_root = self.data_dir / "local" / "snapshots"
         self.stores_dir = self.data_dir / "local" / "stores"
         self.prepared_dirs = prepared_dirs
         self.sources = sources or SourceSet()
@@ -174,9 +176,15 @@ class SnapshotRegistry:
 
     # ------------------------------------------------------------------ prepared snapshots
 
+    def _prepared_roots(self) -> list[tuple[Path, str]]:
+        local = [(self.local_snapshots_root / "releases", "releases")]
+        return [(self.snapshots_root / sub, sub) for sub in self.prepared_dirs] + local
+
     def _prepared_export(self, snapshot_id: str) -> Path | None:
-        for sub in self.prepared_dirs:
-            candidate = self.snapshots_root / sub / snapshot_id
+        if not _SNAPSHOT_ID.match(snapshot_id or ""):
+            return None
+        for root, _ in self._prepared_roots():
+            candidate = root / snapshot_id
             if (candidate / "snapshot.json").exists():
                 return candidate
         return None
@@ -224,8 +232,7 @@ class SnapshotRegistry:
     def list_snapshots(self, project_id: str | None = None) -> list[dict[str, Any]]:
         """Snapshots, filtered to one project when ``project_id`` is given."""
         out = []
-        for sub in self.prepared_dirs:
-            root = self.snapshots_root / sub
+        for root, sub in self._prepared_roots():
             if not root.exists():
                 continue
             for child in sorted(root.iterdir()):
@@ -243,6 +250,7 @@ class SnapshotRegistry:
                             "alias_variant": manifest.get("alias_variant"),
                             "project_id": owner,
                             "records": manifest.get("records"),
+                            **({"title": manifest["title"]} if manifest.get("title") else {}),
                         }
                     )
         for snapshot_id, info in sorted(self._index().items()):
