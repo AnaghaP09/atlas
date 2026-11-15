@@ -46,4 +46,5 @@ counts as a blocker if one of these is true:
   release.
 - It is a critical bug or flaky-test issue that was still open on the day of the release.
 
-Two reviewers check each one. Every forecast accuracy number says that it uses this stand-in.
+Only issues that were already open when the forecast was made count. One person checks each one.
+Every forecast accuracy number says that it counts only these issues and uses this stand-in.
