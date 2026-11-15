@@ -43,7 +43,8 @@ for (const role of ROLES) {
 test("a manual trigger shows its availability from the server", async ({ page }) => {
   await as(page, "pm", "/run-now");
   await expect(page.getByRole("heading", { name: "Run now" })).toBeVisible();
-  expect(await page.getByRole("button", { name: /^Run/ }).count()).toBeGreaterThan(0);
+  await expect(page.getByRole("button", { name: "Run now" })).toBeVisible();
+  await expect(page.getByLabel("What kind of run?")).toBeVisible();
 });
 
 test("a page for another role is locked, and a request for an ordinary item opens it read-only", async ({ page, request, baseURL }) => {
