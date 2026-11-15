@@ -158,7 +158,9 @@ def _release_snapshots(s: Any, project_id: str) -> list[dict[str, Any]]:
         snaps = [dict(x) for x in s.snapshots.list(project_id=project_id)]
     except Exception:  # the data layer may be missing; the outlook then says so
         return []
-    out = [describe(s.snapshots, x, None) for x in snaps if kind_of(x) == "release"]
+    cfg = s.projects.get(project_id) if hasattr(s.projects, "get") else None
+    name = getattr(cfg, "name", None) or project_id.replace("-", " ").title()
+    out = [describe(s.snapshots, x, name) for x in snaps if kind_of(x) == "release"]
     out = [x for x in out if not x.get("is_test_copy")]
     return sorted(out, key=lambda x: str(x.get("as_of") or ""), reverse=True)
 
