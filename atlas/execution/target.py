@@ -81,4 +81,4 @@ def summary_line(task_text: str, limit: int = 72) -> str:
         if line.startswith(SUMMARY_PREFIX):
             return line[len(SUMMARY_PREFIX):].strip()[:limit]
     first = next((line.strip() for line in task_text.splitlines() if line.strip()), "Proposed change")
-    return first if len(first) <= limit else first[: limit - 1].rstrip() + "..."
+    return first if len(first) <= limit else first[: limit - 3].rstrip() + "..."
