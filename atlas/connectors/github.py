@@ -213,6 +213,30 @@ class GitHubReader:
             return None
         return _b64(body.get("content") or ""), str(body.get("sha") or "")
 
+    def source_files(self, ref: str, paths: list[str], batch: int = 50, max_bytes: int = 400_000) -> dict[str, str]:
+        """Text of many files at ``ref`` in batched GraphQL reads. Binary and oversized files are left out."""
+        out: dict[str, str] = {}
+        for start in range(0, len(paths), batch):
+            chunk = paths[start:start + batch]
+            variables = self._vars(**{f"e{n}": f"{ref}:{path}" for n, path in enumerate(chunk)})
+            data = self.graphql(Q.source_files(len(chunk)), variables)
+            repo = data.get("repository") or {}
+            for n, path in enumerate(chunk):
+                blob = repo.get(f"f{n}") or {}
+                if blob.get("isBinary") or blob.get("text") is None or int(blob.get("byteSize") or 0) > max_bytes:
+                    continue
+                out[path] = blob["text"]
+        return out
+
+    def tree(self, ref: str) -> tuple[list[dict[str, Any]], bool]:
+        """Every path in the repository at ``ref`` (one recursive tree read). Returns (entries, complete)."""
+        body = self.rest(f"/git/trees/{ref}", {"recursive": 1})
+        if not isinstance(body, dict):
+            return [], False
+        entries = [{"path": e.get("path"), "type": e.get("type"), "size": e.get("size")}
+                   for e in body.get("tree", []) if isinstance(e, dict) and e.get("path")]
+        return entries, not body.get("truncated", False)
+
     def tag_commit_time(self, tag: str) -> dict[str, Any] | None:
         ref = self.rest(f"/git/ref/tags/{tag}")
         if ref is None:

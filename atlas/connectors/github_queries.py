@@ -153,3 +153,12 @@ def component_churn(paths: list[str]) -> str:
         + body
         + " } } } }"
     )
+
+
+def source_files(count: int) -> str:
+    """One query reading the text of ``count`` files (aliases f0..fN). Paths travel as variables."""
+    if not 1 <= count <= 100:
+        raise ValueError("between 1 and 100 files per query")
+    params = "".join(f", $e{n}: String!" for n in range(count))
+    body = " ".join(f"f{n}: object(expression: $e{n}) {{ ... on Blob {{ text byteSize isBinary }} }}" for n in range(count))
+    return f"query SourceFiles($owner: String!, $name: String!{params}) {{ repository(owner: $owner, name: $name) {{ {body} }} }}"
