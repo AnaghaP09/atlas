@@ -127,10 +127,14 @@ export function Dashboard() {
       <div className="dash-status">
         <strong>{projectName}</strong>
         <DataModeBadge mode={board.data_mode} />
-        <span className={`mode-pill${status === "live" ? "" : " offline"}`}>
-          <span className="pulse" aria-hidden="true" />
-          {status === "live" ? "Live" : "Paused"}
-        </span>
+        {board.last_poll ? (
+          <span className={`mode-pill${status === "live" ? "" : " offline"}`}>
+            <span className="pulse" aria-hidden="true" />
+            {status === "live" ? "Live" : "Paused"}
+          </span>
+        ) : (
+          <span className="pill pill-neutral" title="No poll has finished yet">Waiting for first poll</span>
+        )}
         <span className="muted" data-testid="poll-line">
           Updated every {board.interval_seconds} s, last poll {board.last_poll ? <Time iso={board.last_poll} short /> : "not yet"}
         </span>

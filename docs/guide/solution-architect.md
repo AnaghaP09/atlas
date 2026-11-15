@@ -22,11 +22,12 @@ You see the architecture report. It shows the parts of the system with the most 
 |---|---|
 | [Home](home.md) | See what needs your attention. |
 | [Live dashboard](live-dashboard.md) | See what changed in the project. |
-| [Reports](reports.md) | Read the architecture report. |
+| [Architecture report](reports.md) | Read the weak parts and the debt to accept or fix. |
 | [Runs](runs.md) | Check the status of a run. |
 | [Notifications](notifications.md) | Read alerts sent to your role. |
+| [Access requests](access-requests.md) | Ask to read a locked item, and see your requests. |
 | [Knowledge graph](knowledge-graph.md) | See parts, owning teams and links. |
-| [Record a decision](record-a-decision.md) | Record what you accept and why. |
+| [Record a decision](record-a-decision.md) | Record what you decided and why. |
 
 ## If a page or item is locked
 

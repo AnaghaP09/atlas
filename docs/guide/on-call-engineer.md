@@ -20,11 +20,12 @@ You see investigation reports. Each one names the likely cause of a failure and 
 | Page | Why you use it |
 |---|---|
 | [Home](home.md) | See what needs your attention. |
-| [Live dashboard](live-dashboard.md) | See new failures as they appear. |
-| [Reports](reports.md) | Read investigation reports. |
-| [Run now](run-now.md) | Start an investigation. |
+| [Live dashboard](live-dashboard.md) | See what changed in the project. |
+| [Investigation reports](reports.md) | Read the cause of a failure and its evidence. |
+| [Run now](run-now.md) | Start a run by hand. |
 | [Runs](runs.md) | Check the status of a run. |
 | [Notifications](notifications.md) | Read alerts sent to your role. |
+| [Access requests](access-requests.md) | Ask to read a locked item, and see your requests. |
 
 ## If a page or item is locked
 

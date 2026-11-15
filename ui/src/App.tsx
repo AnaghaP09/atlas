@@ -249,6 +249,17 @@ export function SessionBar() {
 
 type HealthWithSpend = Health & { spend?: { used_usd?: number; ceiling_usd?: number } | null };
 
+/** A bar across the top while ATLAS is offline, so paused runs and updates are never a surprise. */
+function OfflineBanner() {
+  const health = useApi<HealthWithSpend>("/api/health");
+  if (health.data?.mode !== "offline") return null;
+  return (
+    <p className="offline-banner" role="status" data-testid="offline-banner">
+      <Icon name="pulse" size={16} /> Offline: new runs and live updates are paused
+    </p>
+  );
+}
+
 function ModeBadge() {
   const health = useApi<HealthWithSpend>("/api/health");
   if (!health.data) return null;
@@ -405,6 +416,7 @@ export function App() {
       <Toaster />
       <main key={epoch} className="main">
         <ContainmentBanner />
+        <OfflineBanner />
         <Route path={path} search={search} nav={nav.data} />
       </main>
     </div>

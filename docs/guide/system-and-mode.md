@@ -24,7 +24,7 @@ Audit.
 | Connected | Call the AI model service and read the project's public sources. |
 | Offline | Make no outgoing connections. Steps that need the AI model stop and say why. |
 
-To change the mode, select the other mode and confirm. In Offline mode, the live dashboard and
+To change the mode, select the other mode and confirm. While ATLAS is offline, a bar across the top of every page says so, and the Run now buttons show **Paused while offline**. In Offline mode, the live dashboard and
 the watchers that need the internet pause.
 
 ## Spend

@@ -234,6 +234,10 @@ export interface ManifestCall {
   path: string;
   role?: string;
   body?: unknown;
+  query?: Record<string, string>;
+  key?: string;
+  save?: Record<string, string>;
+  wait_for?: { path: string; op: string; value?: unknown };
   expect_status?: number[];
 }
 
@@ -244,6 +248,7 @@ export interface ManifestRow {
   data_mode: DataMode;
   server: "normal" | "scenario" | string;
   calls: ManifestCall[];
+  estimated_cost_usd?: number;
 }
 
 export interface DemoManifest extends Envelope {
