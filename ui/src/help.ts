@@ -20,6 +20,7 @@ export const HELP_SLUG: Record<string, string> = {
   containment: "kill-switches",
   system: "system-and-mode",
   access_requests: "access-requests",
+  add_project: "add-project",
   scorecard: "scorecard",
   graph: "knowledge-graph",
   feedback: "record-a-decision",

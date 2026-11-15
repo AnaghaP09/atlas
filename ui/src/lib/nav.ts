@@ -47,6 +47,7 @@ export const PAGE_ICON: Record<string, IconName> = {
   evaluation: "gauge",
   demo: "compass",
   access_requests: "key",
+  add_project: "database",
 };
 
 /** Report page id -> the report type the API stores. */
@@ -80,6 +81,7 @@ export function pageIdForPath(path: string): string | null {
     ["/evaluation", "evaluation"],
     ["/demo", "demo"],
     ["/access-requests", "access_requests"],
+    ["/add-project", "add_project"],
   ];
   for (const [pattern, id] of fixed) if (matchPath(pattern, path)) return id;
   const latest = matchPath("/latest-report/:type", path);

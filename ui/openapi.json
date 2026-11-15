@@ -1501,6 +1501,103 @@
           }
         },
         "summary": "Projects"
+      },
+      "post": {
+        "description": "Write a confirmed project to the projects file and start watching it.",
+        "operationId": "add_project_api_projects_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Project"
+      }
+    },
+    "/api/projects/add/defaults": {
+      "get": {
+        "description": "The link to pre-fill (``ATLAS_ADD_PROJECT``) and whether a GitHub token is set.",
+        "operationId": "add_defaults_api_projects_add_defaults_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Add Defaults Api Projects Add Defaults Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Add Defaults"
+      }
+    },
+    "/api/projects/detect": {
+      "post": {
+        "description": "Read a public repository and propose its project block (nothing is written).",
+        "operationId": "detect_project_api_projects_detect_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detect Project"
       }
     },
     "/api/projects/{project_id}/activity": {
@@ -1595,6 +1692,95 @@
           }
         },
         "summary": "Dashboard"
+      }
+    },
+    "/api/projects/{project_id}/data-copies": {
+      "get": {
+        "operationId": "copy_jobs_api_projects__project_id__data_copies_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Copy Jobs Api Projects  Project Id  Data Copies Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Copy Jobs"
+      },
+      "post": {
+        "description": "Start building a \"Data as of\" copy at a release tag. Progress: GET the same path.",
+        "operationId": "build_copy_api_projects__project_id__data_copies_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Build Copy"
       }
     },
     "/api/projects/{project_id}/evidence/{record_id}": {
@@ -1703,6 +1889,48 @@
           }
         },
         "summary": "Metrics"
+      }
+    },
+    "/api/projects/{project_id}/release-tags": {
+      "get": {
+        "description": "Release tags of the project to build a copy from, newest first.",
+        "operationId": "project_release_tags_api_projects__project_id__release_tags_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Project Release Tags Api Projects  Project Id  Release Tags Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Project Release Tags"
       }
     },
     "/api/projects/{project_id}/stream": {
