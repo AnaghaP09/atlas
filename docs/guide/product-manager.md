@@ -25,10 +25,11 @@ ATLAS never makes these decisions.
 |---|---|
 | [Home](home.md) | See what needs your attention. |
 | [Live dashboard](live-dashboard.md) | See what changed in the project. |
-| [Reports](reports.md) | Read the forecast report. |
-| [Run now](run-now.md) | Start a release close or ask a question. |
+| [Forecast report](reports.md) | Read what the next release will inherit. |
+| [Run now](run-now.md) | Start a run by hand. |
 | [Runs](runs.md) | Check the status of a run. |
 | [Notifications](notifications.md) | Read alerts sent to your role. |
+| [Access requests](access-requests.md) | Ask to read a locked item, and see your requests. |
 | [Record a decision](record-a-decision.md) | Record what you decided and why. |
 | [Quality checks](quality-checks.md) | See how well ATLAS meets its quality targets. |
 

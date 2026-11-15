@@ -22,11 +22,15 @@ export interface Navigation {
   project_id?: string;
   groups: { title: string; pages: NavPage[] }[];
   other_pages: HiddenPage[];
+  /** Release outlook sections this role gets ("q1", "q2"); empty for roles in beta. */
+  outlook?: ("q1" | "q2")[];
+  beta?: boolean;
 }
 
 export const PAGE_ICON: Record<string, IconName> = {
   home: "home",
   dashboard: "pulse",
+  ship_readiness: "gauge",
   report_forecast: "chart",
   report_allocation: "task",
   report_architecture: "graph",
@@ -37,6 +41,7 @@ export const PAGE_ICON: Record<string, IconName> = {
   runs: "list",
   queue: "hand",
   approvals: "check",
+  requests: "hand",
   tasks: "task",
   notifications: "bell",
   containment: "power",
@@ -47,6 +52,7 @@ export const PAGE_ICON: Record<string, IconName> = {
   evaluation: "gauge",
   demo: "compass",
   access_requests: "key",
+  add_project: "database",
 };
 
 /** Report page id -> the report type the API stores. */
@@ -63,11 +69,13 @@ export function pageIdForPath(path: string): string | null {
   const fixed: [string, string][] = [
     ["/", "home"],
     ["/dashboard", "dashboard"],
+    ["/ship-readiness", "ship_readiness"],
     ["/run-now", "run_now"],
     ["/schedules", "schedules"],
     ["/runs", "runs"],
     ["/runs/:id", "runs"],
     ["/queue", "queue"],
+    ["/requests", "requests"],
     ["/approvals", "approvals"],
     ["/tasks", "tasks"],
     ["/tasks/:id", "tasks"],
@@ -80,6 +88,7 @@ export function pageIdForPath(path: string): string | null {
     ["/evaluation", "evaluation"],
     ["/demo", "demo"],
     ["/access-requests", "access_requests"],
+    ["/add-project", "add_project"],
   ];
   for (const [pattern, id] of fixed) if (matchPath(pattern, path)) return id;
   const latest = matchPath("/latest-report/:type", path);

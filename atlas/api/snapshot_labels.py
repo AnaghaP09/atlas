@@ -15,14 +15,14 @@ _CACHE: dict[str, dict[str, Any]] = {}
 
 def is_test_copy(snap: Mapping[str, Any]) -> bool:
     kind = str(snap.get("kind") or "")
-    return bool(snap.get("alias_variant")) or kind.endswith("-aliased")
+    return bool(snap.get("alias_variant")) or kind.endswith("-aliased") or kind in ("injection", "new_evidence")
 
 
 def kind_of(snap: Mapping[str, Any]) -> str:
     kind = str(snap.get("kind") or "")
     if kind.startswith("releases"):
         return "release"
-    if kind.startswith("cases"):
+    if kind.startswith("cases") or kind in ("injection", "new_evidence"):
         return "case"
     return "live"
 
@@ -63,6 +63,50 @@ def _summary(snapshots: Any, snap: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
+_EVENTS: dict[str, list[dict[str, Any]]] = {}
+_FAILURE_WORDS = re.compile(r"\b(flak\w*|fail\w*|broken|timeout|times out|error|crash\w*|panic\w*)\b", re.I)
+
+
+def events(snapshots: Any, snap: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The issues in one data set that can be investigated, newest first, with their titles.
+
+    Failures (flaky tests, failing jobs, bugs) carry ``failure: true`` so pickers can list them first.
+    Empty when the data layer has none.
+    """
+    sid = str(snap.get("snapshot_id"))
+    if sid in _EVENTS:
+        return _EVENTS[sid]
+    out: list[dict[str, Any]] = []
+    registry = getattr(snapshots, "registry", None)
+    ctx_of = getattr(snapshots, "_ctx", None)
+    if registry is not None and ctx_of is not None:
+        try:
+            ctx = ctx_of(sid)
+            db = registry.open(ctx) if ctx is not None else None
+            if db is not None:
+                seen: set[str] = set()
+                for rec in db.search({"source": "issues", "limit": 5000}):
+                    view = db.content(rec.record_id) or {}
+                    if not isinstance(view, Mapping) or view.get("number") is None:
+                        continue
+                    number = str(view["number"])
+                    if number in seen:
+                        continue
+                    seen.add(number)
+                    labels = [str(lb.get("name") if isinstance(lb, Mapping) else lb) for lb in (view.get("labels") or [])]
+                    title = str(view.get("title") or "")
+                    failure = any(("flake" in lb or "bug" in lb) for lb in labels) or bool(_FAILURE_WORDS.search(title))
+                    out.append({"event_id": number, "number": int(number) if number.isdigit() else None,
+                                "title": short_title(title, 120) if title else f"Issue {number}",
+                                "state": str(view.get("state") or "open").lower(),
+                                "created_at": view.get("created_at"), "labels": labels[:6], "failure": failure})
+        except Exception:  # a picker list must never break the page
+            out = []
+    out.sort(key=lambda e: str(e.get("created_at") or ""), reverse=True)
+    _EVENTS[sid] = out
+    return out
+
+
 def _date(iso: str | None) -> str:
     if not iso:
         return ""
@@ -82,7 +126,9 @@ def describe(snapshots: Any, snap: Mapping[str, Any], project_name: str | None) 
     name = project_name or str(snap.get("project_id") or "Project")
     release = str(snap.get("release_or_case") or snap.get("release") or "")
     release_tag = re.search(r"v\d+\.\d+\.\d+", str(snap.get("snapshot_id", "")))
-    if kind == "release":
+    if kind == "release" and snap.get("title"):
+        title = str(snap["title"])  # a copy built by Add project names itself
+    elif kind == "release":
         title = f"{name} at release {release_tag.group(0) if release_tag else release}"
     elif kind == "case":
         title = f"Example case: {summary.get('case_title') or release}"

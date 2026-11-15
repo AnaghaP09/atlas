@@ -121,7 +121,7 @@ def approval(request: Request, approval_id: str) -> dict[str, Any]:
 @router.post("/approvals/{approval_id}/decision")
 def decide(request: Request, approval_id: str, body: dict[str, Any] = Body(...)):
     principal = principal_of(request)
-    require_role(principal, {"em"}, "decide approvals")
+    require_role(principal, {"pm", "em", "architect"}, "decide approvals")
     s = services_of(request)
     check_project(request, principal, s.tasks.approval(approval_id), "approval")
     decision = body.get("decision")
@@ -174,6 +174,11 @@ def prepare(request: Request, task_id: str, body: dict[str, Any] | None = Body(N
 @router.post("/tasks/{task_id}/publish")
 def publish(request: Request, task_id: str, body: dict[str, Any] | None = Body(None)):
     return _task_step(request, task_id, "publish", {"em"}, body)
+
+
+@router.post("/tasks/{task_id}/approve-and-publish")
+def approve_and_publish(request: Request, task_id: str, body: dict[str, Any] | None = Body(None)):
+    return _task_step(request, task_id, "one_click", {"em"}, body)
 
 
 @router.post("/tasks/{task_id}/adjudicate")

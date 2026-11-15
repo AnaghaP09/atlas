@@ -79,5 +79,9 @@ class FeedbackStore:
         rows = self._db.execute("SELECT id, run_id, item_id, decision, rationale FROM feedback WHERE golden_candidate = 1").fetchall()
         return [dict(zip(("id", "run_id", "item_id", "decision", "rationale"), r)) for r in rows]
 
+    def runs_with_decisions(self) -> set[str]:
+        """Runs a person has recorded at least one decision for."""
+        return {r[0] for r in self._db.execute("SELECT DISTINCT run_id FROM feedback").fetchall()}
+
     def update(self, *_: Any, **__: Any) -> None:
         raise PermissionError("feedback records are append-only")

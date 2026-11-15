@@ -64,6 +64,7 @@ If Sentinel rejects a claim, ATLAS removes the claim and everything that depends
 
 - [Home](home.md)
 - [Live dashboard](live-dashboard.md)
+- [Release outlook and ship readiness](release-outlook.md)
 - [Run now](run-now.md)
 - [Automatic runs](automatic-runs.md)
 - [Runs](runs.md)
@@ -79,11 +80,13 @@ If Sentinel rejects a claim, ATLAS removes the claim and everything that depends
 - [Quality checks](quality-checks.md)
 - [Guided demo](guided-demo.md)
 - [Sign-in and projects](sign-in-and-projects.md)
+- [Add project](add-project.md)
 
 ## More help
 
 - [System and mode](system-and-mode.md): health, Connected and Offline, and spend.
 - [Access requests](access-requests.md): how to ask to read a locked item.
+- [Requests and hand-offs](requests.md): how the product manager asks for work and how it is answered.
 - [Data as of](data-as-of.md): why ATLAS works from a frozen copy of the data.
 - [Glossary](glossary.md): the meaning of each term.
 - [Install ATLAS on your own machine](install.md).

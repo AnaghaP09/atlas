@@ -48,6 +48,8 @@ def one_time_steps(host_names: list[str], public_ca: Path, system: str | None = 
             "   or import the file into your browser's certificate settings as an authority.\n"
             "   Then restart your browser.\n"
         )
+    if host_names and all(h.endswith(".localhost") for h in host_names):
+        hosts_step = "1. No hosts entry needed: browsers send every .localhost name to this computer.\n"
     return (
         "One-time steps (do these yourself, once per machine):\n\n"
         + hosts_step + "\n" + trust_step

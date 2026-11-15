@@ -47,6 +47,7 @@ served at `/` by the same server, and the UI fallback never answers an `/api` pa
 | `GET /api/evidence/{record_id}?run_id=&content_version_id=` | Resolve a citation to the exact record version the run saw |
 | `GET /api/graph/{snapshot_id}` | Knowledge-graph nodes and edges of one snapshot |
 | `GET /api/queue` | Items waiting for a human decision |
+| `GET /api/projects/{project_id}/outlook` | Release outlook for the product manager, engineering manager and solution architect: what the next release inherits and who should take it (from the latest verified release close), and what stops shipping now with the delivery status and the rule that set it. `project.outlook_changed` on the project stream says when to refetch. Other roles get 403 |
 | `POST /api/feedback` | Record an override or a debt-acceptance rationale |
 
 ## Tasks, approvals and publication

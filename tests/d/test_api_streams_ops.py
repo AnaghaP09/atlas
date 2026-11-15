@@ -72,14 +72,15 @@ def test_buffer_gap_through_the_hub():
     assert [e["event_id"] for e in events] == ids[2:]
 
 
-def test_stream_projection_never_delivers_restricted_events_to_pm():
+def test_stream_projection_never_delivers_restricted_events_to_a_role_without_the_scope():
     proj = AuthorizationProjection()
     hub = StreamHub(proj)
     prod = EventProducer(proj)
     prod.subscribers.append(hub.on_run_event)
     prod.emit("run.progress", run_id="r", authoritative_generation=1, payload={"finding": "SECRET-FINDING-MARKER"},
               required_scopes=["restricted:security"])
-    assert hub.read("runs", principal_for("pm"))[1] == []
+    assert hub.read("runs", principal_for("oncall"))[1] == []
+    assert hub.read("runs", principal_for("pm"))[1][0]["data"]["finding"] == "SECRET-FINDING-MARKER"
     assert hub.read("runs", principal_for("security"))[1][0]["data"]["finding"] == "SECRET-FINDING-MARKER"
 
 
@@ -106,7 +107,8 @@ def test_notifications_list_stream_ack_and_roles(client, services):
     assert client.post(f"/api/notifications/{nid}/resolve", headers=H("audit")).status_code == 200
     states = client.get("/api/notifications", headers=H("oncall")).json()["notifications"]
     assert states[0]["status"] == "resolved"
-    assert client.get("/api/notifications/dead-letter", headers=H("pm")).status_code == 403
+    assert client.get("/api/notifications/dead-letter", headers=H("oncall")).status_code == 403
+    assert client.get("/api/notifications/dead-letter", headers=H("pm")).status_code == 200
     assert client.get("/api/notifications/dead-letter", headers=H("audit")).status_code == 200
 
 
@@ -136,7 +138,7 @@ def test_task_lifecycle_through_the_api(client, services):
     assert all(task[f] is None for f in ("ci_observations", "behavioural_check", "adjudication", "pull_request"))
     approval = client.get("/api/approvals", headers=H("em")).json()["approvals"][0]
     assert client.post(f"/api/approvals/{approval['approval_id']}/decision", json={"decision": "approve"},
-                       headers=H("pm")).status_code == 403
+                       headers=H("oncall")).status_code == 403
     d = client.post(f"/api/approvals/{approval['approval_id']}/decision",
                     json={"decision": "approve", "review_minutes": 12}, headers=H("em"))
     assert d.status_code == 200 and d.json()["approval"]["review_minutes"] == 12

@@ -39,6 +39,7 @@ The [README](../README.md) has the full install steps.
 | `ATLAS_PUBLISH_BASE_REF` | `main` | The branch of the publish target that draft pull requests start from. |
 | `ATLAS_TASK_SCOPE` | `*.go` | File patterns that a coding task may change, separated by commas. |
 | `ATLAS_TARGET_DIR` | `target/repo` | A local copy of the publish target's content, used to prepare changes. |
+| `ATLAS_ADD_PROJECT` | empty | A public repository link that the Add project page starts with. The audit role still reviews and confirms it. See [Add project](guide/add-project.md). |
 | `ATLAS_ORG_SLUG` | `demo` | Your organisation's short name. It is used in host names such as `atlas.<slug>.internal`. |
 
 ## Models

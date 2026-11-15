@@ -34,6 +34,8 @@ from atlas.snapshots import normalized_sha256
 from prep.fetch.cases import GOLDEN_CASES, TRIAGE_WINDOW
 from prep.fetch.raw import RAW, prow_paths
 from prep.reference import paths, reference
+from prep.fetch.raw import RawCache
+from prep.snapshot.extras import add_security_scan
 from prep.snapshot.people import People
 
 LOCAL = paths()["local"]
@@ -46,8 +48,7 @@ PROHIBITED_PRS: dict[str, set[int]] = {cid: REF.prohibited_prs(cid) for cid in G
 NOTES: dict[str, list[str]] = {cid: REF.notes(cid) for cid in GOLDEN_CASES}
 
 
-class LeakageError(AssertionError):
-    pass
+from atlas.cleaning import LeakageError, check_export_people, collect_people  # noqa: E402,F401  (shared rules)
 
 
 def _load(kind: str, key: str) -> dict[str, Any] | None:
@@ -185,6 +186,12 @@ def build_issue_case(case_id: str, people: People) -> tuple[EvidenceDB, dict[str
         graph = ArchitectureGraph.from_json(json.loads((paths()["data"] / "snapshots" / "architecture" / f"{arch_tag}.json").read_text(encoding="utf-8")))
         for record, content, etype in architecture_records(graph, cutoff - timedelta(seconds=1)):
             _put(db, record, {"content": content, "entity_type": etype, "freshness_basis": "identity"})
+    cache = RawCache()
+    main_branch = REF.windows.get("main_branch", "main")
+    head = (cache.commit_before(main_branch, cutoff.isoformat())["data"] or {}).get("sha")
+    if head:
+        stats.update(add_security_scan(db, cache, key=f"case-{case_id.lower()}", ref=head, cutoff=cutoff))
+    cache.manifest.save()
     for record, content, etype in all_synthetic(case_id, cutoff):
         _put(db, record, {"content": content, "entity_type": etype, "freshness_basis": "series_end" if record.source == "telemetry" else "per_run"})
         stats["synthetic"] += 1
@@ -295,42 +302,6 @@ def export(db: EvidenceDB, snapshot_id: str, kind: str, manifest: dict[str, Any]
     return target
 
 
-def check_export_people(target: Path, people: People) -> list[str]:
-    """One pass over the export: tokenise once, then set lookups (no per-handle regex)."""
-    problems = []
-    text = (target / "records.jsonl").read_text(encoding="utf-8")
-    authors = {h.lower() for h in people.handles if len(h) >= 4}
-    mentioned = {h.lower() for h in people.mentioned}
-    for m in re.finditer(r"(?<![A-Za-z0-9_/.-])(@?)([A-Za-z0-9][A-Za-z0-9-]*)(?![A-Za-z0-9_-])", text):
-        token = m.group(2).lower()
-        if token in authors:
-            problems.append(f"{target.name}: author handle survived pseudonymisation")
-            break
-        if m.group(1) and token in mentioned:
-            problems.append(f"{target.name}: mentioned handle survived pseudonymisation")
-            break
-    if re.search(r"\b[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text):
-        problems.append(f"{target.name}: email address survived pseudonymisation")
-    if re.search(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ", text):
-        problems.append(f"{target.name}: signed token survived")
-    return problems
-
-
-def collect_people(db: EvidenceDB, people: People) -> None:
-    def walk(v: Any, key: str | None = None) -> None:
-        if isinstance(v, dict):
-            for k, x in v.items():
-                walk(x, k)
-        elif isinstance(v, list):
-            for x in v:
-                walk(x, key)
-        elif isinstance(v, str) and key in ("author", "editor", "login"):
-            people.collect([v])
-
-    for rec in db.all_records():
-        walk(db.content(rec.record_id))
-
-
 def build_golden(root: Path = EXPORT) -> dict[str, Any]:
     people = People()
     built: dict[str, tuple[EvidenceDB, dict[str, Any]]] = {}
@@ -371,7 +342,7 @@ def build_golden(root: Path = EXPORT) -> dict[str, Any]:
 DATA_MODES = {
     "issues": "REAL", "git": "REAL", "ci": "REAL",
     "kubernetes": "SYNTHETIC", "telemetry": "SYNTHETIC", "capacity": "SYNTHETIC",
-    "security": "not captured for historical cases; investigation security checks return not_run",
+    "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
 }
 
 

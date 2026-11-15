@@ -38,16 +38,21 @@ citation. A citation is a link to the record that supports the fact.
   Offline mode makes no outside connections.
 - **Gives each role its own view.** The product manager, engineering manager and solution architect each see the
   reports that answer their questions; a knowledge graph shows how the system's parts connect.
+- **Shows what will stop the release.** Ship readiness lists the blockers now, the services they affect, and whether
+  the team can still deliver.
+- **Turns approved fixes into draft pull requests.** After the engineering manager approves, ATLAS opens a draft pull
+  request on a sandbox repository and reports the test results back. A person decides whether to merge.
+- **Connects the product manager to the team.** The product manager sends a feature request to the engineering manager
+  or a technical dependency to the solution architect, or hands over an investigation, and follows it to the result.
+- **Adds any public project from a link,** with no custom integration.
 
-**Coming in the next release**
+**Coming in the next version**
 
-- **Ship readiness:** what will stop the release now, which services are affected, and whether the team can still deliver.
-- **Draft pull requests on a sandbox repository,** with the test results of each change reported back to ATLAS.
-- **Requests and hand-offs:** the product manager sends a feature request to the engineering manager or a technical
-  dependency to the solution architect, and follows it through to the finished change.
-- **Approvals in one click by default,** with a stricter two-step approval that a company can switch on.
-- **Add any public project from a link,** with no custom integration.
-- **Forecast across releases,** comparing earlier forecasts with what really happened.
+- A stricter two-step approval that a company can switch on, where a person approves the exact change.
+- Each role's own view of the forecast: release risk, who takes what, and the parts of the system that keep decaying.
+- Forecast across releases: earlier forecasts compared with what really happened.
+- A detailed view of how Scout investigates and how Sentinel checks each claim.
+- The full path from a request to the finished change, shown on every page.
 
 ## Who uses it
 
@@ -86,7 +91,7 @@ Security engineers, on-call engineers and component owners also get reports and 
    before a coding agent's change goes anywhere. The first approval lets the agent prepare the
    change. The second approval covers the exact change. The coding agent works inside a
    container with no network access and no secrets. A container is an isolated space on the
-   computer. ATLAS is then meant to open a draft pull request on a separate repository (this last step is not connected yet),
+   computer. ATLAS is then meant to open a draft pull request on a separate repository,
    [atlas-sandbox-target](https://github.com/AnaghaP09/atlas-sandbox-target). A pull request
    is a proposed change that a person reviews. ATLAS never merges a change.
 6. **ATLAS tells people what happened.** Every error, approval request and safety event creates

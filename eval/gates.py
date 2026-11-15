@@ -174,7 +174,9 @@ def g2(verdicts: Mapping[str, str], planted_ids: Sequence[str], control_ids: Seq
 
 
 def g3(published_claims: Sequence[Mapping[str, Any]], adjudications: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
-    """Every published claim: verdict supported and two agreeing human adjudications bound to its versions."""
+    """Every published claim: verdict supported, and a person's check bound to its output and evidence versions.
+
+    One person checks the claims. The latest check for a claim counts; a claim without a check is missing."""
     if not published_claims:
         return unevaluated("no published claims recorded")
     by_claim: dict[str, list[Mapping[str, Any]]] = {}
@@ -191,16 +193,16 @@ def g3(published_claims: Sequence[Mapping[str, Any]], adjudications: Sequence[Ma
         labels = [a for a in by_claim.get(cid, [])
                   if a.get("output_version") == c.get("output_version")
                   and list(a.get("evidence_versions", [])) == list(c.get("evidence_versions", []))]
-        adjudicators = {a["adjudicator"] for a in labels}
-        if len(adjudicators) < 2:
+        if not labels:
             missing += 1
-            failures.append(f"{cid}: adjudication missing")
+            failures.append(f"{cid}: check missing")
             continue
-        if {a["label"] for a in labels} != {"supported"}:
+        if labels[-1]["label"] != "supported":
             unsupported += 1
-            failures.append(f"{cid}: unsupported or disputed")
+            failures.append(f"{cid}: unsupported")
     return result("failed" if failures else "passed",
-                  {"claims": len(published_claims), "unsupported": unsupported, "missing_adjudication": missing}, failures)
+                  {"claims": len(published_claims), "unsupported": unsupported, "missing_check": missing}, failures,
+                  checked_by="one person")
 
 
 def g4(injected: Mapping[str, Mapping[str, Any]], clean: Mapping[str, Mapping[str, Any]],
@@ -407,10 +409,18 @@ def g12(trips: Sequence[Mapping[str, Any]], required_triggers: Iterable[str]) ->
 
 
 def g13(closes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Forecast accuracy. Recall counts only blockers already open when the forecast was made."""
     out = score_g13(closes)
-    failures = [] if out["status"] != "failed" else ["pooled recall or precision below the bar, or an empty denominator"]
+    failures: list[str] = []
+    if out["status"] == "failed":
+        p, bars = out["pooled"], out["bars"]
+        if p["recall"] is None or p["precision"] is None:
+            failures.append("pooled denominator is empty")
+        elif p["recall"] < bars["recall"] or p["precision"] < bars["precision"]:
+            failures.append("pooled recall or precision below the bar")
+        failures += [f"not measurable: {e}" for e in out["empty_denominators"]]
     return result(out["status"], out["pooled"], failures, per_close=out["per_close"], limitation=out["limitation"],
-                  bars=out["bars"])
+                  bars=out["bars"], note=out["note"], text=out["text"])
 
 
 def evaluate_all(inputs: Mapping[str, Any]) -> dict[str, Any]:

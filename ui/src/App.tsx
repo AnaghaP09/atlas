@@ -6,6 +6,7 @@ import { BrandMark, Icon, type IconName } from "./components/icons";
 import { LatestReport, latestReport } from "./screens/LatestReport";
 import { LockedChip } from "./components/access";
 import { AccessRequests } from "./screens/AccessRequests";
+import { AddProject } from "./screens/AddProject";
 import { ObjectView } from "./screens/ObjectView";
 import { ContainmentBanner } from "./screens/Containment";
 import { MetricsSync, useMetrics } from "./lib/metrics";
@@ -33,7 +34,10 @@ import { Schedules } from "./screens/Schedules";
 import { Scorecard } from "./screens/Scorecard";
 import { TaskDetail, TaskList } from "./screens/Tasks";
 import { Help } from "./screens/Help";
+import { RequestsPage } from "./screens/Requests";
 import { Toaster } from "./lib/toast";
+import { BetaPill, OutlookStrip } from "./components/OutlookStrip";
+import { ShipReadiness } from "./screens/ShipReadiness";
 
 interface Page {
   title: string;
@@ -45,6 +49,7 @@ interface Page {
 const PAGES: Record<string, Page> = {
   "/": { title: "Overview", sub: "What ATLAS knows about this project right now.", action: { to: "/run-now", label: "Run now", icon: "play" } },
   "/dashboard": { title: "Live dashboard", sub: "New issues, CI results and releases, polled from the project's public sources." },
+  "/ship-readiness": { title: "Ship readiness", sub: "What stops the release now, which services it touches, and whether we can still deliver." },
   "/activity-evidence/:id": { title: "Activity record", sub: "The exact version of a record that appeared on the live dashboard." },
   "/run-now": { title: "Run now", sub: "Start a run by hand. Every run gets the same checks, limits and audit record as an automatic one." },
   "/schedules": { title: "Automatic runs", sub: "Watchers and schedules that start runs on their own.", action: { to: "/run-now", label: "Run now", icon: "play" } },
@@ -53,6 +58,7 @@ const PAGES: Record<string, Page> = {
   "/reports/:id": { title: "Report", sub: "A verified report. Every claim links to the records it cites." },
   "/evidence/:id": { title: "Evidence", sub: "A cited record, shown as plain text." },
   "/queue": { title: "Needs a person", sub: "Items ATLAS will not decide on its own." },
+  "/requests": { title: "Requests", sub: "Requests and hand-offs from the product manager." },
   "/approvals": { title: "Approvals", sub: "Approval A lets a task be prepared. Approval B publishes the exact change shown." },
   "/tasks": { title: "Tasks", sub: "Bounded changes handed to the sandboxed coding agent, from proposal to acceptance." },
   "/tasks/:id": { title: "Task", sub: "Lifecycle, checks, CI results and the human judgement for one task." },
@@ -64,6 +70,7 @@ const PAGES: Record<string, Page> = {
   "/evaluation": { title: "Quality checks", sub: "The quality bars ATLAS must pass. A check that is not measured is never shown as passed." },
   "/demo": { title: "Guided demo", sub: "Walk through each part of ATLAS in order, on the right server for each step." },
   "/access-requests": { title: "Access requests", sub: "" },
+  "/add-project": { title: "Add project", sub: "Paste a public repository link. ATLAS proposes the settings; you confirm them." },
   "/object/:type/:id": { title: "Read-only view", sub: "" },
   "/system": { title: "System and mode", sub: "Health, Connected or Offline mode, open incidents and failed notification deliveries." },
   "/latest-report/:type": { title: "Latest report", sub: "The most recent verified report of this kind for the project." },
@@ -84,6 +91,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
   const routes: [string, (p: Record<string, string>) => ReactNode][] = [
     ["/", () => <Home />],
     ["/dashboard", () => <Dashboard />],
+    ["/ship-readiness", () => <ShipReadiness />],
     [
       "/activity-evidence/:id",
       (p) => <ActivityEvidence recordId={p.id ?? ""} project={search.get("project") ?? ""} version={search.get("version") ?? ""} />,
@@ -95,6 +103,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
     ["/reports/:id", (p) => <ReportDetail reportId={p.id ?? ""} />],
     ["/evidence/:id", (p) => <EvidenceView recordId={p.id ?? ""} runId={search.get("run") ?? ""} />],
     ["/queue", () => <Queue />],
+    ["/requests", () => <RequestsPage />],
     ["/approvals", () => <Approvals />],
     ["/tasks", () => <TaskList />],
     ["/tasks/:id", (p) => <TaskDetail taskId={p.id ?? ""} />],
@@ -107,6 +116,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
     ["/demo", () => <GuidedDemo />],
     ["/system", () => <SystemScreen />],
     ["/access-requests", () => <AccessRequests />],
+    ["/add-project", () => <AddProject />],
     ["/object/:type/:id", (p) => <ObjectView objectType={p.type ?? ""} objectId={p.id ?? ""} />],
     ["/latest-report/:type", (p) => <LatestReport kind={p.type ?? ""} />],
     ["/help", () => <Help slug="index" />],
@@ -248,6 +258,17 @@ export function SessionBar() {
 }
 
 type HealthWithSpend = Health & { spend?: { used_usd?: number; ceiling_usd?: number } | null };
+
+/** A bar across the top while ATLAS is offline, so paused runs and updates are never a surprise. */
+function OfflineBanner() {
+  const health = useApi<HealthWithSpend>("/api/health");
+  if (health.data?.mode !== "offline") return null;
+  return (
+    <p className="offline-banner" role="status" data-testid="offline-banner">
+      <Icon name="pulse" size={16} /> Offline: new runs and live updates are paused
+    </p>
+  );
+}
 
 function ModeBadge() {
   const health = useApi<HealthWithSpend>("/api/health");
@@ -397,6 +418,7 @@ export function App() {
         <SpendMeter />
         <RoleSwitcher />
         <SessionBar />
+        {nav.data?.beta ? <BetaPill /> : null}
         <Bell />
         <ThemeToggle />
       </header>
@@ -404,7 +426,9 @@ export function App() {
       <MetricsSync />
       <Toaster />
       <main key={epoch} className="main">
+        <OutlookStrip />
         <ContainmentBanner />
+        <OfflineBanner />
         <Route path={path} search={search} nav={nav.data} />
       </main>
     </div>

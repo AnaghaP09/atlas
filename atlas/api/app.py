@@ -14,8 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from atlas.api import (metrics, navigation, routes_access, routes_eval, routes_ops, routes_projects, routes_runs,
-                       routes_tasks)
+from atlas.api import (metrics, navigation, outlook, routes_access, routes_eval, routes_onboarding, routes_ops,
+                       routes_projects, routes_runs, routes_story, routes_tasks)
 from atlas.api.guard import HostOriginGuard
 from atlas.api.identity import IdentityError
 from atlas.api.idempotency import IdempotencyError
@@ -90,6 +90,8 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
                   redoc_url=None)
     app.state.services = services
     metrics.install(services)
+    routes_story.install(services)
+    outlook.install(services)
     app.state.identity = services.identity
     services.dispatcher = Dispatcher(services.admissions, _start_run_factory(services), _work_allowed(services))
 
@@ -98,13 +100,23 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
     api.include_router(routes_tasks.router)
     api.include_router(routes_ops.router)
     api.include_router(routes_eval.router)
+    api.include_router(routes_onboarding.router)
     api.include_router(routes_projects.router)
     api.include_router(navigation.router)
     api.include_router(metrics.router)
+    api.include_router(routes_story.router)
+    api.include_router(outlook.router)
     api.include_router(routes_access.router)
     if services.is_scenario:
         api.include_router(routes_eval.scenario_router)
     app.include_router(api)
+    if site is None:
+        # Without sign-in there is no session. Say so plainly, so the UI does not have to guess
+        # from a missing route (the sign-in site serves the real ``/api/session``).
+        @app.get("/api/session", include_in_schema=False)
+        async def _no_session() -> dict[str, Any]:
+            return {"sign_in": False, "identity": "header"}
+
     from atlas.api import guide
 
     app.include_router(guide.router)
@@ -149,7 +161,9 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
             path = request.url.path
             response.headers["Content-Security-Policy"] = LOGIN_CSP if path in LOGIN_PATHS else CSP
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        # same-origin: our own form posts keep their real Origin (a sign-in form posted under
+        # no-referrer arrives as Origin: null and is refused); other sites still get no referrer.
+        response.headers["Referrer-Policy"] = "same-origin"
         return response
 
     @app.get("/{path:path}", include_in_schema=False)

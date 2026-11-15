@@ -4,10 +4,24 @@ import { Empty, ErrorView, Loading } from "../components/common";
 import { REPORT_TYPE } from "../lib/nav";
 import { ReportDetail } from "./Reports";
 
-/** The newest report of one type across the project's runs, or null. */
+/** The newest report of one type across the project's runs, or null. A verified (complete) run wins over
+ *  a newer one that did not finish verification, so every page reads the same release close. */
+function releaseOf(r: RunView): number[] | null {
+  const m = /release-close-v(\d+)\.(\d+)\.(\d+)/.exec(String(r.snapshot_id ?? ""));
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+
+/** A later release beats a newer re-run of an older release (a backtest); otherwise newest first. */
+function byRelease(a: RunView, b: RunView): number {
+  const ra = releaseOf(a), rb = releaseOf(b);
+  if (ra && rb) for (let i = 0; i < 3; i++) if (ra[i] !== rb[i]) return rb[i]! - ra[i]!;
+  return String(b.started_at ?? "").localeCompare(String(a.started_at ?? ""));
+}
+
 export function latestReport(runs: RunView[], type: string): ReportLink | null {
-  const newestFirst = runs.slice().sort((a, b) => String(b.started_at ?? "").localeCompare(String(a.started_at ?? "")));
-  for (const r of newestFirst) {
+  const newestFirst = runs.slice().sort(byRelease);
+  const verified = newestFirst.filter((r) => r.run_status === "complete");
+  for (const r of [...verified, ...newestFirst.filter((x) => x.run_status !== "complete")]) {
     const hit = r.reports.filter((rep) => rep.report_type === type && !rep.superseded);
     if (hit.length) return hit.sort((a, b) => b.report_version - a.report_version)[0] ?? null;
   }

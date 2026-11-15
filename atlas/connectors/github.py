@@ -190,6 +190,53 @@ class GitHubReader:
             "files": [{"path": f.get("filename"), "additions": f.get("additions"), "deletions": f.get("deletions")} for f in body.get("files", [])][:300],
         }
 
+    def component_churn(self, ref: str, since: str, until: str, paths: list[str], batch: int = 40) -> dict[str, int]:
+        """Commits touching each path between ``since`` and ``until`` on the history of ``ref``."""
+        out: dict[str, int] = {}
+        for start in range(0, len(paths), batch):
+            chunk = paths[start:start + batch]
+            data = self.graphql(Q.component_churn(chunk), self._vars(ref=ref, since=since, until=until))
+            obj = ((data.get("repository") or {}).get("object")) or {}
+            for n, path in enumerate(chunk):
+                out[path] = int((obj.get(f"c{n}") or {}).get("totalCount") or 0)
+        return out
+
+    def commit_before(self, branch: str, until: str) -> str | None:
+        """The newest commit on ``branch`` at or before ``until`` (ISO time)."""
+        body = self.rest("/commits", {"sha": branch, "until": until, "per_page": 1})
+        return body[0]["sha"] if isinstance(body, list) and body else None
+
+    def file_text(self, path: str, ref: str | None = None) -> tuple[str, str] | None:
+        """Text of one file at ``ref`` (default branch when omitted). Returns (text, blob sha)."""
+        body = self.rest(f"/contents/{path}", {"ref": ref} if ref else None)
+        if not isinstance(body, dict) or body.get("encoding") != "base64":
+            return None
+        return _b64(body.get("content") or ""), str(body.get("sha") or "")
+
+    def source_files(self, ref: str, paths: list[str], batch: int = 50, max_bytes: int = 400_000) -> dict[str, str]:
+        """Text of many files at ``ref`` in batched GraphQL reads. Binary and oversized files are left out."""
+        out: dict[str, str] = {}
+        for start in range(0, len(paths), batch):
+            chunk = paths[start:start + batch]
+            variables = self._vars(**{f"e{n}": f"{ref}:{path}" for n, path in enumerate(chunk)})
+            data = self.graphql(Q.source_files(len(chunk)), variables)
+            repo = data.get("repository") or {}
+            for n, path in enumerate(chunk):
+                blob = repo.get(f"f{n}") or {}
+                if blob.get("isBinary") or blob.get("text") is None or int(blob.get("byteSize") or 0) > max_bytes:
+                    continue
+                out[path] = blob["text"]
+        return out
+
+    def tree(self, ref: str) -> tuple[list[dict[str, Any]], bool]:
+        """Every path in the repository at ``ref`` (one recursive tree read). Returns (entries, complete)."""
+        body = self.rest(f"/git/trees/{ref}", {"recursive": 1})
+        if not isinstance(body, dict):
+            return [], False
+        entries = [{"path": e.get("path"), "type": e.get("type"), "size": e.get("size")}
+                   for e in body.get("tree", []) if isinstance(e, dict) and e.get("path")]
+        return entries, not body.get("truncated", False)
+
     def tag_commit_time(self, tag: str) -> dict[str, Any] | None:
         ref = self.rest(f"/git/ref/tags/{tag}")
         if ref is None:
@@ -205,6 +252,12 @@ class GitHubReader:
         commit = self.rest(f"/commits/{sha}")
         committed = ((commit or {}).get("commit") or {}).get("committer", {}).get("date")
         return {"tag": tag, "commit": sha, "tagged_at": tagged_at or committed, "committed_at": committed}
+
+
+def _b64(text: str) -> str:
+    import base64
+
+    return base64.b64decode(text).decode("utf-8", errors="replace")
 
 
 def safe_reader(gateway: Gateway, ctx: RequestContext, **kwargs: Any) -> GitHubReader:

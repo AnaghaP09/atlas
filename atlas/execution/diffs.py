@@ -169,3 +169,42 @@ def render(files: list[FileDiff]) -> str:
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()
+
+
+_HUNK_HEADER = re.compile(r"^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$")
+
+
+def recount(diff_text: str) -> str:
+    """Rewrite each hunk header so its line counts match the hunk body.
+
+    Coding agents often miscount hunk lengths. The body is left untouched, and applying the diff
+    still checks every context and removed line against the base file.
+    """
+    lines = diff_text.splitlines()
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        m = _HUNK_HEADER.match(lines[i])
+        if not m:
+            out.append(lines[i])
+            i += 1
+            continue
+        j = i + 1
+        old = new = 0
+        while j < len(lines) and not lines[j].startswith(("@@", "--- ", "+++ ", "diff ")):
+            line = lines[j]
+            if line.startswith("\\"):
+                pass
+            elif line.startswith("+"):
+                new += 1
+            elif line.startswith("-"):
+                old += 1
+            else:
+                old += 1
+                new += 1
+            j += 1
+        out.append(f"@@ -{m.group(1)},{old} +{m.group(2)},{new} @@{m.group(3)}")
+        out.extend(lines[i + 1:j])
+        i = j
+    newline = chr(10)
+    return newline.join(out) + (newline if diff_text.endswith(newline) else "")

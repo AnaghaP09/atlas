@@ -293,6 +293,7 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -307,6 +308,7 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -321,6 +323,7 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -335,6 +338,7 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -349,6 +353,7 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -363,6 +368,7 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -377,208 +383,8 @@
     "kind/failing-test",
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-03-13T14:48:26Z",
-   "issue": 14231,
-   "kinds_now": [
-    "kind/failing-test",
-    "kind/flake"
-   ],
-   "open_at_previous_close": true,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-04-30T11:33:46Z",
-   "issue": 14608,
-   "kinds_now": [
-    "kind/failing-test",
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-06-23T08:58:02Z",
-   "issue": 14979,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "backport_pr": 15208,
-     "kind": "backport",
-     "origin_pr": 15159
-    }
-   ]
-  },
-  {
-   "created_at": "2025-06-24T14:11:44Z",
-   "issue": 14995,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-07T07:57:30Z",
-   "issue": 15091,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-09T14:46:59Z",
-   "issue": 15135,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-09T14:59:21Z",
-   "issue": 15136,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-09T15:03:31Z",
-   "issue": 15137,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-09T15:06:29Z",
-   "issue": 15138,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-09T15:09:11Z",
-   "issue": 15139,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-09T15:14:54Z",
-   "issue": 15140,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-10T08:13:18Z",
-   "issue": 15148,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "backport_pr": 15158,
-     "kind": "backport",
-     "origin_pr": 15149
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-10T08:49:34Z",
-   "issue": 15150,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-25T08:43:13Z",
-   "issue": 15281,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2025-07-28T08:50:52Z",
-   "issue": 15293,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
    "reasons": [
     {
      "kind": "critical_open_at_final_tag"
@@ -586,7 +392,15 @@
    ]
   }
  ],
- "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: two people adjudicate every candidate (features and chores are excluded).",
+ "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: a person confirms every candidate (features and chores are excluded).",
+ "eligibility": {
+  "forecast_cutoff": "2025-03-13T18:01:18+00:00",
+  "forecast_data_set": "release-close-v1.5.0",
+  "left_out_file": "not_open_at_forecast.json",
+  "not_open_at_forecast": 15,
+  "open_at_forecast": 7,
+  "rule": "A candidate for release 1.N counts only when the issue was open in the frozen data set of the release 1.(N-1) close, the data set the forecast was made from."
+ },
  "limitation": "The project does not record release blockers, so this proxy is used.",
  "release": "1.6",
  "window": {

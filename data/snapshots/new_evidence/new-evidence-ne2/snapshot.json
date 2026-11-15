@@ -1,0 +1,24 @@
+{
+ "alias_variant": null,
+ "changed_record": "issues:issue/17371@e20fd25b9833",
+ "cutoff": "2026-04-01T09:24:40+00:00",
+ "data_modes": {
+  "capacity": "SYNTHETIC",
+  "ci": "REAL",
+  "git": "REAL",
+  "issues": "REAL",
+  "kubernetes": "SYNTHETIC",
+  "new_record": "SYNTHETIC",
+  "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
+  "telemetry": "SYNTHETIC"
+ },
+ "event_id": "17371",
+ "notes": [
+  "One made-up comment was added to test whether a new fact changes the recommendation."
+ ],
+ "records": 1240,
+ "records_sha256": "3ed16d687a4c7c9d45e59becb0e77be48cbf6820043b50508f4f7067f0147d6c",
+ "release_or_case": "G06",
+ "snapshot_id": "new-evidence-ne2",
+ "test_copy": "new_evidence"
+}

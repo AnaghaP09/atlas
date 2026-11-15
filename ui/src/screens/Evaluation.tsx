@@ -31,23 +31,61 @@ function GateStatus({ gate }: { gate: Gate }) {
   return <span className={`pill ${ok ? "pill-good" : "pill-critical"}`}>{ok ? "Passed" : "Failed"}</span>;
 }
 
+/** Shown beside every forecast-accuracy figure. */
+export const FORECAST_NOTE =
+  "Counts only blockers already open when the forecast was made; uses a substitute for release blockers because KubeVirt does not record them.";
+
+/** "3 of 5 (60%)", or "not measurable" when the denominator is empty. */
+export function share(part: number | undefined, whole: number | undefined, ratio: number | null | undefined): string {
+  if (ratio === null || whole === 0) return "not measurable";
+  if (typeof part === "number" && typeof whole === "number") return `${part} of ${whole} (${pct(ratio ?? part / whole)})`;
+  return typeof ratio === "number" ? pct(ratio) : "not measurable";
+}
+
+/** True when the gate names a person as its checker, not a tool or a provisional label. */
+export function checkedByPerson(gate: Gate): boolean {
+  return /person/i.test(gate.checked_by ?? "") && !/provisional/i.test(gate.checked_by ?? "");
+}
+
+function summaryText(gate: Gate): string | null {
+  if (!gate.summary) return null;
+  if (!checkedByPerson(gate)) return gate.summary;
+  const rest = gate.summary.split("; ").filter((p) => !/^Checked by /.test(p)).join("; ");
+  return rest || null;
+}
+
+function CloseLine({ label, c, testId }: { label: string; c: Gate["pooled"]; testId: string }) {
+  return (
+    <li data-testid={testId}>
+      <span className="num">
+        <strong>{label}</strong>: recall {share(c?.matched, c?.blockers, c?.recall)}, precision {share(c?.named_blockers, c?.predictions, c?.precision)}.
+      </span>{" "}
+      <span className="muted">{c?.note ?? FORECAST_NOTE}</span>
+    </li>
+  );
+}
+
 export function GateRow({ gate }: { gate: Gate }) {
   const isForecast = gate.gate_id === "G-13";
+  const summary = summaryText(gate);
   return (
     <article className={`gate ${gate.status}${isForecast ? " gate-wide" : ""}`} data-testid={`gate-${gate.gate_id}`}>
       <header className="gate-head">
         <strong>{GATE_TITLES[gate.gate_id] ?? "Quality check"}</strong>
-        <span className="end"><GateStatus gate={gate} /></span>
+        <span className="end">
+          {checkedByPerson(gate) ? <span className="pill pill-neutral" data-testid={`checked-${gate.gate_id}`}>Checked by one person</span> : null}{" "}
+          <GateStatus gate={gate} />
+        </span>
       </header>
-      {gate.summary ? <p className="muted">{gate.summary}</p> : null}
+      {summary ? <p className="muted">{summary}</p> : null}
       {isForecast ? (
         <>
-          <p className="num">
-            Pooled recall <strong>{pct(gate.pooled?.recall)}</strong>, precision <strong>{pct(gate.pooled?.precision)}</strong>.
+          <ul className="list">
+            {gate.pooled ? <CloseLine label="All releases" c={gate.pooled} testId="g13-pooled" /> : null}
             {(gate.per_close ?? []).map((c) => (
-              <span key={c.close}> {c.close}: {pct(c.recall)} / {pct(c.precision)}.</span>
+              <CloseLine key={c.close} label={`Release ${c.close}`} c={c} testId={`g13-close-${c.close}`} />
             ))}
-          </p>
+          </ul>
           <p className="banner banner-note" data-testid="g13-proxy">{gate.proxy_note ?? PROXY_NOTE}</p>
         </>
       ) : null}

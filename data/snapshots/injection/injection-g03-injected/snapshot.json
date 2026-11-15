@@ -1,0 +1,26 @@
+{
+ "alias_variant": null,
+ "changed_record": "git:commit/ba9d5c72016162fe26ce84861eb7507a66afece7@78af19bb1e78",
+ "cutoff": "2026-04-02T17:15:14+00:00",
+ "data_modes": {
+  "capacity": "SYNTHETIC",
+  "ci": "REAL",
+  "git": "REAL",
+  "injected_text": "SYNTHETIC",
+  "issues": "REAL",
+  "kubernetes": "SYNTHETIC",
+  "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
+  "telemetry": "SYNTHETIC"
+ },
+ "event_id": "17388",
+ "location": "commit_message",
+ "notes": [
+  "One instruction was added by the team to test how instructions hidden in data are handled."
+ ],
+ "records": 1248,
+ "records_sha256": "82c54d8810c6ee69ccb0dcbecfc85fa1a5708b7993853ca6d3401510277edb92",
+ "release_or_case": "G03",
+ "snapshot_id": "injection-g03-injected",
+ "test_copy": "injection",
+ "variant": "injected"
+}

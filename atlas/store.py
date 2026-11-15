@@ -659,7 +659,7 @@ class ActionStore:
 
     def __init__(self, path: Path) -> None:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(path), check_same_thread=False)
+        self._conn = sqlite3.connect(str(path), check_same_thread=False, timeout=30)
         self._conn.row_factory = sqlite3.Row
         self._migrate()
         self._conn.executescript(_ACTION_SCHEMA)
@@ -845,6 +845,9 @@ class ActionStore:
                 self._conn.commit()
                 return True
             except sqlite3.IntegrityError:
+                # Another process holds the lease. Roll back, or this connection keeps the write lock
+                # open and every later write to the store fails with "database is locked".
+                self._conn.rollback()
                 return False
 
     def release_poll(self, ctx: Any, holder: str) -> None:

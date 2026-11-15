@@ -51,7 +51,7 @@ export function Feedback() {
         <label>
           Run
           <select value={runId} onChange={(e) => { setRunId(e.target.value); setItemId(""); }}>
-            <option value="">Choose…</option>
+            <option value="">Chooseâ€¦</option>
             {list.map((r) => <option key={r.run_id} value={r.run_id}>{runTitle(r)}</option>)}
           </select>
         </label>
@@ -61,7 +61,7 @@ export function Feedback() {
             <select value={itemId} onChange={(e) => setItemId(e.target.value)}>
               <option value="">The whole report</option>
               {items.map((it) => (
-                <option key={String(it.issue_id)} value={String(it.issue_id)}>#{it.issue_id} {String(it.title ?? "").slice(0, 80)}</option>
+                <option key={String(it.issue_id)} value={String(it.issue_id)}>{String(it.title ?? "Untitled item").slice(0, 80)} · #{it.issue_id}</option>
               ))}
             </select>
           </label>

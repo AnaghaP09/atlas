@@ -51,6 +51,7 @@
         "allocation": {"type": ["string", "null"]},
         "allocation_reason": {"type": ["string", "null"]},
         "allocation_basis": {"type": ["string", "null"]},
+        "owner_team": {"type": ["string", "null"]},
         "issue_id": {"type": ["string", "null"]},
         "title": {"type": ["string", "null"]},
         "score": {"type": ["number", "null"]},
@@ -157,7 +158,7 @@
         "usd": {"type": "number", "minimum": 0},
         "steps": {"type": "integer", "minimum": 0},
         "tool_calls": {"type": "integer", "minimum": 0},
-        "seconds": {"type": "number", "minimum": 0}
+        "seconds": {"type": "number", "minimum": 0}, "per_run": {"type": "boolean"}
       }
     },
     "required_scopes": {"$ref": "#/$defs/scopes"}

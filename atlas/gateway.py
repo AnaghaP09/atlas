@@ -43,7 +43,17 @@ GRAPHQL_OPERATIONS = frozenset(
         "PullRequestTimeline",
         "ContentEditsProbe",
         "RateLimit",
+        "ComponentChurn",
+        "SourceFiles",
     }
+)
+
+# Repository facts read once, before a project is added, to propose its settings. GET only, on
+# public repository data; the issue list is read only to count the open issues per suggested label.
+_DETECT_PATH = re.compile(
+    r"^/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+"
+    r"(|/tags|/releases|/releases/latest|/labels|/languages|/actions/workflows|/contents|/contents/[A-Za-z0-9._/-]+"
+    r"|/commits/[0-9a-f]{40}|/issues)$"
 )
 
 OSV_QUERY_KEYS = {"package", "version"}
@@ -92,8 +102,19 @@ class CorrectionAuthorisation:
 
 
 @dataclass(frozen=True)
+class PublishGrant:
+    """What an approved task may write: one branch and one draft pull request in one repository."""
+
+    destination_repo: str
+    branch: str
+    base_ref: str
+    expires_at: datetime
+
+
+@dataclass(frozen=True)
 class RequestContext:
     purpose: EgressPurpose
+    publish: "PublishGrant | None" = None
     run_mode: RunMode = RunMode.LIVE
     frozen_evaluation: bool = False
     role: Role | None = None
@@ -266,9 +287,61 @@ _TARGET_CI_PATHS = [
 _ACTIONS_PATH = re.compile(
     r"^/repos/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)/actions/(runs|runs/\d+|runs/\d+/jobs|jobs/\d+|jobs/\d+/logs)$"
 )
+_PUBLICATION_ROUTES = [
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)$"), "repo"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/ref/heads/(?P<ref>[A-Za-z0-9._/-]+)$"), "ref"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/commits/(?P<sha>[0-9a-f]{40})$"), "commit"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/trees/(?P<sha>[0-9a-f]{40})$"), "tree"),
+    ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/(blobs|trees|commits)$"), "object"),
+    ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/refs$"), "new_ref"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls$"), "pulls"),
+    ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls$"), "new_pull"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls/(?P<number>\d+)$"), "pull"),
+    ("PATCH", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls/(?P<number>\d+)$"), "pull_body"),
+]
+
+
+def _publication_rule(connector: str, method: str, host: str, path: str, body: Any, ctx: "RequestContext",
+                      sources: SourceSet, now: datetime | None) -> str | None:
+    """Publication: one branch and one draft pull request in the approved repository, nothing else."""
+    if connector != "publication" or host != "api.github.com":
+        return "publication requests go to api.github.com through the publication connector only"
+    grant = ctx.publish
+    if grant is None:
+        return "no approved publication for this request"
+    if ctx.frozen_evaluation:
+        return "publication is refused in frozen evaluation runs"
+    if now is not None and grant.expires_at <= now:
+        return "the approval for this publication has expired"
+    for route_method, pattern, kind in _PUBLICATION_ROUTES:
+        m = pattern.match(path)
+        if not m or route_method != method:
+            continue
+        repo = f"{m.group('owner')}/{m.group('repo')}".lower()
+        if repo != grant.destination_repo.lower():
+            return "repository does not match the approved destination"
+        if repo in sources.repositories():
+            return "a repository that ATLAS reads from can never be written to"
+        payload = body if isinstance(body, Mapping) else {}
+        if not grant.branch and kind != "repo":
+            return "an identity read may only read the repository itself"
+        if kind == "ref" and m.group("ref") not in (grant.branch, grant.base_ref):
+            return "only the approved branch and its base may be read"
+        if kind == "new_ref" and payload.get("ref") != f"refs/heads/{grant.branch}":
+            return "only the approved branch may be created"
+        if kind == "new_pull" and not (payload.get("head") == grant.branch and payload.get("base") == grant.base_ref
+                                       and payload.get("draft") is True):
+            return "only a draft pull request from the approved branch to its base may be opened"
+        if kind == "pull_body" and set(payload) != {"body"}:
+            return "only the pull request description may be changed"
+        return None
+    return "route not allowed for publication"
+
+
 _PR_PATH = re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls/(?P<number>\d+)$")
 _REPO_PATH = re.compile(r"^/repos/(?P<owner>[A-Za-z0-9_.-]+)/(?P<repo>[A-Za-z0-9_.-]+)(/[A-Za-z0-9._~!$&'()*+,;=:@%/-]*)?$")
 _SAFE_PATH = re.compile(r"^[A-Za-z0-9._~/-]+$")
+_LISTING_KEYS = frozenset({"prefix", "delimiter", "marker", "max-keys"})
 NO_SOURCES = SourceSet()
 _OSV_VULN = re.compile(r"^/v1/vulns/[A-Za-z0-9._-]+$")
 
@@ -279,7 +352,8 @@ def _under(path: str, prefix: str) -> bool:
 
 
 def policy_check(
-    connector: str, method: str, url: str, body: Any, ctx: RequestContext, sources: SourceSet = NO_SOURCES
+    connector: str, method: str, url: str, body: Any, ctx: RequestContext, sources: SourceSet = NO_SOURCES,
+    now: datetime | None = None,
 ) -> str | None:
     """Static policy row plus purpose rule. Returns a refusal reason or None.
 
@@ -294,8 +368,11 @@ def policy_check(
     method = method.upper()
     purpose = ctx.purpose
 
-    if purpose in (EgressPurpose.MODEL_CALL, EgressPurpose.PUBLICATION, EgressPurpose.WEBHOOK_DELIVERY):
+    if purpose in (EgressPurpose.MODEL_CALL, EgressPurpose.WEBHOOK_DELIVERY):
         return f"purpose {purpose} is not handled on connector routes"
+
+    if purpose is EgressPurpose.PUBLICATION:
+        return _publication_rule(connector, method, host, path, body, ctx, sources, now)
 
     if purpose is EgressPurpose.LIVE_INGEST:
         if ctx.run_mode is not RunMode.LIVE or ctx.frozen_evaluation:
@@ -315,9 +392,27 @@ def policy_check(
             for rule_host, rule_prefix in sources.ci_artifact_rules() | sources.ci_view_rules():
                 if host == rule_host and _under(path, rule_prefix):
                     return None
+            # Folder listing of the project's own job folders (read-only, bounded by prefix).
+            query = parse_qs(parts.query, keep_blank_values=True)
+            for rule_host, bucket, prefixes in sources.ci_listing_rules():
+                if host != rule_host or path.rstrip("/") != (bucket or "").rstrip("/"):
+                    continue
+                if set(query) - _LISTING_KEYS or query.get("delimiter") != ["/"]:
+                    return "CI folder listing allows only prefix, delimiter, marker and max-keys"
+                wanted = (query.get("prefix") or [""])[0]
+                if _SAFE_PATH.match(wanted or "") and any(wanted.startswith(p) for p in prefixes if p):
+                    return None
+                return "CI folder listing prefix is not configured for this project"
             return "host or path not allowed for CI artefacts"
         if connector == "security":
             return _security_rule(method, host, path, body)
+        if connector == "onboarding":
+            # Detection for "Add project": read-only repository facts of any public repository.
+            if host != "api.github.com" or method != "GET":
+                return "detection reads are GET requests to api.github.com only"
+            if ".." in path or not _DETECT_PATH.match(path):
+                return "route not allowed for detection"
+            return None
         if connector == "actions":
             # GitHub Actions CI of a configured upstream project: read-only run and job listings.
             if host != "api.github.com" or method != "GET":
@@ -518,9 +613,9 @@ class Gateway:
 
     def _headers(self, connector: str, ctx: RequestContext) -> dict[str, str]:
         headers = {"Accept": "application/json", "User-Agent": "atlas-backend"}
-        if connector in ("issues", "git", "actions"):
+        if connector in ("issues", "git", "actions", "onboarding"):
             token_name = "github"
-        elif connector in ("target_ci", "correction"):
+        elif connector in ("target_ci", "correction", "publication"):
             token_name = "publish"
         else:
             return headers
@@ -556,7 +651,7 @@ class Gateway:
             self._record(connector, ctx, method, url, False, "offline mode refuses every outbound request")
             self._on_violation("offline_egress_attempt", {"connector": connector, "url": _redact_url(url)})
             raise GatewayRefused("offline mode refuses every outbound request")
-        reason = policy_check(connector, method, url, body, ctx, self.sources)
+        reason = policy_check(connector, method, url, body, ctx, self.sources, self._clock())
         if reason is not None:
             self._record(connector, ctx, method, url, False, reason)
             self._on_violation("allow_list_violation", {"connector": connector, "reason": reason, "url": _redact_url(url)})
@@ -564,6 +659,9 @@ class Gateway:
         self._record(connector, ctx, method, url, True, "allowed")
         headers = self._headers(connector, ctx)
         headers.update(extra)
+        if ctx.purpose is EgressPurpose.PUBLICATION and method.upper() != "GET":
+            # A write is sent once. The publisher's journal decides what to do after an unclear outcome.
+            return self._transport(method.upper(), url, headers, body)
         try:
             response = self._transport(method.upper(), url, headers, body)
         except (ConnectionError, TimeoutError):

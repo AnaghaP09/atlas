@@ -212,6 +212,38 @@ function shortName(name: string): string {
   return last.length > 26 ? `${last.slice(0, 25)}…` : last;
 }
 
+export interface LabelSpot {
+  id: string;
+  x: number;
+  y: number;
+}
+
+/** Places labels so none overlap: most-used components first, above the dot, else below, else left out.
+ *  `scale` is how many drawing units one screen pixel covers, so label size follows the zoom. */
+export function placeLabels(
+  wanted: { id: string; x: number; y: number; r: number; text: string; weight: number; must?: boolean }[],
+  scale = 1,
+): LabelSpot[] {
+  const charW = 5.8 * scale;
+  const h = 12 * scale;
+  const taken: { x0: number; x1: number; y0: number; y1: number }[] = [];
+  const out: LabelSpot[] = [];
+  const order = [...wanted].sort((a, b) => Number(Boolean(b.must)) - Number(Boolean(a.must)) || b.weight - a.weight);
+  for (const w of order) {
+    const half = (w.text.length * charW) / 2 + 2 * scale;
+    for (const y of [w.y - w.r - 4 * scale, w.y + w.r + 11 * scale]) {
+      const box = { x0: w.x - half, x1: w.x + half, y0: y - h, y1: y + 2 * scale };
+      const clash = taken.some((t) => box.x0 < t.x1 && box.x1 > t.x0 && box.y0 < t.y1 && box.y1 > t.y0);
+      if (!clash || (w.must && y > w.y)) {
+        taken.push(box);
+        out.push({ id: w.id, x: w.x, y });
+        break;
+      }
+    }
+  }
+  return out;
+}
+
 function GraphDrawing({ nodes, edges, limitation, initialFocus, snapshotId }: { nodes: GNode[]; edges: GEdge[]; limitation?: string; initialFocus?: string | null; snapshotId: string }) {
   const layout = useMemo(() => clusterLayout(nodes, edges), [nodes, edges]);
   const [box, setBox] = useState<Box>({ x: 0, y: 0, w: layout.width, h: layout.height });
@@ -277,6 +309,15 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus, snapshotId }: { 
     return true;
   });
   const zoomedIn = box.w < layout.width * 0.55;
+  // Labels: the selected dot always, then the most-used components; overlapping ones are left out.
+  const wantedLabels = [...layout.placed.values()].flatMap((p) => {
+    const n = byId.get(p.id);
+    if (!n) return [];
+    const dim = Boolean(focus) && p.id !== focus && !neighbours.has(p.id);
+    const show = !dim && (p.id === focus || hubs.has(p.id) || (zoomedIn && p.r > 5) || (Boolean(focus) && neighbours.has(p.id) && neighbours.size <= 14));
+    return show ? [{ id: p.id, x: p.x, y: p.y, r: p.r, text: shortName(n.name), weight: fanIn.get(p.id) ?? 0, must: p.id === focus }] : [];
+  });
+  const labelSpots = new Map(placeLabels(wantedLabels).map((l) => [l.id, l]));
   const matches = query.trim()
     ? nodes.filter((n) => n.kind === "component" && n.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
     : [];
@@ -390,7 +431,7 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus, snapshotId }: { 
             const n = byId.get(p.id);
             if (!n) return null;
             const dim = Boolean(focus) && p.id !== focus && !neighbours.has(p.id);
-            const showLabel = !dim && (p.id === focus || hubs.has(p.id) || (zoomedIn && p.r > 5) || (Boolean(focus) && neighbours.has(p.id) && neighbours.size <= 14));
+            const spot = labelSpots.get(p.id);
             return (
               <g key={p.id}>
                 <circle
@@ -408,8 +449,8 @@ function GraphDrawing({ nodes, edges, limitation, initialFocus, snapshotId }: { 
                 >
                   <title>{`${n.name} · ${n.team ?? "no owner team"} · used by ${fanIn.get(p.id) ?? 0}`}</title>
                 </circle>
-                {showLabel ? (
-                  <text className="node-label" x={p.x} y={p.y - p.r - 4} textAnchor="middle">
+                {spot ? (
+                  <text className="node-label" x={spot.x} y={spot.y} textAnchor="middle">
                     {shortName(n.name)}
                   </text>
                 ) : null}

@@ -54,6 +54,11 @@ export interface Schedule {
   last_run?: string | null;
   last_event_id?: string | null;
   next_run?: string | null;
+  title?: string;
+  interval_seconds?: number | null;
+  spends_model_budget?: boolean;
+  external?: boolean;
+  project_id?: string | null;
 }
 
 export interface StartedBy {
@@ -153,6 +158,8 @@ export interface Notification {
 
 export interface Approval {
   approval_id: string;
+  created_at?: string | null;
+  approver_role?: string | null;
   task_id: string;
   kind: "A" | "B" | string;
   state: string;
@@ -212,8 +219,22 @@ export interface Gate {
   status: "passed" | "failed" | "unevaluated" | string;
   summary?: string;
   proxy_note?: string;
-  pooled?: { recall?: number; precision?: number };
-  per_close?: { close: string; recall?: number; precision?: number }[];
+  /** Who checked the gate's inputs by hand, for example "one person". */
+  checked_by?: string;
+  note?: string;
+  pooled?: CloseFigures;
+  per_close?: (CloseFigures & { close: string })[];
+}
+
+/** Forecast accuracy figures. A null recall or precision has an empty denominator. */
+export interface CloseFigures {
+  recall?: number | null;
+  precision?: number | null;
+  matched?: number;
+  blockers?: number;
+  named_blockers?: number;
+  predictions?: number;
+  note?: string;
 }
 
 export interface Evaluation extends Envelope {
@@ -234,6 +255,10 @@ export interface ManifestCall {
   path: string;
   role?: string;
   body?: unknown;
+  query?: Record<string, string>;
+  key?: string;
+  save?: Record<string, string>;
+  wait_for?: { path: string; op: string; value?: unknown };
   expect_status?: number[];
 }
 
@@ -244,6 +269,7 @@ export interface ManifestRow {
   data_mode: DataMode;
   server: "normal" | "scenario" | string;
   calls: ManifestCall[];
+  estimated_cost_usd?: number;
 }
 
 export interface DemoManifest extends Envelope {

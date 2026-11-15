@@ -37,8 +37,8 @@ ROLES = [
 HERE = Path(__file__).resolve().parent
 
 
-def host_names(org: str) -> list[str]:
-    return [f"atlas.{org}.internal", f"scenario.{org}.internal"]
+def host_names(org: str, domain: str = "internal") -> list[str]:
+    return [f"atlas.{org}.{domain}", f"scenario.{org}.{domain}"]
 
 
 def private_paths(data_dir: Path) -> dict[str, Path]:
@@ -51,17 +51,33 @@ def _section_header(project: str) -> str:
     return f"[projects.{key}.export]"
 
 
+def _usable_target(target: str) -> bool:
+    return bool(target) and "<" not in target and "/" in target
+
+
+def projects_listing_target(projects_file: Path, target: str) -> list[str]:
+    """Projects whose ``publish_targets`` already name ``target``."""
+    data = tomllib.loads(projects_file.read_text(encoding="utf-8"))
+    found = []
+    for pid, body in sorted((data.get("projects") or {}).items()):
+        targets = ((body or {}).get("export") or {}).get("publish_targets") or []
+        if any(str(t).strip().lower() == target.strip().lower() for t in targets):
+            found.append(pid)
+    return found
+
+
 def grant_publish_target(projects_file: Path, project: str, target: str) -> bool:
     """Give ``project`` an export grant to publish to ``target`` when it has none yet.
 
     Only an empty ``publish_targets`` list in that project's export section is filled; a list the
-    owner already edited is left as it is. Returns True when the file changed."""
-    if not target or "<" in target or "/" not in target:
+    owner already edited is left as it is, and nothing changes when any project already lists
+    ``target``. Returns True when the file changed."""
+    if not _usable_target(target):
         return False
     text = projects_file.read_text(encoding="utf-8")
     data = tomllib.loads(text)
     current = (((data.get("projects") or {}).get(project) or {}).get("export") or {}).get("publish_targets")
-    if current:
+    if current or projects_listing_target(projects_file, target):
         return False
     header = _section_header(project)
     lines = text.splitlines()
@@ -85,6 +101,26 @@ def grant_publish_target(projects_file: Path, project: str, target: str) -> bool
     projects_file.write_text("\n".join(out) + "\n", encoding="utf-8")
     tomllib.loads(projects_file.read_text(encoding="utf-8"))  # still valid TOML
     return True
+
+
+def first_run_publish_grant(projects_file: Path, project: str, target: str, *, first_run: bool) -> str | None:
+    """Apply the ATLAS_PUBLISH_TARGET grant once, on the first run only, and say what happened.
+
+    Returns the line to print, or None when no target is set."""
+    target = (target or "").strip()
+    if not target:
+        return None
+    if not _usable_target(target):
+        return f"- ATLAS_PUBLISH_TARGET '{target}' is not an owner/repository name, so no project may publish yet."
+    listed = projects_listing_target(projects_file, target)
+    if listed:
+        return f"- Project '{listed[0]}' already publishes to {target}; no other project was given it."
+    if not first_run:
+        return (f"- Left publish targets as they are. Setup grants {target} only on its first run; "
+                f"to let a project publish there, add it to that project's publish_targets in {projects_file.name}.")
+    if grant_publish_target(projects_file, project, target):
+        return f"- Let project '{project}' publish to {target} (from ATLAS_PUBLISH_TARGET)."
+    return f"- Project '{project}' already has its own publish targets, so {target} was not added."
 
 
 def project_ids(projects_file: Path) -> list[str]:
@@ -123,6 +159,7 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, system: str | None = N
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", org):
         print("The organisation slug must use lowercase letters, digits and hyphens.", file=out)
         return 2
+    domain = (env.get("ATLAS_SITE_DOMAIN") or "internal").lower()
     data_dir = Path(env.get("ATLAS_DATA_DIR") or "data")
     if not data_dir.is_absolute():
         data_dir = root / data_dir
@@ -133,16 +170,18 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, system: str | None = N
     if created_env:
         print(f"- Created {env_path.name} from .env.example.", file=out)
 
-    if not paths["projects"].is_file():
+    first_run = not paths["projects"].is_file()
+    if first_run:
         shutil.copyfile(HERE / "projects.example.toml", paths["projects"])
         print("- Copied the example projects to your data directory. Edit them to use your own projects.", file=out)
     projects = project_ids(paths["projects"])
     if not projects:
         print("No projects are defined. Add at least one project, then run setup again.", file=out)
         return 2
-    target = (env.get("ATLAS_PUBLISH_TARGET") or "").strip()
-    if grant_publish_target(paths["projects"], projects[0], target):
-        print(f"- Let project '{projects[0]}' publish to {target} (from ATLAS_PUBLISH_TARGET).", file=out)
+    said = first_run_publish_grant(paths["projects"], projects[0], env.get("ATLAS_PUBLISH_TARGET") or "",
+                                   first_run=first_run)
+    if said:
+        print(said, file=out)
 
     updates = {"ATLAS_IDENTITY": "local", "ATLAS_ORG_SLUG": org, "ATLAS_DEFAULT_PROJECT": projects[0]}
     set_env_values(env_path, {k: v for k, v in updates.items() if k != "ATLAS_ORG_SLUG"}, overwrite=False)
@@ -166,14 +205,14 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, system: str | None = N
     try:
         if ensure_ca(certs, openssl, org):
             print("- Created a local certificate authority. Its private key stays in your data directory.", file=out)
-        if ensure_server_cert(certs, openssl, host_names(org), renew=args.renew_certificate):
+        if ensure_server_cert(certs, openssl, host_names(org, domain), renew=args.renew_certificate):
             print("- Created the server certificate.", file=out)
     except CertificateError as exc:
         print(f"Could not create certificates: {exc}", file=out)
         return 3
 
     print("", file=out)
-    print(one_time_steps(host_names(org), certs.public_ca, system=system), file=out)
+    print(one_time_steps(host_names(org, domain), certs.public_ca, system=system), file=out)
     print("Then start ATLAS with:  python -m deploy.up", file=out)
     return 0
 

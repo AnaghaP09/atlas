@@ -44,7 +44,8 @@ def _site_identity(env_file: str, scenario: bool):
     users_file = data_dir / "local" / "users.toml"
     if not users_file.is_file():
         raise ConfigError(f"no users file at {users_file}; run `python -m deploy.init` first")
-    site = SiteConfig(org_slug=settings.org_slug, scenario=scenario, data_dir=data_dir)
+    site = SiteConfig(org_slug=settings.org_slug, scenario=scenario, data_dir=data_dir,
+                      domain=settings.site_domain)
     sessions = SessionStore(site.session_db)
     provider = LocalIdentity(UserDirectory.load(users_file), sessions, default_project=settings.default_project)
     return site, sessions, provider
@@ -81,7 +82,13 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     import uvicorn
 
-    housekeeper = build_housekeeper(app.state.services, sessions, interval=_interval())
+    from atlas.watchers import SchedulerLoop, housekeeping_watcher
+
+    services = app.state.services
+    housekeeper = build_housekeeper(services, sessions, interval=_interval())
+    # Housekeeping runs as one of the schedules, so it shows on the Automatic runs page.
+    services.scheduler.add(housekeeping_watcher(housekeeper.run_once, housekeeper.interval))
+    housekeeper = SchedulerLoop(services)
     housekeeper.start()
     try:
         if site is not None:

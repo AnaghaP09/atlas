@@ -9,6 +9,7 @@ import { fakeFetch, json, type Handler } from "../test/fakes";
 import { Approvals } from "./Approvals";
 import { Evaluation } from "./Evaluation";
 import { RunNow } from "./RunNow";
+import { Schedules } from "./Schedules";
 
 const envelope = { data_mode: "REAL", environment: "normal", server_time: "2026-11-14T00:00:00Z" };
 const health = json({ ...envelope, status: "ok", environment: "normal", server: "127.0.0.1:8000", mode: "connected", identity: "header", components: {}, staged: [], unevaluated: [] });
@@ -61,31 +62,102 @@ describe("Evaluation", () => {
     expect(screen.getByTestId("g13-proxy").textContent).toMatch(/stand-in definition/);
     expect(screen.getByTestId("gate-G-13").textContent).toContain("60%");
   });
-});
 
-describe("Approvals", () => {
-  it("shows destination, generation, security validity, change hash and expiry", async () => {
-    renderWith(<Approvals />, {
-      "/api/approvals": () =>
+  it("puts the forecast note beside each release, says not measurable for empty releases, and names one checker", async () => {
+    renderWith(<Evaluation />, {
+      "/api/evaluations/latest": () =>
         json({
-          approvals: [
+          evaluation_id: "ev2",
+          gates: [
+            { gate_id: "G-3", status: "passed", checked_by: "one person", summary: "Checked by one person" },
             {
-              approval_id: "ap1", task_id: "t1", kind: "B", state: "pending",
-              destination_repository: "example/target", base_ref: "main", publication_ref: "atlas/a1", base_commit: "abc123",
-              verification_generation: 2, security_decision_id: "sd1", security_valid_until: "2026-11-15T00:00:00Z",
-              diff_hash: "sha256:feed", diff: "--- a/x\n+++ b/x\n", expires_at: "2099-01-01T00:00:00Z",
+              gate_id: "G-13", status: "failed", checked_by: "one person", summary: "not measurable: v1.6.0; Checked by one person",
+              pooled: { matched: 3, blockers: 5, named_blockers: 2, predictions: 4, recall: 0.6, precision: 0.5 },
+              per_close: [
+                { close: "v1.5.0", matched: 3, blockers: 5, named_blockers: 2, predictions: 4, recall: 0.6, precision: 0.5 },
+                { close: "v1.6.0", matched: 0, blockers: 0, named_blockers: 0, predictions: 3, recall: null, precision: 0 },
+              ],
             },
           ],
           ...envelope,
         }),
     });
-    const card = await screen.findByTestId("approval");
+    const close = await screen.findByTestId("g13-close-v1.5.0");
+    expect(close.textContent).toContain("recall 3 of 5 (60%)");
+    expect(close.textContent).toContain(
+      "Counts only blockers already open when the forecast was made; uses a substitute for release blockers because KubeVirt does not record them.",
+    );
+    expect(screen.getByTestId("g13-close-v1.6.0").textContent).toContain("recall not measurable");
+    expect(screen.getByTestId("g13-close-v1.6.0").textContent).toContain("Counts only blockers already open");
+    expect(screen.getByTestId("g13-pooled").textContent).toContain("precision 2 of 4 (50%)");
+    expect(screen.getByTestId("checked-G-13").textContent).toBe("Checked by one person");
+    expect(screen.getByTestId("checked-G-3").textContent).toBe("Checked by one person");
+    expect(screen.getByTestId("gate-G-13").textContent?.match(/Checked by one person/g)?.length).toBe(1);
+  });
+});
+
+describe("Automatic runs", () => {
+  const schedules = () =>
+    json({
+      ...envelope,
+      schedules: [
+        {
+          schedule_id: "kubevirt-nightly", kind: "nightly", title: "Nightly sweep of new failures", state: "paused",
+          reason: "Offline mode: automatic runs wait until the server is connected", last_run: "2026-11-14T02:00:00Z",
+          last_event_id: "18234", next_run: null, interval_seconds: 86400, spends_model_budget: true, external: true,
+        },
+        { schedule_id: "release-watch", kind: "release", title: "release-watch", state: "enabled", interval_seconds: 300, spends_model_budget: false },
+      ],
+    });
+
+  it("shows plain titles, interval, spend, state reason and last event, with controls for the engineering manager", async () => {
+    renderWith(<Schedules />, { "/api/schedules": schedules }, new IdentityStore(headerIdentity, { role: "em" }));
+    const row = await screen.findByTestId("schedule-kubevirt-nightly");
+    expect(row.textContent).toContain("Nightly sweep of new failures");
+    expect(row.textContent).toContain("Every day");
+    expect(row.textContent).toContain("spends model budget");
+    expect(row.textContent).toContain("reads outside data");
+    expect(row.textContent).toContain("Offline mode");
+    expect(row.textContent).toContain("last event 18234");
+    expect(row.textContent).toContain("Turn on");
+    expect(row.textContent).not.toContain("kubevirt-nightly");
+    const other = screen.getByTestId("schedule-release-watch");
+    expect(other.textContent).toContain("New release");
+    expect(other.textContent).toContain("Every 5 minutes");
+    expect(other.textContent).toContain("Pause");
+  });
+
+  it("is read-only for roles that cannot control automatic runs", async () => {
+    renderWith(<Schedules />, { "/api/schedules": schedules });
+    expect(await screen.findByTestId("schedules-read-only")).toBeTruthy();
+    expect(screen.queryByText("Run once")).toBeNull();
+  });
+});
+
+describe("Approvals", () => {
+  it("shows one approval per task, with no A or B, its destination and when it was requested", async () => {
+    renderWith(<Approvals />, {
+      "/api/approvals": () =>
+        json({
+          approvals: [
+            {
+              approval_id: "pending-A-t1", task_id: "t1", kind: "A", state: "requested", created_at: "2026-11-15T12:00:00Z",
+              destination_repository: "example/target", base_ref: "main", base_commit: "abc123", security_decision_id: "sd1",
+            },
+            {
+              approval_id: "apra-old", task_id: "t1", kind: "A", state: "voided", created_at: "2026-11-14T12:00:00Z",
+              destination_repository: "example/target", approver_role: "em",
+            },
+          ],
+          ...envelope,
+        }),
+    });
+    const cards = await screen.findAllByTestId("approval");
+    expect(cards).toHaveLength(1);
+    const card = cards[0]!;
     expect(card.textContent).toContain("example/target");
-    expect(card.textContent).toContain("2");
-    expect(card.textContent).toContain("sd1");
-    expect(screen.getByTestId("diff-hash").textContent).toBe("sha256:feed");
-    expect(card.textContent).toMatch(/h \d+ min left/);
-    expect(card.textContent).toContain("+++ b/x");
+    expect(card.textContent).toContain("Requested");
+    expect(card.textContent).not.toMatch(/Approval [AB] /);
   });
 });
 
@@ -101,6 +173,45 @@ describe("Run now", () => {
     });
     expect((await screen.findByTestId("unavailable-reason")).textContent).toMatch(/offline/i);
     expect((screen.getByRole("button", { name: "Run now" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("fills linked choices from the server and sends no typed ids", async () => {
+    const trig = (id: string, title: string, path: string, params: string[]) => ({
+      trigger_id: id, title, method: "POST", path, allowed_roles: ["em"], availability: "available", reason: null,
+      parameters: params.map((n) => ({ name: n, type: "string", required: true })),
+    });
+    const { calls } = renderWith(<RunNow />, {
+      "/api/triggers/catalog": () =>
+        json({
+          manual: [
+            trig("investigate", "Investigate a failure or issue", "/api/triggers/manual/investigate", ["snapshot_id", "event_id"]),
+            trig("question", "Ask a question", "/api/triggers/question", ["snapshot_id", "question"]),
+          ],
+          automatic: [],
+          ...envelope,
+        }),
+      "/api/snapshots": () =>
+        json({ snapshots: [{ snapshot_id: "release-close-v1.9.0", display_kind: "release", title: "KubeVirt at release v1.9.0", as_of: "2026-07-30" }], ...envelope }),
+      "/api/snapshots/release-close-v1.9.0/events": () =>
+        json({ total: 2, events: [
+          { event_id: "18234", title: "Passt uses nearly 100% CPU", failure: true, created_at: "2026-06-24T00:00:00Z" },
+          { event_id: "17000", title: "Docs typo", failure: false, created_at: "2026-01-01T00:00:00Z" },
+        ], ...envelope }),
+      "POST /api/triggers/manual/investigate": () => json({ run_id: "run-1", ...envelope }, 202),
+    });
+    const select = (await screen.findByLabelText("Which failure or issue?")) as HTMLSelectElement;
+    expect(select.textContent).toContain("Passt uses nearly 100% CPU");
+    fireEvent.change(screen.getByLabelText("Search failures and issues"), { target: { value: "docs" } });
+    expect(select.textContent).not.toContain("Passt");
+    fireEvent.change(select, { target: { value: "17000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run now" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    const post = calls.find((c) => c.method === "POST")!;
+    expect(post.body).toEqual({ snapshot_id: "release-close-v1.9.0", event_id: "17000", summary: "Docs typo" });
+
+    fireEvent.change(screen.getByLabelText("What kind of run?"), { target: { value: "question" } });
+    fireEvent.change(await screen.findByLabelText("Suggested questions"), { target: { value: "What will stop the next release?" } });
+    expect((screen.getByPlaceholderText("Or write your own question") as HTMLTextAreaElement).value).toBe("What will stop the next release?");
   });
 });
 

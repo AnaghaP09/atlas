@@ -1,0 +1,21 @@
+# How a delegated task maps onto the demo target repository.
+#
+# The demo target is a small sample Go package written for the demo. It is modelled on a real
+# kind of problem (tests that break on IPv6-only networks), but it is not the real project's code.
+# A task is mapped only when its investigation matches one of the entries below. Any other task
+# is refused, because the sample code has nothing that answers it.
+
+label = "Demo target (sample code modelled on the real issue)"
+data_mode = "SYNTHETIC"
+# Files the target repository keeps for itself. Before publishing, ATLAS checks that every other
+# file it prepared against is unchanged on the target; these are left out of that check.
+not_compared = ["README.md", "LICENSE"]
+
+[[mapping]]
+id = "ipv6-host-port"
+title = "Format IPv6 hosts correctly in netaddr.JoinHostPort"
+classifications = ["TEST_DEFECT"]
+keywords = ["ipv6"]
+scope = ["netaddr/*.go"]
+behaviour_check = ".atlas/behaviour/netaddr_behaviour_test.go"
+change = "In the netaddr package, make JoinHostPort format IPv6 hosts correctly: an IPv6 host must be wrapped in square brackets before the port is added (for example [::1]:8080). IPv4 addresses and host names must keep their current format. Change only netaddr/netaddr.go unless a test in the package needs updating; a separate behaviour test already covers the IPv6 cases, so new tests are optional."

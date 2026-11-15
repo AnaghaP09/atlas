@@ -7,8 +7,7 @@ import copy
 import pytest
 
 from eval import baseline_workflow, gates
-from eval.adjudicate import resolve_proxy
-from eval.canonical import LIMITATION, canonical_predictions, g13
+from eval.canonical import LIMITATION, NOTE, canonical_predictions, g13
 from eval.store import EvaluationStore
 
 GOLDEN = {f"G{n:02d}": {"expected_classification": "CODE_DEFECT", "expected_action": "ASSIGN_DEVELOPER"}
@@ -86,16 +85,14 @@ def test_g2_counts_contradicted_controls_as_failures_and_each_id_once():
     assert any("p0 evaluated 2 times" in f for f in twice["failures"])
 
 
-def test_g3_needs_two_agreeing_adjudications_bound_to_versions():
+def test_g3_needs_one_check_bound_to_versions():
     claims = [{"claim_id": "c1", "verdict": "supported", "output_version": "o1", "evidence_versions": ["cv1"]}]
-    adj = [{"claim_id": "c1", "output_version": "o1", "evidence_versions": ["cv1"], "adjudicator": a, "label": "supported"}
-           for a in ("x", "y")]
-    assert gates.g3(claims, adj)["status"] == "passed"
-    assert gates.g3(claims, adj[:1])["counts"]["missing_adjudication"] == 1
-    disputed = adj[:1] + [dict(adj[1], label="unsupported")]
-    assert gates.g3(claims, disputed)["counts"]["unsupported"] == 1
-    stale = [dict(a, output_version="o0") for a in adj]
-    assert gates.g3(claims, stale)["status"] == "failed"
+    ok = [{"claim_id": "c1", "output_version": "o1", "evidence_versions": ["cv1"], "label": "supported"}]
+    passed = gates.g3(claims, ok)
+    assert passed["status"] == "passed" and passed["checked_by"] == "one person"
+    assert gates.g3(claims, [])["counts"]["missing_check"] == 1
+    assert gates.g3(claims, ok + [dict(ok[0], label="unsupported")])["counts"]["unsupported"] == 1
+    assert gates.g3(claims, [dict(ok[0], output_version="o0")])["status"] == "failed"
 
 
 def test_g4_injected_and_clean_twins():
@@ -196,7 +193,39 @@ def test_evaluate_all_never_passes_missing_gates():
     res = gates.evaluate_all({"g13": {"closes": [{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": ["1"]}]}})
     assert res["gates"]["G-13"]["status"] == "passed"
     assert res["gates"]["G-1"]["status"] == "unevaluated" and res["overall"] == "incomplete"
-    assert "Measured on a proxy" in res["gates"]["G-13"]["limitation"]
+    assert res["gates"]["G-13"]["limitation"].startswith(NOTE)
+
+
+def test_g13_recall_counts_only_blockers_open_at_forecast_and_precision_counts_every_blocker():
+    # Blockers 1 and 2 were open when the forecast was made; 7 was reported later but named anyway.
+    closes = [{"release": "1.6", "items": [{"issue_id": "1"}, {"issue_id": "7"}, {"issue_id": "8"}],
+               "blockers": ["1", "2"], "all_blockers": ["1", "2", "7"]}]
+    res = g13(closes)
+    assert res["pooled"]["recall"] == pytest.approx(1 / 2)  # 7 is not in the recall denominator
+    assert res["pooled"]["precision"] == pytest.approx(2 / 3)  # named items that turned out to be blockers
+    assert res["per_close"][0]["missed_blockers"] == ["2"]
+
+
+def test_g13_states_the_narrowing_beside_every_number():
+    closes = [{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": ["1"]},
+              {"release": "1.7", "items": [], "blockers": []}]
+    res = g13(closes)
+    assert NOTE == ("Counts only blockers already open when the forecast was made; uses a substitute for release "
+                    "blockers because KubeVirt does not record them.")
+    assert res["pooled"]["note"] == NOTE and all(c["note"] == NOTE for c in res["per_close"])
+    assert len(res["text"]) == 3 and all(t.endswith(NOTE) for t in res["text"])
+    assert "recall 1 of 1 (100%)" in res["text"][0] and "no denominator" in res["text"][2]
+    assert res["empty_denominators"] == ["1.7: no labelled blocker open when the forecast was made",
+                                         "1.7: the forecast named nothing"]
+    gate = gates.g13(closes)
+    assert gate["note"] == NOTE and gate["text"] == res["text"]
+
+
+def test_g13_empty_pooled_denominator_fails_with_a_reason():
+    gate = gates.g13([{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": []}])
+    assert gate["status"] == "failed" and gate["failures"][0] == "pooled denominator is empty"
+    gate = gates.g13([{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": ["2"]}])
+    assert gate["status"] == "failed" and gate["failures"] == ["pooled recall or precision below the bar"]
 
 
 def test_baseline_workflow_rules():
@@ -207,19 +236,6 @@ def test_baseline_workflow_rules():
     blame = baseline_workflow.run({"log": "panic", "failure_ids": ["j"], "first_failure_at": "2026-05-02",
                                    "commits": [{"sha": "a", "merged_at": "2026-05-01"}, {"sha": "b", "merged_at": "2026-05-03"}]})
     assert blame.blamed_commit == "a" and blame.action == "ASSIGN_DEVELOPER"
-
-
-def test_proxy_label_resolution():
-    labels = [{"release": "1.6", "issue_id": "1", "adjudicator": "x", "label": "blocker"},
-              {"release": "1.6", "issue_id": "1", "adjudicator": "y", "label": "blocker"},
-              {"release": "1.6", "issue_id": "2", "adjudicator": "x", "label": "blocker"},
-              {"release": "1.6", "issue_id": "2", "adjudicator": "y", "label": "not_blocker"},
-              {"release": "1.6", "issue_id": "3", "adjudicator": "x", "label": "blocker"}]
-    res = resolve_proxy(labels, {("1.6", "2"): "not_blocker"})
-    assert res[("1.6", "1")]["status"] == "agreed"
-    assert res[("1.6", "2")] == {"final": "not_blocker", "labels": {"x": "blocker", "y": "not_blocker"},
-                                 "status": "settled_by_pm"}
-    assert res[("1.6", "3")]["status"] == "incomplete"
 
 
 def test_evaluations_are_immutable():

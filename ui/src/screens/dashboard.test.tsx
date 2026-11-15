@@ -76,6 +76,58 @@ describe("Live dashboard", () => {
     expect(calls.some((c) => c.url.startsWith("/api/projects/kubevirt/stream"))).toBe(true);
   });
 
+  it("shows real open counts, a trend from stored history and the CI job listing", async () => {
+    const data: DashboardData = {
+      ...board(3, { open_issues: ["recent issue"] }),
+      history: [
+        { at: "2026-11-14T09:00:00Z", open_issues: 140, failing_ci: 3 },
+        { at: "2026-11-14T09:05:00Z", open_issues: 142, failing_ci: 4 },
+      ],
+    };
+    data.panels = data.panels.map((p) =>
+      p.panel_id === "open_issues"
+        ? { ...p, total: 142 }
+        : {
+            ...p,
+            total: 4,
+            items: [
+              { note: "4 of 30 periodic jobs that ran in the last 7 days are failing" },
+              { job: "periodic-e2e-network", result: "FAILURE", build_id: "77", finished_at: "2026-11-14T08:00:00Z", kind: "periodic" },
+            ],
+          },
+    );
+    renderDashboard({
+      "/api/projects/kubevirt/dashboard": () => json({ ...envelope, ...data }),
+      "/api/projects/kubevirt/activity": () => json({ ...envelope, activity: [] }),
+      "/api/projects/kubevirt/stream": () => sseResponse([]),
+    });
+    await waitFor(() => expect(screen.getByTestId("kpi-open").textContent).toContain("142"));
+    expect(screen.getByTestId("issues-shown").textContent).toBe("1 most recently changed of 142");
+    expect(screen.getByTestId("kpi-ci").textContent).toContain("4");
+    expect(screen.getByTestId("kpi-ci").textContent).toContain("Failing CI jobs");
+    expect(screen.getByTestId("ci-jobs").textContent).toContain("periodic-e2e-network");
+    expect(screen.getByTestId("ci-jobs").textContent).toContain("Failure");
+    expect(screen.getByTestId("ci-coverage").textContent).toContain("4 of 30 periodic jobs");
+    expect(screen.getByTestId("trend").textContent).toContain("last 2 polls");
+  });
+
+  it("is honest before the first poll and when CI is not polled", async () => {
+    const data: DashboardData = { ...board(1, {}), last_poll: null, history: [] };
+    data.panels = data.panels.map((p) =>
+      p.panel_id === "failing_ci" ? { ...p, items: [{ note: "CI runs for this project (not set) are not polled in this build" }], total: 0 }
+        : { ...p, status: "not_connected" },
+    );
+    renderDashboard({
+      "/api/projects/kubevirt/dashboard": () => json({ ...envelope, ...data }),
+      "/api/projects/kubevirt/activity": () => json({ ...envelope, activity: [] }),
+      "/api/projects/kubevirt/stream": () => sseResponse([]),
+    });
+    await waitFor(() => expect(screen.getByTestId("kpi-open").textContent).toContain("Not yet"));
+    expect(screen.getByTestId("kpi-ci").textContent).toContain("Not polled");
+    expect(screen.getByTestId("trend-empty").textContent).toContain("after two finished polls");
+    expect(screen.getByText(/They appear after the first poll/)).toBeTruthy();
+  });
+
   it("drops the old project's dashboard on a project switch and asks only for the new one", async () => {
     const identity = new IdentityStore(headerIdentity, { role: "pm" }, "kubevirt");
     const { calls } = renderDashboard(

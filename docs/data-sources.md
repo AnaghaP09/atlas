@@ -52,6 +52,21 @@ The repository includes 24 frozen copies of KubeVirt data. The interface shows e
   are never committed.
 - **Old data is not used as current.** Each source has a maximum age. ATLAS reports evidence
   that is too old, or has no time stamp, as unknown or unavailable.
+- **Release blockers.** KubeVirt does not record which issues blocked each release. Where ATLAS
+  scores its forecasts against release blockers, it uses a stated substitute definition: a bug or
+  flaky-test issue whose fix was backported to the release branch between the first beta and the
+  release, or a critical-urgent issue still open at the release tag. One person checks each
+  candidate.
+- **Only blockers that existed at forecast time.** The forecast for a release is made at the close
+  of the release before it, from that close's frozen data set. An issue reported after that point
+  could not have been named, so counting it would measure timing, not forecasting. A candidate
+  therefore counts only if the issue was open in that data set, as it stood at the cutoff. For the
+  four scored releases this keeps 36 of 120 candidates; the other 84 are kept in the evaluator
+  files with the reason they were left out (most were reported after the forecast). Recall is
+  measured against these 36 only. Precision is unchanged: the share of named issues that turned out
+  to be blockers. Every result states, beside the number, that it counts only blockers already open
+  when the forecast was made and uses a substitute because KubeVirt does not record release
+  blockers.
 
 ## Live data and GitHub limits
 

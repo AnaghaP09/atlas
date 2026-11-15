@@ -52,7 +52,7 @@ def site(tmp_path: Path):
     fast = dict(n=2 ** 10, r=8, p=1)  # fast hashes for tests only
     users = [{"name": name, "display_name": f"{name} (demo)", "password_hash": hash_password(PASSWORD, **fast),
               "roles": roles}
-             for name, roles in (("pm", {"kubevirt": "pm"}), ("pm-two", {"kubevirt": "pm"}),
+             for name, roles in (("oncall", {"kubevirt": "oncall"}), ("oncall-two", {"kubevirt": "oncall"}),
                                  ("em", {"kubevirt": "em"}), ("security", {"kubevirt": "security"}),
                                  ("outsider", {"argo-cd": "em"}))]
     write_users_file(tmp_path / "local" / "users.toml", users)
@@ -82,56 +82,56 @@ def _seed(em: Person, services):
 
 def test_ordinary_item_granted_at_once_then_revoked_by_the_owner(site):
     app, services = site
-    em, pm = Person(app, "em"), Person(app, "pm")
+    em, oncall = Person(app, "em"), Person(app, "oncall")
     _, task_id, approval_id = _seed(em, services)
 
-    assert pm.get(f"/api/approvals/{approval_id}").status_code == 403
-    asked = pm.post("/api/access-requests", {"object_type": "approval", "object_id": approval_id})
+    assert oncall.get(f"/api/approvals/{approval_id}").status_code == 403
+    asked = oncall.post("/api/access-requests", {"object_type": "approval", "object_id": approval_id})
     assert asked.status_code == 201 and asked.json()["access"] == "open"
     req = asked.json()["request"]
-    assert req["requester"] == {"user": "pm", "role": "pm"} and req["grant"]["automatic"]
+    assert req["requester"] == {"user": "oncall", "role": "oncall"} and req["grant"]["automatic"]
 
-    assert pm.get(f"/api/approvals/{approval_id}").json()["approval"]["task_id"] == task_id
+    assert oncall.get(f"/api/approvals/{approval_id}").json()["approval"]["task_id"] == task_id
     # the grant belongs to that person, not to the role
-    assert Person(app, "pm-two").get(f"/api/approvals/{approval_id}").status_code == 403
+    assert Person(app, "oncall-two").get(f"/api/approvals/{approval_id}").status_code == 403
     # read-only: every change is still refused
-    assert pm.post(f"/api/approvals/{approval_id}/decision", {"decision": "approve"}).status_code == 403
-    assert pm.post(f"/api/tasks/{task_id}/prepare").status_code == 403
-    assert pm.post(f"/api/tasks/{task_id}/publish").status_code == 403
+    assert oncall.post(f"/api/approvals/{approval_id}/decision", {"decision": "approve"}).status_code == 403
+    assert oncall.post(f"/api/tasks/{task_id}/prepare").status_code == 403
+    assert oncall.post(f"/api/tasks/{task_id}/publish").status_code == 403
 
     notes = em.get("/api/notifications").json()["notifications"]
     assert any(n["event_type"] == "access.granted_automatically" for n in notes)
     revoked = em.post(f"/api/access-grants/{req['grant']['grant_id']}/revoke")
     assert revoked.status_code == 200 and revoked.json()["request"]["status"] == "revoked"
-    assert pm.get(f"/api/approvals/{approval_id}").status_code == 403
-    stream = pm.get("/api/notifications/stream", follow="false").text
+    assert oncall.get(f"/api/approvals/{approval_id}").status_code == 403
+    stream = oncall.get("/api/notifications/stream", follow="false").text
     assert "access.revoked" in stream and approval_id not in stream
 
 
 def test_sensitive_item_needs_the_security_role_and_expires(site):
     app, services = site
-    em, pm, security = Person(app, "em"), Person(app, "pm"), Person(app, "security")
+    em, oncall, security = Person(app, "em"), Person(app, "oncall"), Person(app, "security")
     run_id, _, _ = _seed(em, services)
     finding = f"{run_id}:1"
 
-    asked = pm.post("/api/access-requests", {"object_type": "finding", "object_id": finding})
+    asked = oncall.post("/api/access-requests", {"object_type": "finding", "object_id": finding})
     assert asked.status_code == 201 and asked.json()["access"] == "locked"
     rid = asked.json()["request"]["request_id"]
     assert asked.json()["request"]["status"] == "pending"
-    assert pm.get(f"/api/objects/finding/{finding}").status_code == 403
+    assert oncall.get(f"/api/objects/finding/{finding}").status_code == 403
 
     assert em.post(f"/api/access-requests/{rid}/decision", {"decision": "grant"}).status_code == 403
-    own = pm.post(f"/api/access-requests/{rid}/decision", {"decision": "grant"})
+    own = oncall.post(f"/api/access-requests/{rid}/decision", {"decision": "grant"})
     assert own.status_code == 403 and "own request" in own.json()["reason"]
     granted = security.post(f"/api/access-requests/{rid}/decision", {"decision": "grant", "hours": 1})
     assert granted.status_code == 200
     assert granted.json()["request"]["grant"]["granted_by"] == {"user": "security", "role": "security"}
 
-    read = pm.get(f"/api/objects/finding/{finding}")
+    read = oncall.get(f"/api/objects/finding/{finding}")
     assert read.status_code == 200 and "SECRET-FINDING-MARKER" in read.text
     later = datetime.now(timezone.utc) + timedelta(hours=1, minutes=1)
     services.access.clock = lambda: later
-    assert pm.get(f"/api/objects/finding/{finding}").status_code == 403
+    assert oncall.get(f"/api/objects/finding/{finding}").status_code == 403
 
 
 def test_another_project_sees_nothing(site):
@@ -143,8 +143,8 @@ def test_another_project_sees_nothing(site):
     asked = outsider.post("/api/access-requests", {"object_type": "approval", "object_id": approval_id})
     assert asked.status_code == 404
     assert outsider.get(f"/api/approvals/{approval_id}").status_code == 404
-    pm = Person(app, "pm")
-    rid = pm.post("/api/access-requests", {"object_type": "finding",
+    oncall = Person(app, "oncall")
+    rid = oncall.post("/api/access-requests", {"object_type": "finding",
                                            "object_id": f"{next(iter(services.tasks.tasks.values()))['run_id']}:1"}
                   ).json()["request"]["request_id"]
     assert outsider.post(f"/api/access-requests/{rid}/decision", {"decision": "deny"}).status_code == 404

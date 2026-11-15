@@ -1,0 +1,236 @@
+{
+ "true": [
+  {
+   "id": "true-G01",
+   "case": "G01",
+   "snapshot_id": "case-g01",
+   "kind": "finding",
+   "text": "Passt-based network tests began flaking after the test image moved to Fedora 43, where passt uses nearly 100% CPU.",
+   "evidence_ids": [
+    "issues:issue/18234@d423ec0281d68c9f"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G02",
+   "case": "G02",
+   "snapshot_id": "case-g02",
+   "kind": "finding",
+   "text": "Datavolume migration to filesystem volumes fails in about 21% of runs on Kubernetes 1.36 and is stable on 1.34 and 1.35.",
+   "evidence_ids": [
+    "issues:issue/17724@9d9bc0080c5b96ec"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G02b",
+   "case": "G02b",
+   "snapshot_id": "case-g02",
+   "kind": "finding",
+   "text": "The failing migration case is reported against Kubernetes 1.36 specifically.",
+   "evidence_ids": [
+    "issues:issue/17724@9d9bc0080c5b96ec"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G03",
+   "case": "G03",
+   "snapshot_id": "case-g03",
+   "kind": "finding",
+   "text": "The force-restart test for a VM with terminationGracePeriodSeconds>0 failed in CI.",
+   "evidence_ids": [
+    "issues:issue/17388@4c02bace8765dacb"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G04a",
+   "case": "G04a",
+   "snapshot_id": "case-g04",
+   "kind": "finding",
+   "text": "The release-blocker upgrade test was quarantined.",
+   "evidence_ids": [
+    "issues:issue/18465@25d23bb0fc1add00"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G04b",
+   "case": "G04b",
+   "snapshot_id": "case-g04",
+   "kind": "finding",
+   "text": "The issue reports workload-update migrations racing with the virt-handler DaemonSet re-roll during upgrade.",
+   "evidence_ids": [
+    "issues:issue/18396@833aeebb631170ba"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G04c",
+   "case": "G04c",
+   "snapshot_id": "case-g04",
+   "kind": "finding",
+   "text": "The issue reports a failure in the upgrade test path.",
+   "evidence_ids": [
+    "issues:issue/18336@9a54b819753e5116"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G05",
+   "case": "G05",
+   "snapshot_id": "case-g05",
+   "kind": "finding",
+   "text": "IPv6 masquerade binding tests have flaked only on the IPv6 lane since a merged image change.",
+   "evidence_ids": [
+    "issues:issue/15886@767cbb9b8f4190c2"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G06",
+   "case": "G06",
+   "snapshot_id": "case-g06",
+   "kind": "finding",
+   "text": "Around 20 tests fail on every run of the periodic s390x end-to-end job.",
+   "evidence_ids": [
+    "issues:issue/17371@e8e00ed11939fb6a"
+   ],
+   "expected": "supported"
+  },
+  {
+   "id": "true-G07",
+   "case": "G07",
+   "snapshot_id": "case-g07",
+   "kind": "finding",
+   "text": "The issue lists clustered failing runs of the sig-compute lane without stating a cause.",
+   "evidence_ids": [
+    "issues:issue/17022@db0d0599d0de495a"
+   ],
+   "expected": "supported"
+  }
+ ],
+ "wrong": [
+  {
+   "id": "wrong-G01",
+   "case": "G01",
+   "snapshot_id": "case-g01",
+   "kind": "finding",
+   "text": "The network test flakes are caused by a race between virt-handler and the VM controller.",
+   "evidence_ids": [
+    "issues:issue/18234@d423ec0281d68c9f"
+   ],
+   "expected": "rejected",
+   "cites": "the issue of the case"
+  },
+  {
+   "id": "wrong-G02",
+   "case": "G02",
+   "snapshot_id": "case-g02",
+   "kind": "finding",
+   "text": "The migration failures happen equally on every supported Kubernetes version.",
+   "evidence_ids": [
+    "git:commit/c2d577839c71f9b6aedcef7687d6320c1a61a438@91f0b6227f7c2ee2"
+   ],
+   "expected": "rejected",
+   "cites": "an unrelated commit"
+  },
+  {
+   "id": "wrong-G02b",
+   "case": "G02b",
+   "snapshot_id": "case-g02",
+   "kind": "finding",
+   "text": "The failure was introduced by an outdated passt package in the test image.",
+   "evidence_ids": [
+    "issues:issue/17724@9d9bc0080c5b96ec"
+   ],
+   "expected": "rejected",
+   "cites": "the issue of the case"
+  },
+  {
+   "id": "wrong-G03",
+   "case": "G03",
+   "snapshot_id": "case-g03",
+   "kind": "finding",
+   "text": "The force-restart failure only occurs on the s390x cluster.",
+   "evidence_ids": [
+    "git:commit/429ea939e27ff3dd6119e00232baa2c47f501b40@6a710c25731a9f8a"
+   ],
+   "expected": "rejected",
+   "cites": "an unrelated commit"
+  },
+  {
+   "id": "wrong-G04a",
+   "case": "G04a",
+   "snapshot_id": "case-g04",
+   "kind": "finding",
+   "text": "The upgrade test fails because the cluster ran out of storage.",
+   "evidence_ids": [
+    "issues:issue/18465@25d23bb0fc1add00"
+   ],
+   "expected": "rejected",
+   "cites": "the issue of the case"
+  },
+  {
+   "id": "wrong-G04b",
+   "case": "G04b",
+   "snapshot_id": "case-g04",
+   "kind": "finding",
+   "text": "The upgrade race is caused by an IPv6-only network configuration.",
+   "evidence_ids": [
+    "git:commit/14434be342bde3d37431c239723445000116cfd9@befd548e097efd0a"
+   ],
+   "expected": "rejected",
+   "cites": "an unrelated commit"
+  },
+  {
+   "id": "wrong-G04c",
+   "case": "G04c",
+   "snapshot_id": "case-g04",
+   "kind": "finding",
+   "text": "The upgrade failure is a known upstream bug in the Fedora 43 image.",
+   "evidence_ids": [
+    "issues:issue/18336@9a54b819753e5116"
+   ],
+   "expected": "rejected",
+   "cites": "the issue of the case"
+  },
+  {
+   "id": "wrong-G05",
+   "case": "G05",
+   "snapshot_id": "case-g05",
+   "kind": "finding",
+   "text": "The masquerade tests flake on every network lane, IPv4 included.",
+   "evidence_ids": [
+    "git:commit/71b48773a14e581387469f8c6ff2a6d25e7a2f18@a5cd1b11652e7af6"
+   ],
+   "expected": "rejected",
+   "cites": "an unrelated commit"
+  },
+  {
+   "id": "wrong-G06",
+   "case": "G06",
+   "snapshot_id": "case-g06",
+   "kind": "finding",
+   "text": "The s390x failures come from a regression in the virt-api force-restart code.",
+   "evidence_ids": [
+    "issues:issue/17371@e8e00ed11939fb6a"
+   ],
+   "expected": "rejected",
+   "cites": "the issue of the case"
+  },
+  {
+   "id": "wrong-G07",
+   "case": "G07",
+   "snapshot_id": "case-g07",
+   "kind": "finding",
+   "text": "The clustered failures were caused by a dependency bump of passt.",
+   "evidence_ids": [
+    "git:commit/f84d1d72825e33d57114ed8bd89778043390c7fa@cf0dfb5314c478e2"
+   ],
+   "expected": "rejected",
+   "cites": "an unrelated commit"
+  }
+ ]
+}

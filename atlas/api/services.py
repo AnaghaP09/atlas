@@ -24,10 +24,11 @@ from atlas.api.streams import StreamHub
 from atlas.contracts import Mode
 from atlas.hitl import HumanQueue
 from atlas.notify import NotificationService
-from atlas.projection import AuthorizationProjection, principal_for
+from atlas.projection import AuthorizationProjection, channel_principal_for
 from atlas.reports import EventProducer
 from atlas.scheduler import AdmissionStore, Dispatcher, Scheduler
 from atlas.services.disposition import FeedbackStore
+from atlas.story.store import StoryStore
 from eval.store import EvaluationStore
 from atlas.sqlite_util import connect as safe_connect
 
@@ -154,6 +155,10 @@ class Services:
     projects: ProjectRegistry = field(default_factory=ProjectRegistry)
     feed: Any = None
     access: AccessRequestStore = field(default_factory=AccessRequestStore)
+    projects_file: Path | None = None
+    add_project_prefill: str = ""  # ATLAS_ADD_PROJECT: the repository link the Add project screen starts with
+    data_copies: Any = None
+    story: Any = None  # hand-offs, product requests, work splits and the coding agent's timeline
 
     @property
     def is_scenario(self) -> bool:
@@ -182,7 +187,7 @@ def build_core(*, environment: str = "normal", host: str = "127.0.0.1", port: in
     events = EventProducer(projection)
     events.subscribers.append(hub.on_run_event)
     mode_state = ModeState(mode)
-    inner = NotificationService(projection=projection, principal_for=principal_for, mode=mode_state.get,
+    inner = NotificationService(projection=projection, principal_for=channel_principal_for, mode=mode_state.get,
                                 db_path=db("notifications"), **dict(notifier_kwargs or {}))
     notifier = NotifyingNotifier(inner, hub)
     admissions = AdmissionStore(db("admissions"))
@@ -200,5 +205,6 @@ def build_core(*, environment: str = "normal", host: str = "127.0.0.1", port: in
         scenario=ScenarioState() if environment == "scenario" else None,
         candidates_dir=(data_dir / "candidates") if data_dir else None,
         access=AccessRequestStore(db("access")),
+        story=StoryStore(db("story")),
     )
     return services

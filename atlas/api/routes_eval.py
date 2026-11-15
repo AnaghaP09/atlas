@@ -32,8 +32,13 @@ def _evaluation_view(ev: dict[str, Any]) -> dict[str, Any]:
 def _gate_view(gate_id: str, g: Any) -> dict[str, Any]:
     g = dict(g) if isinstance(g, dict) else {"status": str(g)}
     view = {**g, "gate_id": gate_id, "status": g.get("status", "unevaluated")}
-    if g.get("failures"):
-        view["summary"] = "; ".join(str(f) for f in g["failures"])
+    parts = [str(f) for f in g.get("failures") or []]
+    if g.get("note"):
+        parts.append(str(g["note"]))
+    if g.get("checked_by"):
+        parts.append(f"Checked by {g['checked_by']}")
+    if parts:
+        view["summary"] = "; ".join(parts)
     if g.get("limitation"):
         view["proxy_note"] = g["limitation"]
     if isinstance(g.get("per_close"), list):

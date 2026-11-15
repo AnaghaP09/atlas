@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useApp, useLiveStream, useScopedKey } from "../app/context";
 import { useCurrentProject } from "../screens/Dashboard";
+import { onOutlookEvent } from "./outlook";
 
 export interface Metrics {
   project_id: string;
@@ -59,8 +60,12 @@ export function MetricsSync() {
     project ? `/api/projects/${encodeURIComponent(project)}/stream` : null,
     (e) => {
       if (e.event === "project.metrics_changed") void qc.invalidateQueries({ queryKey: keyRef.current });
+      onOutlookEvent(qc, e);
     },
-    () => void qc.invalidateQueries({ queryKey: keyRef.current }),
+    () => {
+      void qc.invalidateQueries({ queryKey: keyRef.current });
+      onOutlookEvent(qc, null);
+    },
   );
   return null;
 }
