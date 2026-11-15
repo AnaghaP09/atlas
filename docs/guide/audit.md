@@ -8,6 +8,7 @@ You see every page. You also see records that other roles cannot see, such as fa
 
 - Whether ATLAS may resume after a kill switch stopped it.
 - Whether a published claim needs a correction.
+- Which public repositories ATLAS watches as projects.
 
 ## What you do in ATLAS
 
@@ -36,6 +37,7 @@ You see every page. You also see records that other roles cannot see, such as fa
 | [Notifications](notifications.md) | Read alerts sent to your role. |
 | [Kill switches](kill-switches.md) | Run drills and resume switches. |
 | [System and mode](system-and-mode.md) | Check health, mode, spend and failed deliveries. |
+| [Add project](add-project.md) | Add a public repository and build its Data as of copies. |
 | [Scorecard](scorecard.md) | See whether the coding agent helped. |
 | [Knowledge graph](knowledge-graph.md) | See parts, owning teams and links. |
 | [Record a decision](record-a-decision.md) | Record what you decided and why. |

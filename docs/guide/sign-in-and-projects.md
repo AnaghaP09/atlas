@@ -32,4 +32,6 @@ A project is one set of sources that ATLAS reads. ATLAS keeps each project's dat
 | KubeVirt | Everything, including the quality checks. |
 | Argo CD | Live views and reports only. |
 
-You can add your own projects. See [Install ATLAS on your own machine](install.md).
+You can add your own projects. The audit role adds a public GitHub repository on the
+[Add project](add-project.md) page. You can also edit the projects file by hand. See
+[Install ATLAS on your own machine](install.md).
