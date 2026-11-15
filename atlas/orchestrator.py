@@ -325,6 +325,10 @@ class Orchestrator:
         verified = self._verify(run_id, out, resolver)
         if verified is None:
             return self._finish(run_id, ctx, trigger, sb, out, raw=raw)
+        if self.d.gate is not None:
+            # A release close carries the dependency scan result for the release, like an investigation.
+            gate = self.d.gate.evaluate_for_run(resolver, self.d.components_for(trigger))
+            verified["security_check"] = gate.as_security_check()
         return self._finish(run_id, ctx, trigger, sb, verified, raw=raw)
 
     def _note_usage_start(self, run_id: str) -> None:

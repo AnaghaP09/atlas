@@ -655,6 +655,8 @@ class ProjectPoller:
         result = self.jobs.poll()
         news: list[dict[str, Any]] = []
         for folder in result["changed"]:
+            if not self.jobs.is_recent(folder):
+                continue  # a job that last ran long ago is neither stored nor announced
             view = self.jobs.view(folder)
             rec = self._store_job(view)
             if view["result"] in ("FAILURE", "ERROR", "ABORTED") and view["kind"] == "periodic":

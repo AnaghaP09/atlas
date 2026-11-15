@@ -11,6 +11,7 @@ build finished long ago are treated as dormant and checked only when the job lis
 
 from __future__ import annotations
 
+import json
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
@@ -30,6 +31,19 @@ def parse_listing(xml: str, parent: str) -> tuple[list[str], str | None]:
     folders = [p for p in _PREFIX.findall(xml) if p != parent and p.endswith("/")]
     nxt = _NEXT.search(xml)
     return folders, (nxt.group(1) if nxt and _TRUNCATED.search(xml) else None)
+
+
+def _as_mapping(body: Any) -> Mapping[str, Any] | None:
+    """The store serves small JSON files with a plain-text content type; accept both forms."""
+    if isinstance(body, Mapping):
+        return body
+    if isinstance(body, str):
+        try:
+            data = json.loads(body)
+        except ValueError:
+            return None
+        return data if isinstance(data, Mapping) else None
+    return None
 
 
 def job_kind(folder: str) -> str:
@@ -107,7 +121,7 @@ class JobListing:
         build_id = str(latest.body).strip()
         headers = {str(k).lower(): v for k, v in (latest.headers or {}).items()}
         fin = self._get(f"{self.base}/{folder}{build_id}/finished.json")
-        finished = fin.body if fin.status == 200 and isinstance(fin.body, Mapping) else None
+        finished = _as_mapping(fin.body) if fin.status == 200 else None
         if finished is None:
             # The build is still running: keep the previous result and look again next time.
             st["running_build"] = build_id
@@ -122,6 +136,9 @@ class JobListing:
         st = self.state.get(folder) or {}
         done = st.get("finished_at")
         return bool(done and self.clock() - done > self.recent)
+
+    def is_recent(self, folder: str) -> bool:
+        return bool((self.state.get(folder) or {}).get("result")) and not self._dormant(folder)
 
     def poll(self) -> dict[str, Any]:
         """One bounded round: refresh the job list when due, then check up to ``checks_per_poll`` jobs."""

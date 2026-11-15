@@ -145,3 +145,21 @@ def test_refused_listing_raises_through_the_gateway():
     jobs = JobListing(gateway, artifact_base=BASE, listing_prefixes=("logs/other-",), clock=lambda: NOW)
     with pytest.raises(GatewayRefused):
         jobs.list_jobs()
+
+
+def test_result_file_served_as_plain_text_is_still_read(listing):
+    import json as _json
+
+    fake, jobs = listing
+    inner = fake.__call__
+
+    def as_text(method, url, headers, body):
+        resp = inner(method, url, headers, body)
+        if url.endswith("finished.json") and isinstance(resp.body, dict):
+            return Response(resp.status, _json.dumps(resp.body), resp.headers)
+        return resp
+
+    jobs.gateway._transport = as_text
+    jobs.poll()
+    assert [f["job"] for f in jobs.failing()] == ["periodic-project-a"]
+    assert jobs.is_recent("logs/periodic-project-a/") and not jobs.is_recent("logs/periodic-project-old/")

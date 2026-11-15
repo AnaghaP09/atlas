@@ -41,6 +41,10 @@ class Finding:
     severity: str | None
     fix_version: str | None
     record_id: str | None = None
+    module: str | None = None
+    version: str | None = None
+    advisory: str | None = None
+    summary: str | None = None
 
 
 @dataclass(frozen=True)
@@ -116,7 +120,8 @@ def evaluate(
     in_scope = [f for f in findings if f.finding_id in in_scope_ids and f.component in components]
     finding_view = tuple(
         {"finding_id": f.finding_id, "component": f.component, "severity": f.severity,
-         "fix_version": f.fix_version, "record_id": f.record_id, "blocking": blocks(f)}
+         "fix_version": f.fix_version, "record_id": f.record_id, "blocking": blocks(f),
+         "module": f.module, "version": f.version, "advisory": f.advisory, "summary": f.summary}
         for f in in_scope
     )
     exc_by_finding = {e.finding_id: e for e in exceptions}
@@ -204,7 +209,9 @@ def parse_security_records(records: Iterable[Record], content_of: Callable[[Reco
             ))
         elif data.get("kind") == "finding":
             findings.append(Finding(data["finding_id"], data.get("component", ""), data.get("severity"),
-                                    data.get("fix_version"), rec.record_id))
+                                    data.get("fix_version"), rec.record_id, module=data.get("module"),
+                                    version=data.get("version"), advisory=(data.get("advisory_ids") or [None])[0],
+                                    summary=data.get("summary")))
     return scans, findings
 
 
