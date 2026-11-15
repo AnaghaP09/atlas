@@ -173,6 +173,45 @@ describe("Run now", () => {
     expect((await screen.findByTestId("unavailable-reason")).textContent).toMatch(/offline/i);
     expect((screen.getByRole("button", { name: "Run now" }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("fills linked choices from the server and sends no typed ids", async () => {
+    const trig = (id: string, title: string, path: string, params: string[]) => ({
+      trigger_id: id, title, method: "POST", path, allowed_roles: ["em"], availability: "available", reason: null,
+      parameters: params.map((n) => ({ name: n, type: "string", required: true })),
+    });
+    const { calls } = renderWith(<RunNow />, {
+      "/api/triggers/catalog": () =>
+        json({
+          manual: [
+            trig("investigate", "Investigate a failure or issue", "/api/triggers/manual/investigate", ["snapshot_id", "event_id"]),
+            trig("question", "Ask a question", "/api/triggers/question", ["snapshot_id", "question"]),
+          ],
+          automatic: [],
+          ...envelope,
+        }),
+      "/api/snapshots": () =>
+        json({ snapshots: [{ snapshot_id: "release-close-v1.9.0", display_kind: "release", title: "KubeVirt at release v1.9.0", as_of: "2026-07-30" }], ...envelope }),
+      "/api/snapshots/release-close-v1.9.0/events": () =>
+        json({ total: 2, events: [
+          { event_id: "18234", title: "Passt uses nearly 100% CPU", failure: true, created_at: "2026-06-24T00:00:00Z" },
+          { event_id: "17000", title: "Docs typo", failure: false, created_at: "2026-01-01T00:00:00Z" },
+        ], ...envelope }),
+      "POST /api/triggers/manual/investigate": () => json({ run_id: "run-1", ...envelope }, 202),
+    });
+    const select = (await screen.findByLabelText("Which failure or issue?")) as HTMLSelectElement;
+    expect(select.textContent).toContain("Passt uses nearly 100% CPU");
+    fireEvent.change(screen.getByLabelText("Search failures and issues"), { target: { value: "docs" } });
+    expect(select.textContent).not.toContain("Passt");
+    fireEvent.change(select, { target: { value: "17000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Run now" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    const post = calls.find((c) => c.method === "POST")!;
+    expect(post.body).toEqual({ snapshot_id: "release-close-v1.9.0", event_id: "17000", summary: "Docs typo" });
+
+    fireEvent.change(screen.getByLabelText("What kind of run?"), { target: { value: "question" } });
+    fireEvent.change(await screen.findByLabelText("Suggested questions"), { target: { value: "What will stop the next release?" } });
+    expect((screen.getByPlaceholderText("Or write your own question") as HTMLTextAreaElement).value).toBe("What will stop the next release?");
+  });
 });
 
 describe("retries keep the same Idempotency-Key", () => {

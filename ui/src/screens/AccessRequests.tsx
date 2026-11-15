@@ -37,6 +37,7 @@ const STATE_PILL: Record<string, string> = {
 };
 
 // Any role can own items others ask for (automatic grants can be revoked by the owning role).
+const MAIN_ROLES = new Set(["pm", "em", "architect"]);
 const APPROVERS = new Set(["pm", "em", "architect", "security", "oncall", "audit"]);
 
 function RequestRow({ r, deciding, done }: { r: AccessRequest; deciding: boolean; done: () => void }) {
@@ -52,9 +53,9 @@ function RequestRow({ r, deciding, done }: { r: AccessRequest; deciding: boolean
       </td>
       <td>
         <span className={`pill ${STATE_PILL[r.status] ?? "pill-neutral"}`}>{STATE_WORD[r.status] ?? r.status}</span>
-        {r.status === "granted" && r.grant?.expires_at ? <span className="row-sub">{r.grant?.automatic ? "Granted at once · " : ""}ends <Time iso={r.grant.expires_at} short /></span> : null}
+        {r.status === "granted" && r.grant?.expires_at ? <span className="row-sub">{r.grant?.automatic ? "Granted at once Â· " : ""}ends <Time iso={r.grant.expires_at} short /></span> : null}
       </td>
-      <td className="muted">{r.reason || "—"}</td>
+      <td className="muted">{r.reason || "â€”"}</td>
       <td className="muted"><Time iso={r.created_at ?? null} short /></td>
       <td className="row-actions always">
         {!deciding && r.status === "granted" ? (
@@ -96,7 +97,11 @@ export function AccessRequests() {
       ) : null}
       {list.isLoading ? <Loading what="requests" /> : null}
       {missing ? <DataModeBadge mode="STAGED" reason="access requests are not connected yet" /> : <ErrorView error={list.error} />}
-      {list.data && list.data.requests.length === 0 ? <Empty>{box === "mine" ? "You have not asked for anything." : "Nothing is waiting for your decision."}</Empty> : null}
+      {list.data && list.data.requests.length === 0 ? (
+        <Empty action={{ to: "/runs", label: "Open Runs" }}>
+          {box === "mine" && MAIN_ROLES.has(principal?.role ?? "") ? "Your role reads every item in this project. There is nothing to ask for." : box === "mine" ? "You have not asked for anything." : "Nothing is waiting for your decision."}
+        </Empty>
+      ) : null}
       {list.data && list.data.requests.length ? (
         <div className="table-wrap">
           <table>

@@ -19,21 +19,21 @@ def _ask(client, role, object_type, object_id):
 def test_kill_switch_is_found_by_word_id_and_can_be_requested(server):
     services, client, _ = server
     # Not tripped: the switch still exists as an item.
-    locked = client.get("/api/objects/kill_switch/write-outside-sandbox", headers=h("pm"))
+    locked = client.get("/api/objects/kill_switch/write-outside-sandbox", headers=h("oncall"))
     assert locked.status_code == 403 and locked.json()["error"] == "locked"
     assert locked.json()["needs_decision"] is True and locked.json()["owner_role"] == "audit"
-    asked = _ask(client, "pm", "kill_switch", "write-outside-sandbox")
+    asked = _ask(client, "oncall", "kill_switch", "write-outside-sandbox")
     assert asked.status_code == 201 and asked.json()["request"]["status"] == "pending"
     rid = asked.json()["request"]["request_id"]
     assert client.post(f"/api/access-requests/{rid}/decision", headers=h("audit"),
                        json={"decision": "grant", "hours": 1}).status_code == 200
-    opened = client.get("/api/objects/kill_switch/write-outside-sandbox", headers=h("pm"))
+    opened = client.get("/api/objects/kill_switch/write-outside-sandbox", headers=h("oncall"))
     assert opened.status_code == 200 and opened.json()["read_only"] is True
     assert opened.json()["switch"]["switch_id"] == "write-outside-sandbox"
     # The row number names the same switch; an unknown id is not found.
     assert client.get("/api/objects/kill_switch/1", headers=h("audit")).json()["switch"]["switch_id"] == "write-outside-sandbox"
     assert client.get("/api/objects/kill_switch/no-such-switch", headers=h("audit")).status_code == 404
-    assert _ask(client, "pm", "kill_switch", "no-such-switch").status_code == 404
+    assert _ask(client, "oncall", "kill_switch", "no-such-switch").status_code == 404
 
 
 def test_incident_is_found_while_open_and_after_it_is_resumed(server):
@@ -42,7 +42,7 @@ def test_incident_is_found_while_open_and_after_it_is_resumed(server):
     assert drill.status_code == 201
     incident_id = drill.json()["incident"]["incident_id"]
     assert client.get(f"/api/objects/incident/{incident_id}", headers=h("audit")).status_code == 200
-    assert client.get(f"/api/objects/incident/{incident_id}", headers=h("pm")).status_code == 403
+    assert client.get(f"/api/objects/incident/{incident_id}", headers=h("oncall")).status_code == 403
     related = client.get("/api/related/kill_switch/sandbox-rule-broken", headers=h("audit")).json()["related"]
     assert {"incident"} == {r["object_type"] for r in related}
     back = client.get(f"/api/related/incident/{incident_id}", headers=h("audit")).json()["related"]
@@ -60,10 +60,10 @@ def test_scorecard_row_is_found_and_links_to_its_task(server):
     rows = client.get("/api/scorecard", headers=h("em")).json()["rows"]
     row_id = str(rows[0].get("row_id") or rows[0]["task_id"])
     assert client.get(f"/api/objects/scorecard_row/{row_id}", headers=h("em")).status_code == 200
-    assert client.get(f"/api/objects/scorecard_row/{row_id}", headers=h("pm")).status_code == 403
-    granted = _ask(client, "pm", "scorecard_row", row_id)  # an ordinary item: granted at once
+    assert client.get(f"/api/objects/scorecard_row/{row_id}", headers=h("oncall")).status_code == 403
+    granted = _ask(client, "oncall", "scorecard_row", row_id)  # an ordinary item: granted at once
     assert granted.status_code == 201 and granted.json()["request"]["status"] == "granted"
-    assert client.get(f"/api/objects/scorecard_row/{row_id}", headers=h("pm")).json()["read_only"] is True
+    assert client.get(f"/api/objects/scorecard_row/{row_id}", headers=h("oncall")).json()["read_only"] is True
     assert client.get("/api/objects/scorecard_row/none", headers=h("em")).status_code == 404
 
 

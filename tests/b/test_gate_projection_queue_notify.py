@@ -8,7 +8,7 @@ import pytest
 from atlas.contracts import Mode, Principal, Role, SecurityContext, SecurityState
 from atlas.hitl import HumanQueue, triggers_for_run
 from atlas.notify import Destination, NotificationService
-from atlas.projection import PUBLIC, AuthorizationProjection, DisclosureBlocked, narrow, principal_for
+from atlas.projection import PUBLIC, AuthorizationProjection, DisclosureBlocked, channel_principal_for, narrow, principal_for
 from atlas.security_gate import (
     Finding,
     ScanRun,
@@ -149,7 +149,7 @@ def restricted_artifact():
     }
 
 
-@pytest.mark.parametrize("principal", [principal_for("pm"), PUBLIC])
+@pytest.mark.parametrize("principal", [principal_for("oncall"), channel_principal_for("pm"), PUBLIC])
 def test_restricted_record_never_reaches_unauthorised_principal(principal) -> None:
     out = AuthorizationProjection().project(restricted_artifact(), principal)
     blob = json.dumps(out)
@@ -158,6 +158,12 @@ def test_restricted_record_never_reaches_unauthorised_principal(principal) -> No
     assert out["restricted_items"] >= 10 and "public finding" in blob
     sec = AuthorizationProjection().project(restricted_artifact(), principal_for("security"))
     assert "CVE detail" in json.dumps(sec) and '"z"' not in json.dumps(sec)  # unknown scope withheld even here
+
+
+@pytest.mark.parametrize("role", ["pm", "em", "architect"])
+def test_main_roles_read_restricted_content_but_never_unknown_scopes(role) -> None:
+    out = json.dumps(AuthorizationProjection().project(restricted_artifact(), principal_for(role)))
+    assert "CVE detail" in out and '"z"' not in out
 
 
 def test_unknown_scope_visible_only_on_audit_endpoint() -> None:
@@ -169,8 +175,8 @@ def test_unknown_scope_visible_only_on_audit_endpoint() -> None:
 
 
 def test_caller_supplied_reader_cannot_widen() -> None:
-    pm = principal_for("pm")
-    widened = narrow(pm, "security")
+    oncall = principal_for("oncall")
+    widened = narrow(oncall, "security")
     assert "restricted:security" not in widened.scopes
     assert "CVE detail" not in json.dumps(AuthorizationProjection().project(restricted_artifact(), widened))
 
@@ -193,7 +199,7 @@ def test_queue_dedup_and_projection() -> None:
     b, again = q.add("security_blocked", "run-1", "run-1", "blocked")
     assert created and not again and a == b
     q.add("scorecard_class_negative", "class:deps", None, "class turned negative")  # after the run finished
-    view = q.view(AuthorizationProjection(), principal_for("pm"))
+    view = q.view(AuthorizationProjection(), principal_for("oncall"))
     assert len(view) == 2 and "cve" not in json.dumps(view)
 
 
@@ -223,7 +229,7 @@ class Webhook:
 
 def svc(**kw):
     clock = kw.pop("clock", FakeClock())
-    return NotificationService(projection=AuthorizationProjection(), principal_for=principal_for, clock=clock.now, **kw), clock
+    return NotificationService(projection=AuthorizationProjection(), principal_for=channel_principal_for, clock=clock.now, **kw), clock
 
 
 def test_catalog_drives_severity_roles_and_caller_cannot_override() -> None:
@@ -254,10 +260,12 @@ def test_restricted_content_withheld_for_role_without_scope() -> None:
     s, _ = svc()
     s.emit("security_gate.blocked", "run-2", [], frozenset({"restricted:security"}),
            {"text": "CVE in module x", "required_scopes": ["restricted:security"]})
-    em = s.in_app(principal_for("em"))
+    narrow_em = Principal(role=Role.EM, scopes=frozenset({"public", "internal", "staffing"}))
+    em = s.in_app(narrow_em)
     sec = s.in_app(principal_for("security"))
     assert "CVE" not in json.dumps(em) and em[0]["restricted_items"] >= 1
     assert "CVE" in json.dumps(sec)
+    assert "CVE" in json.dumps(s.in_app(principal_for("em")))  # the engineering manager reads everything
 
 
 def test_failing_webhook_retries_then_dead_letter_and_in_app_notice_only() -> None:
@@ -290,6 +298,7 @@ def test_shared_destination_audience_projection_and_undeclared_audience() -> Non
                                              Destination("unset", "http://127.0.0.1:9/u", None)])
     s.emit("security_gate.blocked", "run-6", [], frozenset({"restricted:security"}),
            {"text": "CVE in module y", "required_scopes": ["restricted:security"]})
+    # a chat channel for the product manager keeps the narrow scopes: restricted content never leaves
     assert len(hook.calls) == 1 and "CVE" not in json.dumps(hook.calls[0])
     held = [d for d in s.deliveries() if d["destination"] == "unset"]
     assert held[0]["status"] == "held" and held[0]["reason"] == "audience_undeclared"

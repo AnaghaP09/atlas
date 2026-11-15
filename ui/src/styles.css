@@ -932,3 +932,11 @@ td .time, td time { white-space: nowrap; }
 /* Offline bar */
 .offline-banner { display: flex; align-items: center; gap: var(--s-2); margin: calc(-1 * var(--s-5)) calc(-1 * var(--s-6)) var(--s-4); padding: var(--s-2) var(--s-6); background: var(--warn-soft); color: var(--warn); font-weight: 600; font-size: 0.9rem; border-bottom: 1px solid var(--line); }
 .containment-banner + .offline-banner { margin-top: calc(-1 * var(--s-4)); }
+
+/* Run now: one choice after another */
+.run-now { display: flex; flex-direction: column; gap: var(--s-3); max-width: 44rem; }
+.run-kind { display: flex; flex-direction: column; gap: var(--s-1); font-weight: 600; }
+.run-now .trigger-cards { grid-template-columns: 1fr; }
+.event-picker { display: flex; flex-direction: column; gap: var(--s-2); }
+.fact-line { margin: 0; font-size: 0.88rem; }
+

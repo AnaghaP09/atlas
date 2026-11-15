@@ -86,8 +86,8 @@ def test_q1_reads_the_latest_verified_close_and_splits_owners(client, configured
     run_id = _close(client, configured, ITEMS)
     q1 = _get(client)["q1"]
     assert q1["state"] == "ready" and q1["run_id"] == run_id
-    assert q1["total"] == 3 and q1["withheld"] == 1
-    assert q1["split"] == {"developers": 1, "coding_agents": 1, "decide_first": 1, "not_allocated": 0}
+    assert q1["total"] == 4 and q1["withheld"] == 0  # the main roles read restricted items too
+    assert q1["split"] == {"developers": 2, "coding_agents": 1, "decide_first": 1, "not_allocated": 0}
     assert q1["date_range"] == "illustrative" and q1["basis"] == "predicted"
     first = q1["items"][0]
     assert first["evidence_link"].startswith("/evidence/") and first["reason"] and first["owner_team"] == "sig/compute"
@@ -98,7 +98,7 @@ def test_q1_reads_the_latest_verified_close_and_splits_owners(client, configured
 def test_q1_report_links_say_who_can_open_them(client, configured):
     _close(client, configured, ITEMS)
     assert _get(client, "pm")["q1"]["report_access"] == "open"
-    assert _get(client, "em")["q1"]["report_access"] == "locked"
+    assert _get(client, "em")["q1"]["report_access"] == "open"
     assert _get(client, "em")["q1"]["allocation_access"] == "open"
 
 
@@ -210,11 +210,11 @@ def test_navigation_names_sections_and_beta(client):
     assert not any(p["page_id"] == "ship_readiness" for g in sec["groups"] for p in g["pages"])
 
 
-def test_graph_links_only_for_roles_that_read_the_graph(client, configured):
+def test_graph_links_for_every_main_role(client, configured):
     _live(configured, failing=3)
     arch = _get(client, "architect")["q2"]["affected_services"][0]
     pm = _get(client, "pm")["q2"]["affected_services"][0]
-    assert arch["link"] == "/graph" and pm["link"] == "/dashboard"
+    assert arch["link"] == "/graph" and pm["link"] == "/graph"
 
 
 def _outlook_events(services):

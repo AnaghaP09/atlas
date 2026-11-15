@@ -88,10 +88,15 @@ ROLE_PAGES: dict[str, tuple[str, ...]] = {
            "run_now", "runs", "notifications", "access_requests", "scorecard"),
     "architect": ("home", "ship_readiness", "dashboard", "report_architecture", "requests", "runs", "notifications",
                   "access_requests", "graph", "feedback"),
-    "security": ("home", "dashboard", "report_security", "queue", "notifications", "containment", "access_requests"),
-    "oncall": ("home", "dashboard", "report_investigation", "run_now", "runs", "notifications", "access_requests"),
+    "security": ("home", "dashboard", "report_forecast", "report_security", "queue", "notifications", "containment", "access_requests"),
+    "oncall": ("home", "dashboard", "report_forecast", "report_investigation", "run_now", "runs", "notifications", "access_requests"),
     "audit": tuple(p.page_id for p in PAGES if p.page_id != "ship_readiness"),
 }
+
+# The main roles read every page of their project: their own pages come first, then every other page.
+MAIN_ROLES = ("pm", "em", "architect")
+for _role in MAIN_ROLES:
+    ROLE_PAGES[_role] = ROLE_PAGES[_role] + tuple(p.page_id for p in PAGES if p.page_id not in ROLE_PAGES[_role])
 
 ROLE_HOME = {r: f"{r}_home" for r in ROLES}
 

@@ -9,14 +9,11 @@ from atlas.api.catalog import MANUAL_TRIGGERS
 from tests.d.conftest import H
 
 EXPECTED = {
-    "pm": {"home", "ship_readiness", "dashboard", "report_forecast", "requests", "run_now", "runs", "feedback", "evaluation",
-           "notifications", "access_requests"},
-    "em": {"home", "ship_readiness", "dashboard", "report_allocation", "requests", "queue", "approvals", "tasks", "schedules",
-           "run_now", "runs", "scorecard", "notifications", "access_requests"},
-    "architect": {"home", "ship_readiness", "dashboard", "report_architecture", "requests", "graph", "runs", "feedback",
-                  "notifications", "access_requests"},
-    "security": {"home", "dashboard", "report_security", "queue", "containment", "notifications", "access_requests"},
-    "oncall": {"home", "dashboard", "run_now", "runs", "report_investigation", "notifications", "access_requests"},
+    "pm": {p.page_id for p in nav.PAGES},
+    "em": {p.page_id for p in nav.PAGES},
+    "architect": {p.page_id for p in nav.PAGES},
+    "security": {"home", "dashboard", "report_forecast", "report_security", "queue", "containment", "notifications", "access_requests"},
+    "oncall": {"home", "dashboard", "report_forecast", "run_now", "runs", "report_investigation", "notifications", "access_requests"},
     "audit": {p.page_id for p in nav.PAGES} - {"ship_readiness"},
 }
 
@@ -38,9 +35,16 @@ def test_each_role_gets_exactly_its_pages(client, role):
 
 
 def test_hidden_pages_name_the_roles_they_are_for(client):
-    body = client.get("/api/navigation", headers=H("pm")).json()
+    body = client.get("/api/navigation", headers=H("oncall")).json()
     approvals = next(p for p in body["other_pages"] if p["page_id"] == "approvals")
     assert "em" in approvals["roles"] and "engineering manager" in approvals["role_titles"]
+
+
+def test_main_roles_see_every_page_with_their_own_first():
+    for role, first in (("pm", "report_forecast"), ("em", "report_allocation"), ("architect", "report_architecture")):
+        pages = nav.ROLE_PAGES[role]
+        assert set(pages) == {p.page_id for p in nav.PAGES}
+        assert pages.index(first) < pages.index("report_security")
 
 
 def test_everyone_sees_home_and_dashboard():

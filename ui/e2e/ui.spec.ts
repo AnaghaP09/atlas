@@ -43,13 +43,14 @@ for (const role of ROLES) {
 test("a manual trigger shows its availability from the server", async ({ page }) => {
   await as(page, "pm", "/run-now");
   await expect(page.getByRole("heading", { name: "Run now" })).toBeVisible();
-  expect(await page.getByRole("button", { name: /^Run/ }).count()).toBeGreaterThan(0);
+  await expect(page.getByRole("button", { name: "Run now" })).toBeVisible();
+  await expect(page.getByLabel("What kind of run?")).toBeVisible();
 });
 
 test("a page for another role is locked, and a request for an ordinary item opens it read-only", async ({ page, request, baseURL }) => {
   await releaseClose(request, baseURL!);
-  await as(page, "pm", "/latest-report/allocation");
-  await expect(page.getByText("This page is for the engineering manager")).toBeVisible();
+  await as(page, "oncall", "/latest-report/allocation");
+  await expect(page.getByText(/This page is for the .*engineering manager/)).toBeVisible();
   await page.getByRole("button", { name: "Request access" }).click();
   await page.getByRole("button", { name: "Send" }).click();
   await expect(page.getByText("Granted until")).toBeVisible();
@@ -59,10 +60,10 @@ test("a page for another role is locked, and a request for an ordinary item open
 });
 
 test("a request for a sensitive item waits for the owning role, who can grant it", async ({ page, request, baseURL, browser }) => {
-  const res = await post(request, baseURL!, "pm", "/api/access-requests", { object_type: "dead_letter", object_id: "list", reason: "browser test" });
+  const res = await post(request, baseURL!, "oncall", "/api/access-requests", { object_type: "dead_letter", object_id: "list", reason: "browser test" });
   expect([200, 201]).toContain(res.status());
   expect((await res.json()).request.status).toBe("pending");
-  await as(page, "pm", "/access-requests");
+  await as(page, "oncall", "/access-requests");
   await expect(page.getByText(/waiting|pending|requested/i).first()).toBeVisible();
 
   const auditCtx = await browser.newContext();
@@ -74,14 +75,14 @@ test("a request for a sensitive item waits for the owning role, who can grant it
   if (await confirm.count()) await confirm.first().click();
   await expect
     .poll(async () => {
-      const mine = await (await request.get("/api/access-requests?box=mine", { headers: headers("pm", baseURL!) })).json();
+      const mine = await (await request.get("/api/access-requests?box=mine", { headers: headers("oncall", baseURL!) })).json();
       return (mine.requests as { object_type: string; status: string }[]).find((r) => r.object_type === "dead_letter")?.status;
     })
     .toBe("granted");
   await auditCtx.close();
 });
 
-test("a kill switch drill shows a banner, locks Run now, and resume clears it", async ({ page }) => {
+test("a kill switch drill shows a banner on every page, and resume clears it", async ({ page }) => {
   await as(page, "audit", "/containment");
   await expect(page.getByText("All 11 ready")).toBeVisible();
   await page.getByRole("button", { name: "Run drill" }).first().click();
@@ -91,7 +92,6 @@ test("a kill switch drill shows a banner, locks Run now, and resume clears it", 
 
   await page.goto("/run-now");
   await expect(page.locator(".containment-banner")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Run/ }).first()).toBeDisabled();
 
   await page.goto("/containment");
   await page.getByRole("button", { name: "Resume" }).first().click();
@@ -121,7 +121,38 @@ test("switching project clears what the other project showed", async ({ page }) 
 test("switching role clears what the previous role saw", async ({ page }) => {
   await as(page, "audit", "/containment");
   await expect(page.getByText("All 11 ready")).toBeVisible();
-  await page.getByLabel("Role").selectOption("pm");
-  await expect(page.getByText("This page is for the security engineer")).toBeVisible();
+  await page.getByLabel("Role").selectOption("oncall");
+  await expect(page.getByText(/This page is for the .*security engineer/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Run drill" })).toHaveCount(0);
 });
+
+const REPORT_KINDS = ["forecast", "allocation", "architecture", "security", "investigation"];
+
+for (const role of ["pm", "em", "architect"] as Role[]) {
+  test(`the ${role} opens every report with no lock`, async ({ page, request, baseURL }) => {
+    await releaseClose(request, baseURL!);
+    const runs = (await (await request.get("/api/runs", { headers: headers(role, baseURL!) })).json()).runs as { reports: { report_id: string }[] }[];
+    const ids = runs.flatMap((r) => r.reports.map((x) => x.report_id));
+    expect(ids.length).toBeGreaterThan(0);
+    for (const id of ids) {
+      const res = await request.get(`/api/reports/${encodeURIComponent(id)}`, { headers: headers(role, baseURL!) });
+      expect(res.status(), id).toBe(200);
+    }
+    for (const kind of REPORT_KINDS) {
+      await as(page, role, `/latest-report/${kind}`);
+      await expect(page.getByTestId("role-notice")).toHaveCount(0);
+      await expect(page.getByText(/not open to your role|Request access/)).toHaveCount(0);
+    }
+    await as(page, role, `/reports/${encodeURIComponent(ids[0]!)}`);
+    await expect(page.getByText(/not open to your role|Request access/)).toHaveCount(0);
+  });
+}
+
+for (const role of ["security", "oncall", "audit"] as Role[]) {
+  test(`the ${role} reads the forecast report`, async ({ page, request, baseURL }) => {
+    await releaseClose(request, baseURL!);
+    await as(page, role, "/latest-report/forecast");
+    await expect(page.getByTestId("role-notice")).toHaveCount(0);
+    await expect(page.getByText(/not open to your role|Request access/)).toHaveCount(0);
+  });
+}

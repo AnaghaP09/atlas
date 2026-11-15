@@ -17,14 +17,25 @@ from atlas.contracts import PUBLIC_PRINCIPAL, Principal, Role
 from atlas.outbound import Redactor
 from atlas.projects import ANY_PROJECT
 
-# Scopes each demo role holds. ``restricted:security`` covers scanner details.
+# Scopes each demo role holds. ``restricted:security`` covers scanner details. The main roles
+# (product manager, engineering manager, solution architect) read everything in their project.
+MAIN_SCOPES = frozenset({"public", "internal", "staffing", "restricted:security", "security"})
 ROLE_SCOPES: dict[str, frozenset[str]] = {
-    "pm": frozenset({"public", "internal"}),
-    "em": frozenset({"public", "internal", "staffing"}),
-    "architect": frozenset({"public", "internal"}),
+    "pm": MAIN_SCOPES,
+    "em": MAIN_SCOPES,
+    "architect": MAIN_SCOPES,
     "security": frozenset({"public", "internal", "restricted:security"}),
     "oncall": frozenset({"public", "internal"}),
     "audit": frozenset({"public", "internal", "staffing", "restricted:security"}),
+}
+
+# What a chat channel addressed to a role may receive. Deliveries leave the backend, so they keep
+# the narrower scopes even for the roles that read everything inside ATLAS.
+CHANNEL_SCOPES: dict[str, frozenset[str]] = {
+    **ROLE_SCOPES,
+    "pm": frozenset({"public", "internal"}),
+    "em": frozenset({"public", "internal", "staffing"}),
+    "architect": frozenset({"public", "internal"}),
 }
 
 PUBLIC = Principal(role=None, scopes=frozenset({"public"}))
@@ -40,6 +51,14 @@ def principal_for(role: str | None, project_id: str | None = None, user: str | N
     if role is None or role == PUBLIC_PRINCIPAL:
         return PUBLIC if project_id is None else Principal(role=None, scopes=PUBLIC.scopes, project_id=project_id)
     return Principal(role=Role(role), scopes=ROLE_SCOPES[role], user=user, project_id=project_id)
+
+
+def channel_principal_for(role: str | None, project_id: str | None = None) -> Principal:
+    """The reader for a delivery to a chat channel whose audience is ``role``."""
+    base = principal_for(role, project_id)
+    if base.role is None:
+        return base
+    return Principal(role=base.role, scopes=CHANNEL_SCOPES[str(base.role.value)], project_id=project_id)
 
 
 def narrow(identity: Principal, requested_reader: str | None) -> Principal:
