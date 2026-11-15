@@ -352,6 +352,21 @@ def snapshot(request: Request, snapshot_id: str) -> dict[str, Any]:
     return envelope(request, principal, {"snapshot": _snapshot(request, principal, snapshot_id)})
 
 
+@router.get("/snapshots/{snapshot_id}/events")
+def snapshot_events(request: Request, snapshot_id: str, q: str | None = Query(None),
+                    limit: int = Query(200, ge=1, le=2000)) -> dict[str, Any]:
+    """Failures and issues in one data set that can be investigated, newest first, with titles."""
+    from atlas.api.snapshot_labels import events
+
+    principal = principal_of(request)
+    snap = _snapshot(request, principal, snapshot_id)
+    items = events(services_of(request).snapshots, snap)
+    if q:
+        words = q.lower().split()
+        items = [e for e in items if all(w in f"{e['title']} #{e['event_id']}".lower() for w in words)]
+    return envelope(request, principal, {"snapshot_id": snapshot_id, "total": len(items), "events": items[:limit]})
+
+
 @router.get("/graph/{snapshot_id}")
 def graph(request: Request, snapshot_id: str) -> dict[str, Any]:
     principal = principal_of(request)
