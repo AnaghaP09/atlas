@@ -18,6 +18,37 @@ ATLAS makes suggestions. People make the decisions. ATLAS never sets scope, staf
 It never changes code outside a separate sandbox branch. It never states a fact without a
 citation. A citation is a link to the record that supports the fact.
 
+## Key highlights
+
+**What ATLAS does today**
+
+- **Forecasts the debt the next release inherits.** At the end of a release, ATLAS lists the technical debt and
+  issues likely to carry over, per component, each with a citation to the record behind it.
+- **Proposes who should take each item.** It splits the work between developers, coding agents and a person who must
+  decide first, with a short reason for each item.
+- **Investigates failures.** Scout, the investigating agent, reads the evidence, finds the likely cause and cites a
+  record for every claim.
+- **Checks every claim before anyone sees it.** Sentinel, the verifying agent, checks each claim against the records it
+  cites, without seeing Scout's reasoning. ATLAS removes any claim Sentinel rejects.
+- **Keeps people in charge of code changes.** A coding agent works only after an engineering manager approves, inside
+  a container with no network access and no secrets. ATLAS never merges a change.
+- **Shows the evidence behind every number.** Each run reads one frozen copy of the data, shown as "Data as of" a date,
+  so a run can be repeated with the same inputs.
+- **Stays safe to run.** A security gate checks dependencies, kill switches stop any part of ATLAS at once, and
+  Offline mode makes no outside connections.
+- **Gives each role its own view.** The product manager, engineering manager and solution architect each see the
+  reports that answer their questions; a knowledge graph shows how the system's parts connect.
+
+**Coming in the next release**
+
+- **Ship readiness:** what will stop the release now, which services are affected, and whether the team can still deliver.
+- **Draft pull requests on a sandbox repository,** with the test results of each change reported back to ATLAS.
+- **Requests and hand-offs:** the product manager sends a feature request to the engineering manager or a technical
+  dependency to the solution architect, and follows it through to the finished change.
+- **Approvals in one click by default,** with a stricter two-step approval that a company can switch on.
+- **Add any public project from a link,** with no custom integration.
+- **Forecast across releases,** comparing earlier forecasts with what really happened.
+
 ## Who uses it
 
 | Role | What ATLAS gives them | What they decide |
