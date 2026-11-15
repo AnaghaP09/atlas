@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Callable, Mapping, Sequence
 
+from atlas.agents.investigator import _log_excerpt as log_excerpt
 from atlas.agents.resolver import ResolvedRecord
 from atlas.contracts import EgressPurpose, Outbound
 
@@ -131,7 +132,12 @@ class Verifier:
                 for_model.append(c)
                 for rec in cited:
                     if rec:
-                        records[rec.record_id] = rec.as_data()
+                        data = rec.as_data()
+                        if rec.record.source == "ci" and isinstance(data.get("content"), str):
+                            # A job log is judged by its failure lines, not by its first characters
+                            # (setup output), which a size cut would otherwise keep.
+                            data["content"] = log_excerpt(data["content"], None)
+                        records[rec.record_id] = data
             checked.append(c)
 
         if for_model:

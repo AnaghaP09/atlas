@@ -143,3 +143,17 @@ def test_coding_action_with_partial_support_falls_back_to_a_developer() -> None:
     out = build_verified(artefact).artefact
     assert out["classification"]["value"] == "DEPENDENCY"
     assert out["action"]["value"] == "ASSIGN_DEVELOPER" and out["action"]["claim_ids"] == ["c1"]
+
+
+def test_sentinel_sees_the_failure_lines_of_a_long_job_log(run_context) -> None:
+    from atlas.agents.verifier import Verifier
+    log = "\n".join(f"setup step {n}" for n in range(5000)) + "\nFAIL: connectivity should be preserved for ipv4"
+    rec = make_record("ci:job/x/1@1", "ci", json.dumps({"job": "x", "log": log}), source_id="job/x/1",
+                      confirmed_through=run_context.cutoff)
+    res = resolver_for(run_context, [rec])
+    res.get("ci", "job/x/1")
+    scripted = ScriptedOutbound({"verifier": [verdicts(c1="supported")]})
+    Verifier(scripted, res.by_id).verify([{"id": "c1", "text": "The ipv4 test failed.", "kind": "finding",
+                                           "evidence_ids": ["ci:job/x/1@1"], "depends_on": []}])
+    sent = json.dumps(scripted.calls[0], default=str)
+    assert "connectivity should be preserved for ipv4" in sent and "setup step 10\n" not in sent
