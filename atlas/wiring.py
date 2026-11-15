@@ -53,6 +53,7 @@ from atlas.execution.db import OpsDB
 from atlas.execution.lifecycle import RefreshError, apply_reverification, security_refresh
 from atlas.execution.prepare import DirectoryTreeSource, PreparationRefused, Preparer
 from atlas.execution.runner import select_runner
+from atlas.execution.target import CHANGE_HEADING, NoTargetMapping, TargetManifest, change_section
 from atlas.execution.validation import ValidationService
 from atlas.orchestrator import Deps, Orchestrator, RunStore
 from atlas.outbound import CeilingGate, OutboundBoundary, SpendMeter, provider_from_env
@@ -243,14 +244,17 @@ class SentinelDiffReviewer:
     """Independent review of a prepared diff by the verifier (Sentinel)."""
 
     INSTRUCTIONS = ("You are reviewing a code change against its task. Pass it only if the diff does what "
-                    "the task asks, stays inside the permitted scope and changes nothing else.")
+                    "the task asks, stays inside the permitted scope and changes nothing else. Judge the diff "
+                    "against the 'change' text. The 'background' text describes the cause found in another "
+                    "project; the diff does not have to address it.")
 
     def __init__(self, outbound: MessageOutbound) -> None:
         self.outbound = outbound
 
     def review(self, task_text: str, scope: Sequence[str], diff: str) -> ReviewResult:
         r = self.outbound.call("verifier", EgressPurpose.MODEL_CALL,
-                               {"instructions": self.INSTRUCTIONS, "task": task_text, "scope": list(scope), "diff": diff})
+                               {"instructions": self.INSTRUCTIONS, "change": change_section(task_text),
+                                "background": task_text, "scope": list(scope), "diff": diff})
         content = r.content if isinstance(r.content, Mapping) else {}
         return ReviewResult(bool(content.get("passed")), str(content.get("reason", "no reason given")))
 
@@ -387,6 +391,11 @@ class TaskPortAdapter:
         view = self.w.tasks.view(task_id, security_summary=summary, validation=validation)
         view["project_id"] = self._task_project(task)
         view["required_scopes"] = ["internal"]
+        manifest = self.w.target_manifest
+        if manifest is not None and CHANGE_HEADING in str(task.task_text):
+            view["target_label"] = manifest.label
+            view["target_data_mode"] = manifest.data_mode
+            view["target_change"] = change_section(task.task_text)
         return view
 
     def _refuse(self, exc: Exception, status: int = 409) -> Refused:
@@ -413,10 +422,18 @@ class TaskPortAdapter:
         if isinstance(artefact.get("root_cause"), Mapping):
             task_text = str(artefact["root_cause"].get("text") or task_text)
         classification = str((artefact.get("classification") or {}).get("value") or "unclassified").lower()
+        scope = self.w.task_scope
+        if self.w.target_manifest is not None:
+            causes = [task_text] + [str(c.get("text", "")) for c in artefact.get("claims", []) if isinstance(c, Mapping)]
+            try:
+                mapped = self.w.target_manifest.map(classification, causes)
+            except NoTargetMapping as exc:
+                raise Refused(str(exc), 409) from exc
+            task_text, scope = mapped.task_text, mapped.scope or scope
         try:
             task = self.w.tasks.create(
                 run_id=run_id, generation=generation, action=str(action.get("value")), task_class=classification,
-                task_text=task_text, scope=self.w.task_scope, destination_repo=target,
+                task_text=task_text, scope=scope, destination_repo=target,
                 destination_node_id="unresolved", base_ref=self.w.base_ref, base_commit=self.w.base_commit,
                 snapshot_id=stored["ctx"].snapshot_id, policy_version=POLICY_VERSION, scanner=self.w.scanner,
                 gate=self.w.task_gate, now=self.w.clock(), idempotency_key=idempotency_key,
@@ -737,6 +754,7 @@ class Wiring:
     default_project: str | None
     projects: Any = None
     data_layer: str = "not connected"
+    target_manifest: Any = None
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -832,6 +850,7 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
                publish_target=target, base_ref=env.get("ATLAS_PUBLISH_BASE_REF", "main"),
                base_commit=_tree_commit(trees) if target_dir.exists() else "unknown",
                task_scope=tuple(s for s in (env.get("ATLAS_TASK_SCOPE") or "*.go").split(",") if s),
+               target_manifest=TargetManifest.load(target_dir.parent / "demo_target.toml"),
                default_project=default_project, projects=getattr(services, "projects", None) or ProjectRegistry(),
                data_layer="connected" if data else "not connected")
     w.extra["data"] = data
