@@ -1,7 +1,8 @@
 """Access requests: ask to read one item that your role does not normally see.
 
-An item a role cannot read is shown as locked, never hidden, and the person can send a request for
-it. Ordinary items are granted at once; sensitive items wait for a decision by the role that owns
+The product manager, engineering manager and solution architect read every item in their project.
+For the other roles, an item they cannot read is shown as locked, never hidden, and the person can
+send a request for it. Ordinary items are granted at once; sensitive items wait for a decision by the role that owns
 them. A grant is always read-only, for exactly one item, for a limited time, and is written to the
 audit record. It never allows any change (approve, publish, resume, start a run).
 
@@ -22,6 +23,8 @@ from typing import Any, Callable, Mapping, Sequence
 from atlas.sqlite_util import connect as safe_connect
 
 ALL_ROLES = frozenset({"pm", "em", "architect", "security", "oncall", "audit"})
+# The main roles read every item in their project without asking; actions keep their own role rules.
+MAIN_ROLES = frozenset({"pm", "em", "architect"})
 SECURITY_SCOPE = "restricted:security"
 
 DEFAULT_GRANT_HOURS = 24.0
@@ -44,7 +47,7 @@ class KindRule:
 
 
 def _r(*roles: str) -> frozenset[str]:
-    return frozenset(roles) | {"audit"}
+    return frozenset(roles) | {"audit"} | MAIN_ROLES
 
 
 # The single sensitivity and ownership table. Keys are ``object_type`` or ``object_type:subtype``.
@@ -96,7 +99,7 @@ def policy_for(object_type: str, subtype: str | None, scopes: Sequence[str] | No
     if scopes is None:
         return Policy(rule.label, frozenset(), rule.owner, True, False)
     if SECURITY_SCOPE in set(scopes):
-        return Policy(rule.label, rule.readers & frozenset({"security", "audit"}), "security", True, True)
+        return Policy(rule.label, rule.readers & (frozenset({"security", "audit"}) | MAIN_ROLES), "security", True, True)
     return Policy(rule.label, rule.readers, rule.owner, rule.sensitive, True)
 
 

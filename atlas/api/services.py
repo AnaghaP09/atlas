@@ -24,7 +24,7 @@ from atlas.api.streams import StreamHub
 from atlas.contracts import Mode
 from atlas.hitl import HumanQueue
 from atlas.notify import NotificationService
-from atlas.projection import AuthorizationProjection, principal_for
+from atlas.projection import AuthorizationProjection, channel_principal_for
 from atlas.reports import EventProducer
 from atlas.scheduler import AdmissionStore, Dispatcher, Scheduler
 from atlas.services.disposition import FeedbackStore
@@ -185,7 +185,7 @@ def build_core(*, environment: str = "normal", host: str = "127.0.0.1", port: in
     events = EventProducer(projection)
     events.subscribers.append(hub.on_run_event)
     mode_state = ModeState(mode)
-    inner = NotificationService(projection=projection, principal_for=principal_for, mode=mode_state.get,
+    inner = NotificationService(projection=projection, principal_for=channel_principal_for, mode=mode_state.get,
                                 db_path=db("notifications"), **dict(notifier_kwargs or {}))
     notifier = NotifyingNotifier(inner, hub)
     admissions = AdmissionStore(db("admissions"))

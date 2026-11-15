@@ -181,7 +181,7 @@ def resolve(request: Request, notification_id: str):
 @router.get("/notifications/dead-letter")
 def dead_letter(request: Request) -> dict[str, Any]:
     principal = principal_of(request)
-    require_role(principal, {"audit"}, "read the dead-letter list")
+    require_role(principal, {"audit", "pm", "em", "architect"}, "read the dead-letter list")
     s = services_of(request)
     return envelope(request, principal, {"deliveries": s.notifier.deliveries("dead_letter")})
 
@@ -209,9 +209,9 @@ def webhook_test(request: Request, body: dict[str, Any] | None = Body(None)):
             if d.audience is None:
                 previews.append({"destination": d.name, "status": "held", "reason": "audience_undeclared"})
                 continue
-            from atlas.projection import principal_for
+            from atlas.projection import channel_principal_for
 
-            projected = s.projection.project({"required_scopes": [], "content": sample}, principal_for(d.audience))
+            projected = s.projection.project({"required_scopes": [], "content": sample}, channel_principal_for(d.audience))
             previews.append({"destination": d.name, "status": "preview", "audience": d.audience,
                              "payload": projected.get("content")})
         sent = s.notifier.test_send(sample) if hasattr(s.notifier, "test_send") and s.notifier.destinations else []

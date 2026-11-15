@@ -89,6 +89,11 @@ ROLE_PAGES: dict[str, tuple[str, ...]] = {
     "audit": tuple(p.page_id for p in PAGES),
 }
 
+# The main roles read every page of their project: their own pages come first, then every other page.
+MAIN_ROLES = ("pm", "em", "architect")
+for _role in MAIN_ROLES:
+    ROLE_PAGES[_role] = ROLE_PAGES[_role] + tuple(p.page_id for p in PAGES if p.page_id not in ROLE_PAGES[_role])
+
 ROLE_HOME = {r: f"{r}_home" for r in ROLES}
 
 # What "Run now" offers each role is decided by the trigger catalog; the menu only shows the page
