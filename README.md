@@ -1,5 +1,7 @@
 # ATLAS
 
+**Documentation:** <https://anaghap09.github.io/atlas/> (the user guide as a website: install, each role, reports and approvals)
+
 ATLAS helps software teams plan their next release. Teams that ship on a fixed release schedule
 can use it.
 
@@ -117,7 +119,7 @@ python -m atlas.doctor     # checks your setup and explains any problem
 python -m atlas.serve      # starts ATLAS
 ```
 
-Then open <http://127.0.0.1:8000>. The [user guide](docs/guide/index.md) explains each screen and
+Then open <http://127.0.0.1:8000>. The [user guide](https://anaghap09.github.io/atlas/) explains each screen and
 each role. The [configuration](docs/configuration.md) page explains each setting. Git ignores
 `.env`. Never commit it.
 
