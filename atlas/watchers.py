@@ -21,6 +21,7 @@ calls of their own.
 
 from __future__ import annotations
 
+import os
 import re
 import threading
 from datetime import datetime, timezone
@@ -177,6 +178,18 @@ def housekeeping_watcher(run_jobs: Callable[[], Any], interval: float) -> Watche
                    title="Housekeeping: expire approvals, access grants and sessions", interval_seconds=interval)
 
 
+def project_watchers(services: Any, project_id: str, poller: Any, poll_seconds: float, poll_on: bool | None = None,
+                     nightly_time: str | None = None, clock: Callable[[], datetime] = _now) -> list[Watcher]:
+    """The automatic runs of one project: the dashboard poll, and the three that spend (paused)."""
+    if poll_on is None:
+        poll_on = (os.environ.get("ATLAS_DASHBOARD_POLL") or "on").lower() not in ("off", "false", "0")
+    nightly_time = nightly_time or os.environ.get("ATLAS_NIGHTLY_TIME") or "02:00"
+    return [dashboard_watcher(services, project_id, poller, poll_seconds, poll_on),
+            release_watcher(services, project_id, poll_seconds),
+            failure_watcher(services, project_id, poll_seconds),
+            nightly_watcher(services, project_id, nightly_time, clock)]
+
+
 def register_watchers(services: Any, *, env: Mapping[str, str] | None = None, housekeeper: Any = None,
                       nightly_time: str = "02:00", clock: Callable[[], datetime] = _now) -> list[Watcher]:
     """Add every automatic run of this installation to the scheduler. Safe to call once at start."""
@@ -189,10 +202,7 @@ def register_watchers(services: Any, *, env: Mapping[str, str] | None = None, ho
     poll_seconds = float(getattr(getattr(data, "poll_loop", None), "interval", 60) or 60)
     watchers: list[Watcher] = []
     for project_id, poller in pollers.items():
-        watchers.append(dashboard_watcher(services, project_id, poller, poll_seconds, poll_on))
-        watchers.append(release_watcher(services, project_id, poll_seconds))
-        watchers.append(failure_watcher(services, project_id, poll_seconds))
-        watchers.append(nightly_watcher(services, project_id, nightly_time, clock))
+        watchers += project_watchers(services, project_id, poller, poll_seconds, poll_on, nightly_time, clock)
     monitor = getattr(wiring, "monitor", None)
     if monitor is not None:
         watchers.append(target_ci_watcher(monitor, max(60.0, poll_seconds)))

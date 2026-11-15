@@ -31,6 +31,7 @@ from atlas.connectors.dependency_scan import (ROOT_COMPONENT, SECURITY_SCOPE, fi
                                              query_advisories)
 from atlas.connectors.github import GitHubError, GitHubReader
 from atlas.connectors.prow import JobListing
+from atlas.connectors.inventory import parse_inventory
 from atlas.connectors.issues import IssuesConnector
 from atlas.connectors.project import ProjectSources, SourceSet
 from atlas.connectors.security import SecurityConnector, module_inventory_from_go_mod
@@ -419,7 +420,8 @@ class ProjectPoller:
     * CI: GitHub Actions runs for ``ci = "github_actions"``; for ``ci = "prow"`` the latest result
       of each periodic job below the project's configured job folders. Otherwise: not polled.
     * Releases: the latest release.
-    * Security: an OSV scan of the project's Go module list every six hours (a fixed budget).
+    * Security: an OSV scan of the project's dependency list (``go.mod`` by default, or the lock file
+      named in ``security_inventory``) every six hours (a fixed budget).
     A failed poll confirms nothing, so stored evidence ages normally.
     """
 
@@ -753,12 +755,16 @@ class ProjectPoller:
             self._last_scan, self._security_items = now, [{"note": f"no {inventory_file} found; the dependency scan was not run"}]
             return self._security_items
         text, blob = got
-        inventory = module_inventory_from_go_mod(text)
-        by_module, details, complete = query_advisories(self.gateway, self._ctx, inventory, self._advisories)
+        parsed = parse_inventory(inventory_file, text)
+        inventory = list(parsed.packages) if parsed else module_inventory_from_go_mod(text)
+        ecosystem = parsed.ecosystem if parsed else "Go"
+        by_module, details, complete = query_advisories(self.gateway, self._ctx, inventory, self._advisories,
+                                                        ecosystem=ecosystem)
         self._advisories = details
         findings, _ = findings_as_of(by_module, details, dict(inventory), None)
         records = gate_scan_records(scope_id=f"live:{self.project_id}", revision=blob, inventory=inventory,
-                                    complete=complete, findings=findings, at=now, fetched_at=now, reconstructed=False)
+                                    complete=complete, findings=findings, at=now, fetched_at=now, reconstructed=False,
+                                    scanner=f"OSV.dev query over {parsed.label if parsed else 'the Go module list'}")
         for rec, content, etype in records:
             self.store.put(rec, AUTHORITATIVE_WRITERS["security"], content=content, entity_type=etype, freshness_basis="scan")
         if not complete:
