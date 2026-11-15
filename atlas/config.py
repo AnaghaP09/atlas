@@ -115,6 +115,7 @@ class Settings:
     sandbox_runner: str = "local_docker"
     image_cache: Path = Path("data/local/images")
     org_slug: str = "demo"
+    site_domain: str = "internal"
     default_project: str = ""
     base_url: str = ""
     scenario_url: str = ""
@@ -294,6 +295,9 @@ def load_settings(
     org_slug = get("ATLAS_ORG_SLUG", "demo").lower()
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", org_slug):
         errors.append("ATLAS_ORG_SLUG must be lowercase letters, digits and hyphens")
+    site_domain = get("ATLAS_SITE_DOMAIN", "internal").lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", site_domain):
+        errors.append("ATLAS_SITE_DOMAIN must be one label such as internal or localhost")
 
     def tool(setting: str, name: str) -> Path | None:
         configured = get(setting)
@@ -353,6 +357,7 @@ def load_settings(
         sandbox_runner=sandbox_runner,
         image_cache=Path(get("ATLAS_IMAGE_CACHE", str(Path("data") / "local" / "images"))),
         org_slug=org_slug,
+        site_domain=site_domain,
         default_project=get("ATLAS_DEFAULT_PROJECT"),
         base_url=get("ATLAS_BASE_URL"),
         scenario_url=get("ATLAS_SCENARIO_URL"),

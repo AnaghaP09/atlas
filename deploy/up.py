@@ -81,8 +81,10 @@ def run_checks(root: Path, env: dict[str, str], *, scenarios: bool,
                         "no sign-in users yet (run `python -m deploy.init`)"))
     checks.append(Check("certificates", certs.server_cert.is_file() and certs.server_key.is_file(),
                         "no server certificate yet (run `python -m deploy.init`)"))
-    hosts = [f"atlas.{org}.internal"] + ([f"scenario.{org}.internal"] if scenarios else [])
-    for host in hosts:
+    domain = (env.get("ATLAS_SITE_DOMAIN") or "internal").lower()
+    hosts = [f"atlas.{org}.{domain}"] + ([f"scenario.{org}.{domain}"] if scenarios else [])
+    # Browsers send every *.localhost name to this computer, so no hosts entry is needed.
+    for host in ([] if domain == "localhost" else hosts):
         checks.append(Check(f"hosts entry for {host}", resolver(host),
                             f"{host} does not point to 127.0.0.1; add it to your hosts file (see setup output)"))
     openssl = find_openssl(env.get("ATLAS_OPENSSL_BIN") or None)
@@ -152,6 +154,7 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, root: Path | None = No
         return 0
 
     org = (env.get("ATLAS_ORG_SLUG") or "demo").lower()
+    domain = (env.get("ATLAS_SITE_DOMAIN") or "internal").lower()
     data_dir = Path(env.get("ATLAS_DATA_DIR") or "data")
     if not data_dir.is_absolute():
         data_dir = root / data_dir
@@ -159,13 +162,13 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, root: Path | None = No
     start_server(root, data_dir, scenario=False)
     if args.scenarios:
         start_server(root, data_dir, scenario=True)
-    url = f"https://atlas.{org}.internal/api/health"
+    url = f"https://atlas.{org}.{domain}/api/health"
     if not wait_healthy(url, certs.ca_cert):
         print(f"ATLAS did not answer at {url}. See {data_dir / 'local' / 'run' / 'atlas.log'}.", file=out)
         return 1
-    print(f"\nATLAS is running: https://atlas.{org}.internal", file=out)
+    print(f"\nATLAS is running: https://atlas.{org}.{domain}", file=out)
     if args.scenarios:
-        print(f"Scenario server:  https://scenario.{org}.internal:8443", file=out)
+        print(f"Scenario server:  https://scenario.{org}.{domain}:8443", file=out)
     print("Stop it with:     python -m deploy.down", file=out)
     return 0
 

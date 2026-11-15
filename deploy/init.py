@@ -37,8 +37,8 @@ ROLES = [
 HERE = Path(__file__).resolve().parent
 
 
-def host_names(org: str) -> list[str]:
-    return [f"atlas.{org}.internal", f"scenario.{org}.internal"]
+def host_names(org: str, domain: str = "internal") -> list[str]:
+    return [f"atlas.{org}.{domain}", f"scenario.{org}.{domain}"]
 
 
 def private_paths(data_dir: Path) -> dict[str, Path]:
@@ -123,6 +123,7 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, system: str | None = N
     if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,62}", org):
         print("The organisation slug must use lowercase letters, digits and hyphens.", file=out)
         return 2
+    domain = (env.get("ATLAS_SITE_DOMAIN") or "internal").lower()
     data_dir = Path(env.get("ATLAS_DATA_DIR") or "data")
     if not data_dir.is_absolute():
         data_dir = root / data_dir
@@ -166,14 +167,14 @@ def run(argv: list[str] | None = None, *, out=sys.stdout, system: str | None = N
     try:
         if ensure_ca(certs, openssl, org):
             print("- Created a local certificate authority. Its private key stays in your data directory.", file=out)
-        if ensure_server_cert(certs, openssl, host_names(org), renew=args.renew_certificate):
+        if ensure_server_cert(certs, openssl, host_names(org, domain), renew=args.renew_certificate):
             print("- Created the server certificate.", file=out)
     except CertificateError as exc:
         print(f"Could not create certificates: {exc}", file=out)
         return 3
 
     print("", file=out)
-    print(one_time_steps(host_names(org), certs.public_ca, system=system), file=out)
+    print(one_time_steps(host_names(org, domain), certs.public_ca, system=system), file=out)
     print("Then start ATLAS with:  python -m deploy.up", file=out)
     return 0
 

@@ -36,6 +36,7 @@ PUBLIC_PATHS = {"/login", "/login.css", "/api/health"}
 class SiteConfig:
     org_slug: str
     scenario: bool = False
+    domain: str = "internal"
     bind_host: str = "127.0.0.1"
     port: int | None = None
     data_dir: Path = Path("data")
@@ -46,7 +47,7 @@ class SiteConfig:
 
     @property
     def host_name(self) -> str:
-        return f"{'scenario' if self.scenario else 'atlas'}.{self.org_slug}.internal"
+        return f"{'scenario' if self.scenario else 'atlas'}.{self.org_slug}.{self.domain}"
 
     @property
     def origin(self) -> str:
