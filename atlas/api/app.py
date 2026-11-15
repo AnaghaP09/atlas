@@ -156,7 +156,9 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
             path = request.url.path
             response.headers["Content-Security-Policy"] = LOGIN_CSP if path in LOGIN_PATHS else CSP
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        # same-origin: our own form posts keep their real Origin (a sign-in form posted under
+        # no-referrer arrives as Origin: null and is refused); other sites still get no referrer.
+        response.headers["Referrer-Policy"] = "same-origin"
         return response
 
     @app.get("/{path:path}", include_in_schema=False)
