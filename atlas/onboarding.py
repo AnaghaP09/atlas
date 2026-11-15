@@ -506,5 +506,13 @@ def register_live(services: Any, project: Mapping[str, Any], *, clock: Callable[
     added = project_watchers(services, pid, poller, float(data.poll_loop.interval or 60))
     for w in added:
         services.scheduler.add(w)
-    services.run_in_background(poller.poll_once)  # the dashboard fills without waiting for the next tick
+    # The dashboard fills without waiting for the next tick; the first poll runs beside the request.
+    threading.Thread(target=_first_poll, args=(poller,), name=f"atlas-first-poll-{pid}", daemon=True).start()
     return {"polling": True, "watchers": [w.watcher_id for w in added]}
+
+
+def _first_poll(poller: Any) -> None:
+    try:
+        poller.poll_once()
+    except Exception:  # a failed first poll is retried by the dashboard schedule
+        pass
