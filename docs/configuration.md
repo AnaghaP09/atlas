@@ -12,21 +12,18 @@ off and tells you which setting to fill in.
 
 ## Setup
 
-```
-python -m venv .venv
-.venv/Scripts/python -m pip install --require-hashes -r requirements.txt      # Windows
-.venv/bin/python -m pip install --require-hashes -r requirements.txt          # macOS and Linux
-cp .env.example .env    # then edit .env
-```
+`python -m atlas.setup` writes `.env` for you and asks for the values it needs. You can also copy
+`.env.example` to `.env` and edit it by hand. Then run `python -m atlas.doctor`. It checks your
+settings, tools and ports, and explains any problem.
 
-To run the tests and the dependency audit, install `requirements-dev.txt` the same way.
+The [README](../README.md) has the full install steps.
 
 ## Secrets
 
 | Setting | Default | What it is for |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | empty | Key for the model service. Needed in connected mode. |
-| `GITHUB_TOKEN` | empty | Read-only GitHub token for live data. GitHub's query API needs it. |
+| `GITHUB_TOKEN` | empty | Read-only GitHub token for live data. Without it the live dashboard still works, but it checks GitHub every 10 minutes instead of every minute and has no edit history. Building new frozen data copies needs it. |
 | `ATLAS_PUBLISH_TOKEN` | empty | Token that can write only to the publish target. ATLAS uses it to open draft pull requests. |
 | `ATLAS_MODEL_API_KEY` | empty | Key for a self-hosted model server, if that server needs one. |
 
@@ -36,6 +33,12 @@ To run the tests and the dependency audit, install `requirements-dev.txt` the sa
 |---|---|---|
 | `ATLAS_WATCH_REPOSITORY` | `<owner>/<repo>` (off) | The repository that the automatic watchers follow. |
 | `ATLAS_PUBLISH_TARGET` | `<owner>/<repo>` (off) | The only repository ATLAS may open draft pull requests in. It must not be a watched repository or an upstream project. |
+| `ATLAS_UPSTREAM_REPOSITORIES` | empty | Extra repositories that ATLAS reads and must never publish to, separated by commas. The watched repository and every repository in the projects file are always included. |
+| `ATLAS_PROJECTS_FILE` | `<data folder>/local/projects.toml` | The file that defines your projects. Setup copies `deploy/projects.example.toml` there. A project may publish only to a target that this file grants it. |
+| `ATLAS_DEFAULT_PROJECT` | empty | The project shown first when nobody has chosen one. Use an id from your projects file. |
+| `ATLAS_PUBLISH_BASE_REF` | `main` | The branch of the publish target that draft pull requests start from. |
+| `ATLAS_TASK_SCOPE` | `*.go` | File patterns that a coding task may change, separated by commas. |
+| `ATLAS_TARGET_DIR` | `target/repo` | A local copy of the publish target's content, used to prepare changes. |
 | `ATLAS_ORG_SLUG` | `demo` | Your organisation's short name. It is used in host names such as `atlas.<slug>.internal`. |
 
 ## Models
@@ -54,6 +57,7 @@ To run the tests and the dependency audit, install `requirements-dev.txt` the sa
 |---|---|---|
 | `ATLAS_MODE` | `connected` | `connected` or `offline`. In offline mode, every connection outside your network is refused, and model steps stop unless a self-hosted model is set up. |
 | `ATLAS_SPEND_CEILING_USD` | `40` | The most ATLAS may spend on model calls. Runs stop when this is reached. |
+| `ATLAS_INJECTION_CLASSIFIER` | `on` | A small model judges text that looks like an instruction to an AI. `off` uses fixed patterns only, which flag much more ordinary text. |
 
 ## Server and sign-in
 
@@ -62,10 +66,11 @@ To run the tests and the dependency audit, install `requirements-dev.txt` the sa
 | `ATLAS_HOST` | `127.0.0.1` | The address the server listens on. |
 | `ATLAS_PORT` | `8000` | The port the server listens on. |
 | `ATLAS_IDENTITY` | `header` | How people are identified. `header` reads a role header and is for tests and development only; the server then accepts only local connections. `local` is the built-in sign-in. `oidc` (company single sign-on) is not available yet. |
-| `ATLAS_UI_ORIGIN` | empty | An extra local browser address allowed while you develop the UI. |
+| `ATLAS_UI_ORIGIN` | empty | An extra local browser address allowed while you develop the UI. The example file sets `http://127.0.0.1:5173`. |
 | `ATLAS_SERVER_ROLE` | `normal` | `normal`, or `scenario` for a separate demo server with its own data. |
 | `ATLAS_DEMO_SCENARIOS` | `false` | Turns on demo faults and clock and spend changes. Allowed only on the scenario server. |
-| `ATLAS_PEER_UI_URL` | empty | The address of the other demo server's UI, for the guided demo. |
+| `ATLAS_PEER_UI_URL` | empty | The address of the other demo server's UI, for the guided demo. The example file sets `http://127.0.0.1:8001`. |
+| `ATLAS_SWEEP_SECONDS` | `300` | How often the server checks for expired approvals, access grants and sessions. |
 
 ## Data, sandbox and tools
 
@@ -87,6 +92,24 @@ To run the tests and the dependency audit, install `requirements-dev.txt` the sa
 | `ATLAS_FAILURE_POLL_MINUTES` | `15` | How often the failure watcher checks for new failures. |
 | `ATLAS_NIGHTLY_TIME` | `02:00` | Local time of the nightly sweep. |
 | `ATLAS_QUESTION_DIGEST` | `false` | Scheduled question digests. |
+| `ATLAS_DASHBOARD_POLL` | `on` | `off` stops the live dashboard from checking GitHub. |
+| `ATLAS_DASHBOARD_POLL_SECONDS` | `60` with a GitHub token, `600` without | How often the live dashboard checks each project. Offline mode pauses it. |
+
+## Demo script
+
+The guided demo and `demo/run_demo.py` fill these values into their steps. Leave one empty to
+skip the steps that need it.
+
+| Setting | Default | What it is for |
+|---|---|---|
+| `ATLAS_BASE_URL` | empty | Address of the main server. Empty means it is built from `ATLAS_HOST` and `ATLAS_PORT`. |
+| `ATLAS_SCENARIO_URL` | empty | Address of the scenario server. Empty means the next port. |
+| `ATLAS_DEMO_RELEASE_SNAPSHOT` | empty | Id of the frozen data copy for the release-close step. |
+| `ATLAS_DEMO_ALIASED_SNAPSHOT` | empty | Id of its test copy, which has names disguised. |
+| `ATLAS_DEMO_RELEASE_ID` | empty | The release that the step closes, for example `v1.9.0`. |
+| `ATLAS_DEMO_RELEASE_FILTER` | empty | A filter for the release list. |
+| `ATLAS_DEMO_CASE_G01`, `_G03`, `_G04` | empty | Ids of three example cases used by the investigation steps. |
+| `ATLAS_DEMO_PASSWORD_<ROLE>` | not in `.env` | The demo user's password for a role, for example `ATLAS_DEMO_PASSWORD_EM`. Set it as an environment variable when the demo script signs in. Never put it in a file. |
 
 ## Notifications
 
