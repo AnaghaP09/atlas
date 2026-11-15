@@ -904,8 +904,6 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
     if data is None:
         staged = ("evidence data (" + NOT_CONNECTED_DATA + ")",) + staged
     services.staged = tuple(services.staged) + staged
-    if data is not None and data.pollers and env.get("ATLAS_DASHBOARD_POLL", "on").lower() not in ("off", "false", "0"):
-        data.poll_loop.start()
     variables = dict(getattr(services, "demo_variables", {}) or {})
     if getattr(settings, "peer_ui_url", ""):
         variables.setdefault("peer_ui_url", settings.peer_ui_url)
@@ -915,6 +913,11 @@ def connect(services: Any, settings: Any, *, env: Mapping[str, str] | None = Non
         variables.setdefault("base_url", settings.base_url)
     services.demo_variables = variables
     services.wiring = w
+    # Automatic runs: the scheduler loop (started by the server) polls these; nothing starts here.
+    from atlas.watchers import register_watchers
+
+    w.extra["watchers"] = register_watchers(services, env=env, nightly_time=getattr(settings, "nightly_time", "02:00"),
+                                            clock=clock)
     return w
 
 

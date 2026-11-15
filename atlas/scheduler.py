@@ -259,6 +259,13 @@ class Watcher:
     external: bool = True
     default_enabled: bool = True
     project_id: str = ""
+    title: str = ""
+    # Seconds between polls; 0 polls on every scheduler tick.
+    interval_seconds: float = 0.0
+    # True when this watcher starts runs that use the model. Such watchers ship paused.
+    spends_model_budget: bool = False
+    # Shown while the watcher has never been turned on by a person.
+    default_paused_reason: str | None = None
 
     @property
     def state_key(self) -> str:
@@ -298,9 +305,34 @@ class Scheduler:
         w = self.watchers[watcher_id]
         st = {**self.store.watcher_state(w.state_key, w.default_enabled), "watcher_id": watcher_id,
               "project_id": w.project_id or None}
+        if not st["enabled"] and not st.get("paused_reason") and w.default_paused_reason:
+            st = {**st, "paused_reason": w.default_paused_reason}
         if w.external and self.mode() == Mode.OFFLINE:
             st = {**st, "paused_reason": "offline: external sources are not reachable"}
+        st["next_run"] = self.next_run(watcher_id, st)
         return st
+
+    def next_run(self, watcher_id: str, st: Mapping[str, Any] | None = None) -> str | None:
+        """When an enabled watcher polls next (None while paused, offline or never timed)."""
+        w = self.watchers[watcher_id]
+        st = st or self.store.watcher_state(w.state_key, w.default_enabled)
+        if not st["enabled"] or (w.external and self.mode() == Mode.OFFLINE) or not w.interval_seconds:
+            return None
+        if not st.get("last_run"):
+            return self.clock().isoformat()
+        from datetime import timedelta
+
+        return (datetime.fromisoformat(st["last_run"]) + timedelta(seconds=w.interval_seconds)).isoformat()
+
+    def due(self, watcher_id: str) -> bool:
+        w = self.watchers[watcher_id]
+        if not w.interval_seconds:
+            return True
+        last = self.store.watcher_state(w.state_key, w.default_enabled).get("last_run")
+        return last is None or (self.clock() - datetime.fromisoformat(last)).total_seconds() >= w.interval_seconds
+
+    def add(self, watcher: Watcher) -> None:
+        self.watchers[watcher.watcher_id] = watcher
 
     def enable(self, watcher_id: str) -> None:
         w = self.watchers[watcher_id]
@@ -324,6 +356,8 @@ class Scheduler:
                 continue
             if not st["enabled"] and not run_once:
                 result.skipped[wid] = st["paused_reason"] or "disabled"
+                continue
+            if not run_once and not self.due(wid):
                 continue
             try:
                 self._poll(watcher, result, started_by)
