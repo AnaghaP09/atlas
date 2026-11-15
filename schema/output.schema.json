@@ -51,6 +51,7 @@
         "allocation": {"type": ["string", "null"]},
         "allocation_reason": {"type": ["string", "null"]},
         "allocation_basis": {"type": ["string", "null"]},
+        "owner_team": {"type": ["string", "null"]},
         "issue_id": {"type": ["string", "null"]},
         "title": {"type": ["string", "null"]},
         "score": {"type": ["number", "null"]},

@@ -9,15 +9,15 @@ from atlas.api.catalog import MANUAL_TRIGGERS
 from tests.d.conftest import H
 
 EXPECTED = {
-    "pm": {"home", "dashboard", "report_forecast", "requests", "run_now", "runs", "feedback", "evaluation", "notifications",
-           "access_requests"},
-    "em": {"home", "dashboard", "report_allocation", "requests", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
-           "scorecard", "notifications", "access_requests"},
-    "architect": {"home", "dashboard", "report_architecture", "requests", "graph", "runs", "feedback", "notifications",
-                  "access_requests"},
+    "pm": {"home", "ship_readiness", "dashboard", "report_forecast", "requests", "run_now", "runs", "feedback", "evaluation",
+           "notifications", "access_requests"},
+    "em": {"home", "ship_readiness", "dashboard", "report_allocation", "requests", "queue", "approvals", "tasks", "schedules",
+           "run_now", "runs", "scorecard", "notifications", "access_requests"},
+    "architect": {"home", "ship_readiness", "dashboard", "report_architecture", "requests", "graph", "runs", "feedback",
+                  "notifications", "access_requests"},
     "security": {"home", "dashboard", "report_security", "queue", "containment", "notifications", "access_requests"},
     "oncall": {"home", "dashboard", "run_now", "runs", "report_investigation", "notifications", "access_requests"},
-    "audit": {p.page_id for p in nav.PAGES},
+    "audit": {p.page_id for p in nav.PAGES} - {"ship_readiness"},
 }
 
 

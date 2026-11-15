@@ -127,10 +127,18 @@ def render(report_type: str, artefact: Mapping[str, Any], principal: Principal, 
         if f.get("proxy_note"):
             lines += ["", f"Note: {f['proxy_note']}"]
     if report_type == "allocation":
-        lines += ["## Recommended allocation"] + [f"- {i.get('id')}: {i.get('allocation')}" for i in data.get("items", [])]
+        split = {k: sum(1 for i in data.get("items", []) if i.get("allocation") == k)
+                 for k in ("developer", "coding_agent", "decision_maker")}
+        lines += ["## Recommended allocation",
+                  f"Developers {split['developer']} · coding agent {split['coding_agent']} · "
+                  f"decide first {split['decision_maker']}. Predicted from the forecast; a proposal, not an assignment."]
+        lines += [f"- {i.get('id')}: {i.get('allocation')}"
+                  + (f" ({i['allocation_reason']})" if i.get("allocation_reason") else "")
+                  + (f", owner team {i['owner_team']}" if i.get("owner_team") else "")
+                  for i in data.get("items", [])]
         for opt in (extra.get("staffing") or {}).get("options", []):
             lines.append(f"- Scenario '{opt['name']}': unassigned {len(opt['unassigned'])}")
-        lines.append("Staffing scenarios use synthetic role data and carry no dates.")
+        lines.append("Sample data: staffing scenarios use synthetic role data and carry no dates.")
     if report_type == "architecture":
         lines += ["## Hotspots"] + [f"- {h.get('component')}: {h.get('reason')}" for h in extra.get("hotspots", [])]
     if report_type == "security_gate":

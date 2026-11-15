@@ -4,7 +4,8 @@ import type { ContainmentView, Envelope, Health, Notification, QueueEntry, Repor
 import { useApi } from "../app/context";
 import { ButtonLink, Empty, ErrorView, KpiTile, Loading, Section, StatusPill, Truncate } from "../components/common";
 import { Link } from "../lib/router";
-import { runTitle } from "../lib/labels";
+import { ownerName, ownerTone, runTitle } from "../lib/labels";
+import { OWNER_LABEL, ownerSplit } from "../lib/outlook";
 import { latestReport } from "./LatestReport";
 import { useCurrentProject } from "./Dashboard";
 
@@ -63,7 +64,8 @@ function EmFocus() {
   const queue = useApi<{ entries: QueueEntry[] }>("/api/queue");
   const tasks = useApi<{ tasks: TaskView[] }>("/api/tasks");
   const { link, report } = useLatest("allocation");
-  const allocation = (report?.report?.items as { id?: string; title?: string; issue_id?: string; allocation?: string }[] | undefined) ?? [];
+  const allocation = (report?.report?.items as { id?: string; title?: string; issue_id?: string; allocation?: string; allocation_reason?: string }[] | undefined) ?? [];
+  const split = ownerSplit(allocation);
   const waiting = (tasks.data?.tasks ?? []).filter((t) => ["proposed", "prepared", "awaiting_reapproval"].includes(String((t as { state?: string }).state)));
   return (
     <>
@@ -72,16 +74,20 @@ function EmFocus() {
         <KpiTile icon="check" tone={waiting.length ? "warn" : "good"} label="Tasks waiting for approval" value={tasks.data ? waiting.length : "—"} hint={<Link to="/approvals">Open approvals</Link>} />
         <KpiTile icon="task" tone="teal" label="Items in the allocation" value={report ? allocation.length : "—"} hint={link ? <Link to={`/reports/${encodeURIComponent(link.report_id)}`}>Allocation report</Link> : undefined} />
       </div>
-      <Section title="Allocation" icon="task">
+      <Section
+        title="Allocation"
+        icon="task"
+        end={allocation.length ? <span className="muted num" data-testid="em-split">{OWNER_LABEL.developers} {split.developers} · {OWNER_LABEL.coding_agents} {split.coding_agents} · {OWNER_LABEL.decide_first} {split.decide_first}</span> : null}
+      >
         {allocation.length === 0 ? (
           <Empty action={{ to: "/run-now", label: "Start a release close" }}>No allocation yet.</Empty>
         ) : (
           <ul className="list">
             {allocation.slice(0, 10).map((a, i) => (
               <li key={`${a.id}-${i}`}>
-                <span className="grow"><Truncate text={a.title ?? String(a.id ?? "")} max={80} /> <span className="muted num">{a.issue_id ? `#${a.issue_id}` : ""}</span></span>
+                <span className="grow"><Truncate text={a.title ?? String(a.id ?? "")} max={80} /> <span className="muted num">{a.issue_id ? `#${a.issue_id}` : ""}</span>{a.allocation_reason ? <span className="row-sub">{a.allocation_reason}</span> : null}</span>
                 {a.allocation ? (
-                  <span className="pill pill-accent">{String(a.allocation).replace(/_/g, " ").toLowerCase()}</span>
+                  <span className={`pill pill-${ownerTone(a.allocation)}`}>{ownerName(a.allocation)}</span>
                 ) : (
                   <span className="pill pill-neutral" title="No owner proposed yet">Not allocated</span>
                 )}

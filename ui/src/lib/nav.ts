@@ -22,11 +22,15 @@ export interface Navigation {
   project_id?: string;
   groups: { title: string; pages: NavPage[] }[];
   other_pages: HiddenPage[];
+  /** Release outlook sections this role gets ("q1", "q2"); empty for roles in beta. */
+  outlook?: ("q1" | "q2")[];
+  beta?: boolean;
 }
 
 export const PAGE_ICON: Record<string, IconName> = {
   home: "home",
   dashboard: "pulse",
+  ship_readiness: "gauge",
   report_forecast: "chart",
   report_allocation: "task",
   report_architecture: "graph",
@@ -65,6 +69,7 @@ export function pageIdForPath(path: string): string | null {
   const fixed: [string, string][] = [
     ["/", "home"],
     ["/dashboard", "dashboard"],
+    ["/ship-readiness", "ship_readiness"],
     ["/run-now", "run_now"],
     ["/schedules", "schedules"],
     ["/runs", "runs"],

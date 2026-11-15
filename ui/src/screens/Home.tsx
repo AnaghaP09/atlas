@@ -7,6 +7,7 @@ import { useCurrentProject, type ActivityItem } from "./Dashboard";
 import { LiveNumber, useMetrics } from "../lib/metrics";
 import type { Navigation } from "../lib/nav";
 import { RoleFocus } from "./RoleHome";
+import { OutlookHomeLead } from "./ShipReadiness";
 import { StoryHome } from "./Requests";
 import { DATASET_GROUPS, kindOf, visibleDatasets } from "../components/dataset";
 
@@ -105,6 +106,7 @@ export function Home() {
 
   return (
     <>
+      <OutlookHomeLead />
       <RoleFocus home={nav.data?.home} />
       <StoryHome />
       <div className="kpis">
