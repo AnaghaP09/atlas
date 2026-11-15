@@ -43,6 +43,8 @@ class Page:
 PAGES: tuple[Page, ...] = (
     Page("home", "/", "Home", "Overview", "Your starting point: what needs your attention in this project."),
     Page("dashboard", "/dashboard", "Live dashboard", "Overview", "Everyone: what changed in the project's public sources."),
+    Page("ship_readiness", "/ship-readiness", "Ship readiness", "Overview",
+         "For the product manager, engineering manager and solution architect: what stops the release now."),
     Page("report_forecast", "/latest-report/forecast", "Forecast report", "Reports",
          "For the product manager: the debt and risks the next release will inherit."),
     Page("report_allocation", "/latest-report/allocation", "Allocation report", "Reports",
@@ -78,15 +80,15 @@ GROUP_ORDER = ("Overview", "Reports", "Work", "Safety", "Insight", "Demo")
 
 # The matrix. Order inside a role's list is the menu order within each group.
 ROLE_PAGES: dict[str, tuple[str, ...]] = {
-    "pm": ("home", "dashboard", "report_forecast", "run_now", "runs", "notifications", "access_requests", "feedback",
-           "evaluation"),
-    "em": ("home", "dashboard", "report_allocation", "queue", "approvals", "tasks", "schedules", "run_now", "runs",
-           "notifications", "access_requests", "scorecard"),
-    "architect": ("home", "dashboard", "report_architecture", "runs", "notifications", "access_requests", "graph",
-                  "feedback"),
+    "pm": ("home", "ship_readiness", "dashboard", "report_forecast", "run_now", "runs", "notifications",
+           "access_requests", "feedback", "evaluation"),
+    "em": ("home", "ship_readiness", "dashboard", "report_allocation", "queue", "approvals", "tasks", "schedules",
+           "run_now", "runs", "notifications", "access_requests", "scorecard"),
+    "architect": ("home", "ship_readiness", "dashboard", "report_architecture", "runs", "notifications",
+                  "access_requests", "graph", "feedback"),
     "security": ("home", "dashboard", "report_forecast", "report_security", "queue", "notifications", "containment", "access_requests"),
     "oncall": ("home", "dashboard", "report_forecast", "report_investigation", "run_now", "runs", "notifications", "access_requests"),
-    "audit": tuple(p.page_id for p in PAGES),
+    "audit": tuple(p.page_id for p in PAGES if p.page_id != "ship_readiness"),
 }
 
 # The main roles read every page of their project: their own pages come first, then every other page.
@@ -95,6 +97,15 @@ for _role in MAIN_ROLES:
     ROLE_PAGES[_role] = ROLE_PAGES[_role] + tuple(p.page_id for p in PAGES if p.page_id not in ROLE_PAGES[_role])
 
 ROLE_HOME = {r: f"{r}_home" for r in ROLES}
+
+# The release outlook answers two questions on every page: what the next release inherits (q1) and
+# what stops shipping now (q2). It is built for these three roles; the others are in beta.
+OUTLOOK_SECTIONS: dict[str, tuple[str, ...]] = {
+    "pm": ("q1", "q2"),
+    "em": ("q1", "q2"),
+    "architect": ("q1", "q2"),
+}
+BETA_ROLES = frozenset({"security", "oncall", "audit"})
 
 # What "Run now" offers each role is decided by the trigger catalog; the menu only shows the page
 # to roles that may start at least one trigger.
@@ -143,6 +154,8 @@ def navigation_for(role: str | None) -> dict[str, Any]:
         "home": ROLE_HOME.get(role or "", "basic_home"),
         "groups": groups,
         "other_pages": hidden,
+        "outlook": list(OUTLOOK_SECTIONS.get(role or "", ())),
+        "beta": (role or "") in BETA_ROLES,
     }
 
 

@@ -5,6 +5,7 @@
 export const HELP_SLUG: Record<string, string> = {
   home: "home",
   dashboard: "live-dashboard",
+  ship_readiness: "release-outlook",
   report_forecast: "reports",
   report_allocation: "reports",
   report_architecture: "reports",

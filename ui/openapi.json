@@ -1891,6 +1891,47 @@
         "summary": "Metrics"
       }
     },
+    "/api/projects/{project_id}/outlook": {
+      "get": {
+        "operationId": "outlook_api_projects__project_id__outlook_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Outlook Api Projects  Project Id  Outlook Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Outlook"
+      }
+    },
     "/api/projects/{project_id}/release-tags": {
       "get": {
         "description": "Release tags of the project to build a copy from, newest first.",

@@ -14,7 +14,7 @@ EXPECTED = {
     "architect": {p.page_id for p in nav.PAGES},
     "security": {"home", "dashboard", "report_forecast", "report_security", "queue", "containment", "notifications", "access_requests"},
     "oncall": {"home", "dashboard", "report_forecast", "run_now", "runs", "report_investigation", "notifications", "access_requests"},
-    "audit": {p.page_id for p in nav.PAGES},
+    "audit": {p.page_id for p in nav.PAGES} - {"ship_readiness"},
 }
 
 

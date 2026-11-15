@@ -58,12 +58,14 @@ export function Link({
   className,
   title,
   "aria-label": ariaLabel,
+  "data-testid": testId,
 }: {
   to: string;
   children: ReactNode;
   className?: string;
   title?: string;
   "aria-label"?: string;
+  "data-testid"?: string;
 }) {
   const { navigate } = useRouter();
   return (
@@ -72,6 +74,7 @@ export function Link({
       className={className}
       title={title}
       aria-label={ariaLabel}
+      data-testid={testId}
       onClick={(e) => {
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();

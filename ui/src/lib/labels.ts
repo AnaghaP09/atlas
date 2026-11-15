@@ -27,7 +27,7 @@ export function runTitle(r: Pick<RunView, "title" | "kind_label" | "subject" | "
 const OWNER_NAME: Record<string, string> = {
   coding_agent: "Coding agent",
   developer: "Developer",
-  decision_maker: "Decision needed",
+  decision_maker: "Decide first",
   infra_owner: "Infrastructure owner",
 };
 
