@@ -626,6 +626,10 @@ class DataLayer:
     poll_loop: PollLoop
 
 
+def _reveal(secret: Any) -> str:
+    return secret.reveal() if hasattr(secret, "reveal") else str(secret or "")
+
+
 def projects_file(settings: Any, env: Mapping[str, str]) -> Path:
     explicit = env.get("ATLAS_PROJECTS_FILE")
     return Path(explicit) if explicit else Path(settings.data_dir) / "local" / "projects.toml"
@@ -641,7 +645,8 @@ def connect_data(settings: Any, env: Mapping[str, str], *, mode: Callable[[], Mo
     registry = SnapshotRegistry(data_dir, sources=sources, reference_repository=reference_repository(data_dir))
     token = getattr(settings, "github_token", "")
     gateway = Gateway(transport or httpx_transport(), mode=mode, on_violation=on_violation,
-                      tokens={"github": lambda: token.reveal() if hasattr(token, "reveal") else str(token or "")},
+                      tokens={"github": lambda: token.reveal() if hasattr(token, "reveal") else str(token or ""),
+                              "publish": lambda: _reveal(getattr(settings, "publish_token", ""))},
                       clock=clock,
                       sources=sources)
     store = RunEvidenceStore(registry)

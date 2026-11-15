@@ -58,7 +58,7 @@ class SnapshotInfo:
 class SnapshotRegistry:
     """Opens evidence files by snapshot id. Holds no store handle outside these files."""
 
-    def __init__(self, data_dir: Path | str, *, prepared_dirs: tuple[str, ...] = ("cases", "cases-aliased", "releases", "releases-aliased"),
+    def __init__(self, data_dir: Path | str, *, prepared_dirs: tuple[str, ...] = ("cases", "cases-aliased", "releases", "releases-aliased", "injection"),
                  sources: SourceSet | None = None, reference_repository: str | None = None) -> None:
         self.data_dir = Path(data_dir)
         self.snapshots_root = self.data_dir / "snapshots"

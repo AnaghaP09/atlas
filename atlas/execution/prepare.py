@@ -25,6 +25,9 @@ from atlas.execution.runner import IsolationViolation, SandboxBundle, SandboxLim
 from atlas.tasks import TaskStore
 
 
+from atlas.execution.target import summary_line
+
+
 class TreeSource(Protocol):
     def files(self, repository: str, commit: str) -> dict[str, str]:
         """Text files of the repository at a commit."""
@@ -65,8 +68,9 @@ class Preparer:
         self.containment = containment
 
     def describe(self, task) -> tuple[str, str, str]:
-        message = f"Fix: {task.task_text}"
-        title = f"Draft: {task.task_text}"
+        summary = summary_line(task.task_text)
+        message = f"Fix: {summary}"
+        title = f"Draft: {summary}"
         body = (f"{task.task_text}\n\nPrepared by ATLAS for task {task.action_id}. This draft was produced by a "
                 "coding agent in an isolated sandbox and approved by a person before publication. Review before "
                 "merging; nothing is merged automatically.")
@@ -81,7 +85,7 @@ class Preparer:
         if task.state != TaskState.APPROVED_A:
             raise PreparationRefused([f"task is {task.state.value}, not approved_a"])
         base = self.trees.files(task.destination_repo, task.base_commit)
-        diff_text = self.agent.propose(task.task_text, task.scope, base)
+        diff_text = self.propose_valid(task, base)
         parsed = diffs.parse(diff_text)
         results = {c.name: c.status for c in static_checks(parsed, task.scope)}
 
@@ -124,6 +128,18 @@ class Preparer:
             self.tasks.transition(task_id, TaskState.PREPARED, "prepared", now, conn=conn)
         return {"checks": results, "artefact": {k: frozen[k] for k in ("diff_sha256", "tree_sha256", "withheld")},
                 "sandbox_log": sandbox_result.log[-4000:], "container": sandbox_result.container}
+
+    def propose_valid(self, task, base: Mapping[str, str], attempts: int = 2) -> str:
+        """Ask the coding agent for a diff that parses and applies to the base; one more try if it does not."""
+        last: Exception | None = None
+        for _ in range(attempts):
+            diff_text = diffs.recount(self.agent.propose(task.task_text, task.scope, base))
+            try:
+                diffs.apply(dict(base), diffs.parse(diff_text))
+                return diff_text
+            except diffs.DiffError as exc:
+                last = exc
+        raise PreparationRefused([f"the coding agent did not return a usable change: {last}"])
 
     def base_tree(self, task) -> dict[str, str]:
         return self.trees.files(task.destination_repo, task.base_commit)
