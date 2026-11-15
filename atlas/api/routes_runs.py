@@ -35,7 +35,7 @@ def _run_cost(cost: Any) -> Any:
     return out
 
 REPORTS_FOR = {
-    "forecast": ("forecast", "allocation", "architecture"),
+    "forecast": ("forecast", "allocation", "architecture", "security_gate"),
     "investigation": ("investigation", "security_gate"),
     "question": ("question",),
 }

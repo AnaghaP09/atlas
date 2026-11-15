@@ -129,3 +129,27 @@ query ContentEditsProbe($owner: String!, $name: String!, $issue: Int!, $pr: Int!
 RATE_LIMIT = """
 query RateLimit { rateLimit { remaining resetAt cost } }
 """
+
+import re as _re
+
+_CHURN_PATH = _re.compile(r"^[A-Za-z0-9._/-]+$")
+_CHURN_HEAD = (
+    "query ComponentChurn($owner: String!, $name: String!, $ref: String!, "
+    "$since: GitTimestamp!, $until: GitTimestamp!) {"
+)
+
+
+def component_churn(paths: list[str]) -> str:
+    """One query counting the commits that touched each path in a time window (aliases c0..cN)."""
+    parts = []
+    for n, path in enumerate(paths):
+        if not _CHURN_PATH.match(path) or ".." in path:
+            raise ValueError(f"unsafe component path: {path!r}")
+        parts.append(f'c{n}: history(path: "{path}", since: $since, until: $until) {{ totalCount }}')
+    body = " ".join(parts)
+    return (
+        _CHURN_HEAD
+        + " repository(owner: $owner, name: $name) { object(expression: $ref) { ... on Commit { "
+        + body
+        + " } } } }"
+    )

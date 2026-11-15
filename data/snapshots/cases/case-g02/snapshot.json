@@ -7,6 +7,10 @@
   "issues": 21,
   "missing_fields": {},
   "pull_requests": 54,
+  "security_complete": true,
+  "security_excluded_after_cutoff": 46,
+  "security_findings": 5,
+  "security_modules": 168,
   "synthetic": 11
  },
  "cutoff": "2026-05-06T15:03:51+00:00",
@@ -17,14 +21,14 @@
   "git": "REAL",
   "issues": "REAL",
   "kubernetes": "SYNTHETIC",
-  "security": "not captured for historical cases; investigation security checks return not_run",
+  "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
   "telemetry": "SYNTHETIC"
  },
  "notes": [
   "Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the case outcome; the case is scored with that limitation reported."
  ],
- "records": 1235,
- "records_sha256": "c10bc2a5449d273e6ce4a131efbd57946bccd09f78f6b20df9075891d3b9fc52",
+ "records": 1241,
+ "records_sha256": "1bf6186048e172a9d6f022da0f5e0f690803071909446ed123dc24bd9c7985b0",
  "release_or_case": "G02",
  "snapshot_id": "case-g02"
 }

@@ -146,7 +146,7 @@ def compute(request: Request, project_id: str) -> dict[str, Any]:
         "spend_scope": "installation",
         "last_poll": board.get("last_poll"),
         "dashboard_version": board.get("dashboard_version"),
-        "dashboard_counts": {p["panel_id"]: len(p.get("items", [])) for p in board.get("panels", [])},
+        "dashboard_counts": {p["panel_id"]: int(p.get("total", len(p.get("items", [])))) for p in board.get("panels", [])},
     }
 
 

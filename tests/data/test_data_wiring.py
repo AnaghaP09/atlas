@@ -175,9 +175,13 @@ class FakeFeed:
     def record_activity(self, project_id, item):
         self.activity.append((project_id, item))
 
-    def update_panels(self, project_id, panels):
+    def update_panels(self, project_id, panels, totals=None):
         self.panels[project_id] = dict(panels)
+        self.totals = dict(totals or {})
         return 1
+
+    def set_history(self, project_id, points):
+        self.history = list(points)
 
 
 def _github(routes):
