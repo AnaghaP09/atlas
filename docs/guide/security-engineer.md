@@ -21,10 +21,11 @@ You see the security gate report. It shows the result of the security check and 
 |---|---|
 | [Home](home.md) | See what needs your attention. |
 | [Live dashboard](live-dashboard.md) | See what changed in the project. |
-| [Reports](reports.md) | Read the security gate report. |
-| [Needs a person](needs-a-person.md) | Decide security items. |
-| [Notifications](notifications.md) | Read security alerts. |
+| [Security gate report](reports.md) | Read the security gate result. |
+| [Needs a person](needs-a-person.md) | Decide the items ATLAS will not decide. |
+| [Notifications](notifications.md) | Read alerts sent to your role. |
 | [Kill switches](kill-switches.md) | See which switches are on. Read only. |
+| [Access requests](access-requests.md) | Ask to read a locked item, and see your requests. |
 
 ## Requests that wait for you
 

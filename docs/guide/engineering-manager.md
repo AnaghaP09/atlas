@@ -25,14 +25,15 @@ You see the allocation report. It suggests who should take each item: a develope
 |---|---|
 | [Home](home.md) | See what needs your attention. |
 | [Live dashboard](live-dashboard.md) | See what changed in the project. |
-| [Reports](reports.md) | Read the allocation report. |
+| [Allocation report](reports.md) | Read who should take each item. |
 | [Needs a person](needs-a-person.md) | Decide the items ATLAS will not decide. |
 | [Approvals](approvals.md) | Approve or reject coding-agent tasks. |
 | [Tasks](tasks.md) | Follow each task to the end. |
 | [Automatic runs](automatic-runs.md) | Control watchers and schedules. |
 | [Run now](run-now.md) | Start a run by hand. |
 | [Runs](runs.md) | Check the status of a run. |
-| [Notifications](notifications.md) | Read alerts and reminders. |
+| [Notifications](notifications.md) | Read alerts sent to your role. |
+| [Access requests](access-requests.md) | Ask to read a locked item, and see your requests. |
 | [Scorecard](scorecard.md) | See whether the coding agent helped. |
 
 ## If a page or item is locked

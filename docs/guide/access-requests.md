@@ -11,7 +11,7 @@ item but you cannot change it.
 ## How to ask
 
 1. Select **Request access** on the locked item.
-2. Write why you need it.
+2. Write why you need it. This is optional.
 3. Send the request.
 
 What happens next depends on the kind of item.
