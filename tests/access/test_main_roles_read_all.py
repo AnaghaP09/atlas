@@ -108,8 +108,7 @@ def test_beta_roles_keep_their_locks(client, services):
 def test_pm_and_architect_cannot_act_for_the_engineering_manager(client, services, role):
     ids = _seed(client, services)
     before = list(services.tasks.calls)
-    assert client.post(f"/api/approvals/{ids['approval']}/decision", json={"decision": "approve"},
-                       headers=H(role)).status_code == 403
+    # Approvals are open to every main role (owner decision); the other actions stay with the engineering manager.
     assert client.post("/api/tasks", json={"run_id": ids["inv"]}, headers=H(role)).status_code == 403
     assert client.post("/api/schedules/any/pause", json={}, headers=H(role)).status_code == 403
     assert client.post(f"/api/runs/{ids['inv']}/reverify", json={}, headers=H(role)).status_code == 403

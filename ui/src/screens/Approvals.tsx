@@ -32,6 +32,8 @@ export function Countdown({ iso }: { iso?: string | null }) {
   );
 }
 
+const ROLE_WORD: Record<string, string> = { pm: "product manager", em: "engineering manager", architect: "solution architect" };
+
 const KIND_TITLE: Record<string, string> = { A: "Let the coding agent prepare the change", B: "Publish this exact change" };
 
 function shortHash(v: unknown): string | null {
@@ -42,13 +44,19 @@ function ApprovalCard({ a, focused }: { a: Approval; focused: boolean }) {
   const decide = useAction<{ decision: string; review_minutes?: number }, unknown>(`/api/approvals/${encodeURIComponent(a.approval_id)}/decision`);
   const refresh = useInvalidateAll();
   const blocked = useBlockedBy(a.kind === "B" ? "publication" : "preparation");
-  const pending = a.state === "pending";
+  const pending = a.state === "pending" || a.state === "requested";
   const hash = a.diff_hash ?? a.artefact_hash;
   return (
     <article className={`card approval${focused ? " is-focus" : ""}`} data-testid="approval">
       <header className="approval-head">
         <span className="approval-kind">Approval {a.kind}</span>
         <h2>{KIND_TITLE[a.kind] ?? "Approval"}</h2>
+        {a.created_at ? (
+          <span className="muted small" data-testid="approval-time">
+            {a.state === "requested" ? "Requested " : "Decided "}<Time iso={a.created_at} />
+            {a.approver_role ? ` by ${ROLE_WORD[a.approver_role] ?? a.approver_role}` : ""}
+          </span>
+        ) : null}
         <span className="end inline-tools">
           {pending ? <Countdown iso={a.expires_at} /> : null}
           <StatusPill status={pending ? "held" : a.state} />
@@ -118,7 +126,7 @@ export function Approvals() {
   const focus = search.get("focus");
   if (data.isLoading) return <Loading what="approvals" />;
   if (data.error) return <ErrorView error={data.error} />;
-  const all = (data.data?.approvals ?? []).slice().sort((a, b) => Number(b.state === "pending") - Number(a.state === "pending"));
+  const all = (data.data?.approvals ?? []).slice().sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
   const locked = data.data?.locked_items ?? [];
   if (all.length === 0 && locked.length === 0)
     return <Empty action={{ to: "/tasks", label: "Open tasks" }}>No approvals are waiting.</Empty>;

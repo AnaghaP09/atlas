@@ -26,6 +26,10 @@ SLA = timedelta(hours=4)
 NEARING_EXPIRY = timedelta(hours=1)
 
 
+
+# The main roles may each give an approval; the record keeps who gave it.
+APPROVER_ROLES = frozenset({"pm", "em", "architect"})
+
 class ApprovalError(ValueError):
     pass
 
@@ -111,8 +115,8 @@ class ApprovalService:
 
     def grant_a(self, task_id: str, *, role: str, eligibility: "Eligibility", now: datetime,
                 idempotency_key: str | None = None) -> str:
-        if role != Role.EM.value:
-            raise ApprovalError("Approval A is given by the engineering manager role")
+        if role not in APPROVER_ROLES:
+            raise ApprovalError("Approval A is given by the product manager, engineering manager or architect role")
         request = {"op": "approval_a", "task_id": task_id}
         with self.db.transaction() as conn:
             stored = self.db.idempotent(conn, idempotency_key, request)
@@ -131,8 +135,8 @@ class ApprovalService:
 
     def grant_b(self, task_id: str, *, role: str, eligibility: "Eligibility", now: datetime,
                 idempotency_key: str | None = None) -> str:
-        if role != Role.EM.value:
-            raise ApprovalError("Approval B is given by the engineering manager role")
+        if role not in APPROVER_ROLES:
+            raise ApprovalError("Approval B is given by the product manager, engineering manager or architect role")
         request = {"op": "approval_b", "task_id": task_id}
         with self.db.transaction() as conn:
             stored = self.db.idempotent(conn, idempotency_key, request)

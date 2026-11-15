@@ -69,11 +69,12 @@ def test_override_requires_new_approval_a():
     assert env.approvals.current(task.task_id, ApprovalKind.A) is None
 
 
-def test_only_em_role_approves():
+def test_only_main_roles_approve():
     env = make_env()
     task = env.new_task()
     with pytest.raises(ApprovalError):
-        env.approvals.grant_a(task.task_id, role="pm", eligibility=env.eligibility, now=env.now)
+        env.approvals.grant_a(task.task_id, role="security", eligibility=env.eligibility, now=env.now)
+    env.approvals.grant_a(task.task_id, role="pm", eligibility=env.eligibility, now=env.now)
 
 
 def test_approval_b_refused_while_any_manifest_check_not_passed():

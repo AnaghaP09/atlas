@@ -158,6 +158,8 @@ export interface Notification {
 
 export interface Approval {
   approval_id: string;
+  created_at?: string | null;
+  approver_role?: string | null;
   task_id: string;
   kind: "A" | "B" | string;
   state: string;

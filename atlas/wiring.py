@@ -489,6 +489,7 @@ class TaskPortAdapter:
             if kind:
                 rows.append({"approval_id": f"pending-{kind}-{t.task_id}", "task_id": t.task_id, "kind": kind,
                              "state": "requested", "generation": t.generation, "expires_at": None,
+                             "created_at": t.updated_at.isoformat(), "approver_role": None,
                              "project_id": self._task_project(t), "required_scopes": ["internal"],
                              **self._approval_details(t)})
         return rows
@@ -499,9 +500,11 @@ class TaskPortAdapter:
             for r in self.w.approvals.rows(t.task_id):
                 granted.append({"approval_id": r["approval_id"], "task_id": r["task_id"], "kind": r["kind"],
                                 "state": r["status"], "generation": r["generation"], "expires_at": r["expires_at"],
+                                "created_at": r.get("created_at"), "approver_role": r.get("approver_role"),
                                 "project_id": self._task_project(t), "required_scopes": ["internal"],
                                 **self._approval_details(t, r["generation"])})
         rows = self._pending() + granted
+        rows.sort(key=lambda r: str(r.get("created_at") or ""), reverse=True)  # newest first
         return [r for r in rows if project_id is None or r.get("project_id") == project_id]
 
     def approval(self, approval_id: str) -> Mapping[str, Any] | None:

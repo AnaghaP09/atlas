@@ -138,7 +138,7 @@ def test_task_lifecycle_through_the_api(client, services):
     assert all(task[f] is None for f in ("ci_observations", "behavioural_check", "adjudication", "pull_request"))
     approval = client.get("/api/approvals", headers=H("em")).json()["approvals"][0]
     assert client.post(f"/api/approvals/{approval['approval_id']}/decision", json={"decision": "approve"},
-                       headers=H("pm")).status_code == 403
+                       headers=H("oncall")).status_code == 403
     d = client.post(f"/api/approvals/{approval['approval_id']}/decision",
                     json={"decision": "approve", "review_minutes": 12}, headers=H("em"))
     assert d.status_code == 200 and d.json()["approval"]["review_minutes"] == 12
