@@ -15,14 +15,14 @@ _CACHE: dict[str, dict[str, Any]] = {}
 
 def is_test_copy(snap: Mapping[str, Any]) -> bool:
     kind = str(snap.get("kind") or "")
-    return bool(snap.get("alias_variant")) or kind.endswith("-aliased") or kind == "injection"
+    return bool(snap.get("alias_variant")) or kind.endswith("-aliased") or kind in ("injection", "new_evidence")
 
 
 def kind_of(snap: Mapping[str, Any]) -> str:
     kind = str(snap.get("kind") or "")
     if kind.startswith("releases"):
         return "release"
-    if kind.startswith("cases") or kind == "injection":
+    if kind.startswith("cases") or kind in ("injection", "new_evidence"):
         return "case"
     return "live"
 
