@@ -157,6 +157,17 @@ def dashboard_watcher(services: Any, project_id: str, poller: Any, interval: flo
                    default_paused_reason=None if enabled else "Turned off in the settings (ATLAS_DASHBOARD_POLL).")
 
 
+def target_ci_watcher(monitor: Any, interval: float) -> Watcher:
+    """Reads the target repository's CI results for published tasks. It starts no runs."""
+
+    def poll(cursor: str | None) -> Iterable[ObservedEvent]:
+        monitor.poll_all()
+        return []
+
+    return Watcher("target-ci", "validation", poll, external=True, default_enabled=True,
+                   title="Check results of published changes in the target repository", interval_seconds=interval)
+
+
 def housekeeping_watcher(run_jobs: Callable[[], Any], interval: float) -> Watcher:
     def poll(cursor: str | None) -> Iterable[ObservedEvent]:
         run_jobs()
@@ -182,6 +193,9 @@ def register_watchers(services: Any, *, env: Mapping[str, str] | None = None, ho
         watchers.append(release_watcher(services, project_id, poll_seconds))
         watchers.append(failure_watcher(services, project_id, poll_seconds))
         watchers.append(nightly_watcher(services, project_id, nightly_time, clock))
+    monitor = getattr(wiring, "monitor", None)
+    if monitor is not None:
+        watchers.append(target_ci_watcher(monitor, max(60.0, poll_seconds)))
     if housekeeper is not None:
         watchers.append(housekeeping_watcher(housekeeper.run_once, housekeeper.interval))
     for w in watchers:

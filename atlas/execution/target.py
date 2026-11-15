@@ -44,6 +44,9 @@ class TargetManifest:
     label: str
     data_mode: str
     mappings: tuple[dict, ...]
+    # Files the target repository keeps for itself (its own README, licence). They are not part of
+    # the comparison between the prepared tree and the remote base branch.
+    not_compared: tuple[str, ...] = ()
 
     @classmethod
     def load(cls, path: Path) -> "TargetManifest | None":
@@ -51,7 +54,7 @@ class TargetManifest:
             return None
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         return cls(str(data.get("label", "Demo target")), str(data.get("data_mode", "SYNTHETIC")),
-                   tuple(data.get("mapping", [])))
+                   tuple(data.get("mapping", [])), tuple(str(p) for p in data.get("not_compared", [])))
 
     def map(self, classification: str, cause_texts: Sequence[str]) -> MappedTask:
         """The mapped task for an investigation, or NoTargetMapping when the sample code cannot answer it."""

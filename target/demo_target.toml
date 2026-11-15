@@ -7,6 +7,9 @@
 
 label = "Demo target (sample code modelled on the real issue)"
 data_mode = "SYNTHETIC"
+# Files the target repository keeps for itself. Before publishing, ATLAS checks that every other
+# file it prepared against is unchanged on the target; these are left out of that check.
+not_compared = ["README.md", "LICENSE"]
 
 [[mapping]]
 id = "ipv6-host-port"

@@ -281,6 +281,7 @@ _PUBLICATION_ROUTES = [
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)$"), "repo"),
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/ref/heads/(?P<ref>[A-Za-z0-9._/-]+)$"), "ref"),
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/commits/(?P<sha>[0-9a-f]{40})$"), "commit"),
+    ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/trees/(?P<sha>[0-9a-f]{40})$"), "tree"),
     ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/(blobs|trees|commits)$"), "object"),
     ("POST", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/git/refs$"), "new_ref"),
     ("GET", re.compile(r"^/repos/(?P<owner>[^/]+)/(?P<repo>[^/]+)/pulls$"), "pulls"),
@@ -312,6 +313,8 @@ def _publication_rule(connector: str, method: str, host: str, path: str, body: A
         if repo in sources.repositories():
             return "a repository that ATLAS reads from can never be written to"
         payload = body if isinstance(body, Mapping) else {}
+        if not grant.branch and kind != "repo":
+            return "an identity read may only read the repository itself"
         if kind == "ref" and m.group("ref") not in (grant.branch, grant.base_ref):
             return "only the approved branch and its base may be read"
         if kind == "new_ref" and payload.get("ref") != f"refs/heads/{grant.branch}":
