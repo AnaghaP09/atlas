@@ -7,7 +7,7 @@ import copy
 import pytest
 
 from eval import baseline_workflow, gates
-from eval.canonical import LIMITATION, canonical_predictions, g13
+from eval.canonical import LIMITATION, NOTE, canonical_predictions, g13
 from eval.store import EvaluationStore
 
 GOLDEN = {f"G{n:02d}": {"expected_classification": "CODE_DEFECT", "expected_action": "ASSIGN_DEVELOPER"}
@@ -193,7 +193,39 @@ def test_evaluate_all_never_passes_missing_gates():
     res = gates.evaluate_all({"g13": {"closes": [{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": ["1"]}]}})
     assert res["gates"]["G-13"]["status"] == "passed"
     assert res["gates"]["G-1"]["status"] == "unevaluated" and res["overall"] == "incomplete"
-    assert "Measured on a proxy" in res["gates"]["G-13"]["limitation"]
+    assert res["gates"]["G-13"]["limitation"].startswith(NOTE)
+
+
+def test_g13_recall_counts_only_blockers_open_at_forecast_and_precision_counts_every_blocker():
+    # Blockers 1 and 2 were open when the forecast was made; 7 was reported later but named anyway.
+    closes = [{"release": "1.6", "items": [{"issue_id": "1"}, {"issue_id": "7"}, {"issue_id": "8"}],
+               "blockers": ["1", "2"], "all_blockers": ["1", "2", "7"]}]
+    res = g13(closes)
+    assert res["pooled"]["recall"] == pytest.approx(1 / 2)  # 7 is not in the recall denominator
+    assert res["pooled"]["precision"] == pytest.approx(2 / 3)  # named items that turned out to be blockers
+    assert res["per_close"][0]["missed_blockers"] == ["2"]
+
+
+def test_g13_states_the_narrowing_beside_every_number():
+    closes = [{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": ["1"]},
+              {"release": "1.7", "items": [], "blockers": []}]
+    res = g13(closes)
+    assert NOTE == ("Counts only blockers already open when the forecast was made; uses a substitute for release "
+                    "blockers because KubeVirt does not record them.")
+    assert res["pooled"]["note"] == NOTE and all(c["note"] == NOTE for c in res["per_close"])
+    assert len(res["text"]) == 3 and all(t.endswith(NOTE) for t in res["text"])
+    assert "recall 1 of 1 (100%)" in res["text"][0] and "no denominator" in res["text"][2]
+    assert res["empty_denominators"] == ["1.7: no labelled blocker open when the forecast was made",
+                                         "1.7: the forecast named nothing"]
+    gate = gates.g13(closes)
+    assert gate["note"] == NOTE and gate["text"] == res["text"]
+
+
+def test_g13_empty_pooled_denominator_fails_with_a_reason():
+    gate = gates.g13([{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": []}])
+    assert gate["status"] == "failed" and gate["failures"][0] == "pooled denominator is empty"
+    gate = gates.g13([{"release": "1.6", "items": [{"issue_id": "1"}], "blockers": ["2"]}])
+    assert gate["status"] == "failed" and gate["failures"] == ["pooled recall or precision below the bar"]
 
 
 def test_baseline_workflow_rules():

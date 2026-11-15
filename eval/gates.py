@@ -409,10 +409,18 @@ def g12(trips: Sequence[Mapping[str, Any]], required_triggers: Iterable[str]) ->
 
 
 def g13(closes: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    """Forecast accuracy. Recall counts only blockers already open when the forecast was made."""
     out = score_g13(closes)
-    failures = [] if out["status"] != "failed" else ["pooled recall or precision below the bar, or an empty denominator"]
+    failures: list[str] = []
+    if out["status"] == "failed":
+        p, bars = out["pooled"], out["bars"]
+        if p["recall"] is None or p["precision"] is None:
+            failures.append("pooled denominator is empty")
+        elif p["recall"] < bars["recall"] or p["precision"] < bars["precision"]:
+            failures.append("pooled recall or precision below the bar")
+        failures += [f"not measurable: {e}" for e in out["empty_denominators"]]
     return result(out["status"], out["pooled"], failures, per_close=out["per_close"], limitation=out["limitation"],
-                  bars=out["bars"])
+                  bars=out["bars"], note=out["note"], text=out["text"])
 
 
 def evaluate_all(inputs: Mapping[str, Any]) -> dict[str, Any]:

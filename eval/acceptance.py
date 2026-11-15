@@ -303,8 +303,9 @@ def build_record(session: Path, labels_path: Path = proxy_label.LABELS) -> dict[
     closes_ready = all(f"release_close|release-close-v1.{n}.0|v1.{n}.0|R1" in runs for n in (5, 6, 7, 8))
     if not state_labels["complete"]:
         out["G-13"] = gates.result("unevaluated", {"labelled": state_labels["labelled"], "candidates": state_labels["candidates"]},
-                                   [f"{state_labels['missing']} of {state_labels['candidates']} blocker candidates still to be labelled by a person"],
-                                   limitation=gates.score_g13([])["limitation"])
+                                   [f"{state_labels['missing']} of {state_labels['candidates']} blocker candidates "
+                                    f"(open when the forecast was made) still to be labelled by a person"],
+                                   limitation=gates.score_g13([])["limitation"], note=gates.score_g13([])["note"])
     elif not closes_ready:
         out["G-13"] = gates.unevaluated("forecasts at the four earlier releases not run")
     else:
@@ -315,7 +316,8 @@ def build_record(session: Path, labels_path: Path = proxy_label.LABELS) -> dict[
             report = report_of(runs[f"release_close|release-close-{previous}|{previous}|R1"], "forecast")
             fc = report.get("forecast") if isinstance(report.get("forecast"), Mapping) else {}
             items = [{"issue_id": i.get("issue_id") or i.get("id")} for i in (fc.get("items") or report.get("items") or [])]
-            closes_in.append({"release": release, "items": items, "blockers": state_labels["blockers"].get(release, [])})
+            closes_in.append({"release": release, "items": items, "blockers": state_labels["blockers"].get(release, []),
+                              "all_blockers": state_labels["all_blockers"].get(release, [])})
         out["G-13"] = gates.g13(closes_in)
         out["G-13"]["checked_by"] = proxy_label.CHECKED_BY
 

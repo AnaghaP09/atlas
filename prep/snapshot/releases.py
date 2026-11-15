@@ -222,6 +222,12 @@ def main(argv: list[str]) -> int:
         data = people.scrub(proxy_candidates(cache, m))
         (outcomes / f"{major}.{m}.json").write_bytes((json.dumps(data, indent=1, sort_keys=True) + "\n").encode("utf-8"))
         print(f"{major}.{m}", "backports", len(data["backports"]), "candidates", len(data["candidates"]), flush=True)
+    # Only candidates open in the data set the forecast was made from go to the labelling queue.
+    from prep.proxy.build import LEFT_OUT, rebuild_outcomes
+
+    (outcomes / LEFT_OUT).unlink(missing_ok=True)  # judged afresh from the new candidates
+    for release, n in rebuild_outcomes(outcomes, out_root / "snapshots" / "releases", queue_csv=None).items():
+        print(release, "open at forecast", n["open_at_forecast"], "left out", n["not_open_at_forecast"], flush=True)
     cache.manifest.save()
     return 0
 

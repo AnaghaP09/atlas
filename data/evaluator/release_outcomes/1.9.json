@@ -252,6 +252,7 @@
    "kinds_now": [
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -265,6 +266,7 @@
    "kinds_now": [
     "kind/bug"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -278,6 +280,7 @@
    "kinds_now": [
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -291,6 +294,7 @@
    "kinds_now": [
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
    "reasons": [
     {
@@ -304,169 +308,8 @@
    "kinds_now": [
     "kind/flake"
    ],
+   "open_at_forecast": true,
    "open_at_previous_close": true,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-03-25T07:11:09Z",
-   "issue": 17279,
-   "kinds_now": [
-    "kind/cleanup",
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-04-01T08:24:40Z",
-   "issue": 17371,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-04-08T13:07:58Z",
-   "issue": 17420,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-05-06T08:38:57Z",
-   "issue": 17714,
-   "kinds_now": [
-    "kind/bug"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-05-26T07:34:37Z",
-   "issue": 17906,
-   "kinds_now": [
-    "kind/bug",
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-06-24T08:29:57Z",
-   "issue": 18236,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-07-01T09:25:59Z",
-   "issue": 18302,
-   "kinds_now": [
-    "kind/bug"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "backport_pr": 18447,
-     "kind": "backport",
-     "origin_pr": 18217
-    }
-   ]
-  },
-  {
-   "created_at": "2026-07-01T10:09:28Z",
-   "issue": 18305,
-   "kinds_now": [],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "backport_pr": 18343,
-     "kind": "backport",
-     "origin_pr": 18314
-    }
-   ]
-  },
-  {
-   "created_at": "2026-07-03T11:38:26Z",
-   "issue": 18336,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-07-10T05:37:03Z",
-   "issue": 18419,
-   "kinds_now": [
-    "kind/bug"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "backport_pr": 18466,
-     "kind": "backport",
-     "origin_pr": 18435
-    }
-   ]
-  },
-  {
-   "created_at": "2026-07-15T09:05:44Z",
-   "issue": 18465,
-   "kinds_now": [
-    "kind/flake"
-   ],
-   "open_at_previous_close": false,
-   "reasons": [
-    {
-     "kind": "critical_open_at_final_tag"
-    }
-   ]
-  },
-  {
-   "created_at": "2026-07-17T09:51:08Z",
-   "issue": 18490,
-   "kinds_now": [
-    "kind/bug"
-   ],
-   "open_at_previous_close": false,
    "reasons": [
     {
      "kind": "critical_open_at_final_tag"
@@ -475,6 +318,14 @@
   }
  ],
  "definition": "Candidate proxy blockers: issues linked to a fix merged into the release branch between the first beta and the final tag, and critical-urgent issues still open at the final tag. Unlabelled: a person confirms every candidate (features and chores are excluded).",
+ "eligibility": {
+  "forecast_cutoff": "2026-03-24T14:09:37+00:00",
+  "forecast_data_set": "release-close-v1.8.0",
+  "left_out_file": "not_open_at_forecast.json",
+  "not_open_at_forecast": 12,
+  "open_at_forecast": 5,
+  "rule": "A candidate for release 1.N counts only when the issue was open in the frozen data set of the release 1.(N-1) close, the data set the forecast was made from."
+ },
  "limitation": "The project does not record release blockers, so this proxy is used.",
  "release": "1.9",
  "window": {
