@@ -2,9 +2,15 @@
  "alias_variant": null,
  "counts": {
   "architecture": 1049,
+  "churn_commits_total": 1141,
+  "churn_components": 119,
   "excluded_label": 1,
   "excluded_not_open": 8,
   "issues": 120,
+  "security_complete": true,
+  "security_excluded_after_cutoff": 51,
+  "security_findings": 7,
+  "security_modules": 154,
   "synthetic": 7,
   "unknown_state": 0
  },
@@ -13,13 +19,15 @@
  "data_modes": {
   "architecture": "REAL",
   "capacity": "SYNTHETIC",
-  "issues": "REAL"
+  "git": "REAL (commits per component in the 120 days before the tag)",
+  "issues": "REAL",
+  "security": "REAL (rebuilt as of the tag from the Go module list; later advisories are left out)"
  },
  "notes": [
   "Open bug and flaky-test issues as they stood at the release tag; capacity is synthetic."
  ],
- "records": 1176,
- "records_sha256": "998d0475bc0b407a52a677d211cbcf97570b9c83fbdb6433b488bc72c366b7b9",
+ "records": 1303,
+ "records_sha256": "fe34827c7179969255a5ce06947131827c21c86fec097cdb9af96caa25688f21",
  "release_or_case": "release close v1.7.0",
  "snapshot_id": "release-close-v1.7.0"
 }

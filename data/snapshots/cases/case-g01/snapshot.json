@@ -7,6 +7,10 @@
   "issues": 18,
   "missing_fields": {},
   "pull_requests": 81,
+  "security_complete": true,
+  "security_excluded_after_cutoff": 24,
+  "security_findings": 24,
+  "security_modules": 175,
   "synthetic": 9
  },
  "cutoff": "2026-06-24T08:08:15+00:00",
@@ -17,12 +21,12 @@
   "git": "REAL",
   "issues": "REAL",
   "kubernetes": "SYNTHETIC",
-  "security": "not captured for historical cases; investigation security checks return not_run",
+  "security": "REAL (rebuilt as of the cut-off from the Go module list; later advisories are left out)",
   "telemetry": "SYNTHETIC"
  },
  "notes": [],
- "records": 1284,
- "records_sha256": "09b7fa4181485fcd8ff2582d07dfa23c3dd7764768715b86a6fa8ded668eb4cc",
+ "records": 1309,
+ "records_sha256": "65d8692ee3d268240fb4d9183d756f3363f4c16c117daa39722ea4982b1eaf3f",
  "release_or_case": "G01",
  "snapshot_id": "case-g01"
 }
