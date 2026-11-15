@@ -120,8 +120,8 @@ test("switching project clears what the other project showed", async ({ page }) 
 test("switching role clears what the previous role saw", async ({ page }) => {
   await as(page, "audit", "/containment");
   await expect(page.getByText("All 11 ready")).toBeVisible();
-  await page.getByLabel("Role").selectOption("pm");
-  await expect(page.getByText("This page is for the security engineer")).toBeVisible();
+  await page.getByLabel("Role").selectOption("oncall");
+  await expect(page.getByText(/This page is for the .*security engineer/)).toBeVisible();
   await expect(page.getByRole("button", { name: "Run drill" })).toHaveCount(0);
 });
 

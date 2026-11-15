@@ -1019,6 +1019,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/snapshots/{snapshot_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Snapshot Events
+         * @description Failures and issues in one data set that can be investigated, newest first, with titles.
+         */
+        get: operations["snapshot_events_api_snapshots__snapshot_id__events_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tasks": {
         parameters: {
             query?: never;
@@ -3220,6 +3240,42 @@ export interface operations {
     snapshot_api_snapshots__snapshot_id__get: {
         parameters: {
             query?: never;
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    snapshot_events_api_snapshots__snapshot_id__events_get: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                limit?: number;
+            };
             header?: never;
             path: {
                 snapshot_id: string;
