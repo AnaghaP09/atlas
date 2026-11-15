@@ -3,7 +3,11 @@
 The project does not record which issues blocked a release, so the check uses a substitute: an
 issue counts as a blocker of release 1.N when it is a bug or flaky test fixed on the release branch
 between the first beta and the release, or rated critical-urgent and still open at the release.
-The data layer lists the candidates; a person confirms each one.
+Only issues that were already open when the forecast was made count: a candidate for release 1.N
+is in the queue only when the issue was open in the data set of the release 1.(N-1) close, which is
+what the forecast was made from. The others are kept, with the reason, in the evaluator-only file
+``release_outcomes/not_open_at_forecast.json``. The data layer lists the candidates; a person
+confirms each one. This tool never labels on the person's behalf.
 
     python -m eval.proxy_label                 # label the candidates, one at a time; stop any time
     python -m eval.proxy_label --status        # how many are labelled
@@ -24,6 +28,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
+from eval.canonical import NOTE
+
 ROOT = Path(__file__).resolve().parents[1]
 OUTCOMES = ROOT / "data" / "evaluator" / "release_outcomes"
 RELEASES_DIR = ROOT / "data" / "snapshots" / "releases"
@@ -34,6 +40,7 @@ FIELDS = ("release", "issue_id", "final", "checked_by", "reason", "note", "at")
 CHECKED_BY = "one person"
 PROVISIONAL_BY = "machine pre-label (provisional, not a result)"
 RELEASES = ("1.6", "1.7", "1.8", "1.9")
+LEFT_OUT = OUTCOMES / "not_open_at_forecast.json"
 
 
 def previous_close(release: str) -> str:
@@ -83,6 +90,8 @@ def load_candidates(outcomes_dir: Path = OUTCOMES, releases_dir: Path = RELEASES
         views = _issue_views(release, releases_dir)
         backports = {str(b.get("backport_pr")): b.get("title", "") for b in data.get("backports", [])}
         for c in data.get("candidates", []):
+            if c.get("open_at_forecast") is not True:  # not open when the forecast was made, or not yet checked
+                continue
             number = str(c["issue"])
             view = views.get(number, {})
             fixes = [backports.get(str(r.get("backport_pr")), "") for r in c.get("reasons", []) if r.get("kind") == "backport"]
@@ -91,10 +100,18 @@ def load_candidates(outcomes_dir: Path = OUTCOMES, releases_dir: Path = RELEASES
                 "title": view.get("title") or "", "labels": view.get("labels") or c.get("kinds_now") or [],
                 "body": str(view.get("body") or "")[:600], "created_at": c.get("created_at"),
                 "open_at_previous_release": bool(c.get("open_at_previous_close")),
+                "open_at_forecast": True,
                 "fix_titles": [f for f in fixes if f],
                 "link": f"https://github.com/{repository}/issues/{number}" if repository else "",
             })
     return out
+
+
+def left_out(path: Path = LEFT_OUT) -> list[dict[str, Any]]:
+    """Candidates kept out of the queue because the issue was not open when the forecast was made."""
+    if not path.exists():
+        return []
+    return list(json.loads(path.read_text(encoding="utf-8")).get("candidates", []))
 
 
 def read_labels(path: Path = LABELS) -> list[dict[str, str]]:
@@ -115,17 +132,25 @@ def _append(path: Path, row: Mapping[str, Any]) -> None:
 
 
 def blockers(path: Path = LABELS, candidates: Sequence[Mapping[str, Any]] | None = None) -> dict[str, Any]:
-    """Final labels for scoring. ``complete`` is true only when a person labelled every candidate."""
+    """Final labels for scoring. ``complete`` is true only when a person labelled every candidate.
+
+    ``blockers`` holds only blockers open when the forecast was made (the queue); they are the recall
+    denominator. ``all_blockers`` holds every labelled blocker and is used only for precision."""
     rows = read_labels(path)
+    candidates = list(candidates) if candidates is not None else load_candidates()
+    queue = {(c["release"], c["issue_id"]) for c in candidates}
     by_release: dict[str, list[str]] = {}
+    all_by_release: dict[str, list[str]] = {}
     for r in rows:
         if r["final"] == "blocker":
-            by_release.setdefault(r["release"], []).append(r["issue_id"])
-    candidates = list(candidates) if candidates is not None else load_candidates()
-    labelled = {(r["release"], r["issue_id"]) for r in rows}
+            all_by_release.setdefault(r["release"], []).append(r["issue_id"])
+            if (r["release"], r["issue_id"]) in queue:
+                by_release.setdefault(r["release"], []).append(r["issue_id"])
+    labelled = {(r["release"], r["issue_id"]) for r in rows} & queue
     missing = [c for c in candidates if (c["release"], c["issue_id"]) not in labelled]
     by_person = bool(rows) and all(r.get("checked_by") == CHECKED_BY for r in rows)
-    return {"blockers": by_release, "labelled": len(labelled), "candidates": len(candidates), "missing": len(missing),
+    return {"blockers": by_release, "all_blockers": all_by_release, "labelled": len(labelled),
+            "candidates": len(candidates), "missing": len(missing),
             "checked_by": CHECKED_BY if by_person else (rows[0].get("checked_by") if rows else None),
             "complete": by_person and not missing and bool(candidates)}
 
@@ -136,7 +161,7 @@ def describe(c: Mapping[str, Any], position: int, total: int) -> str:
     if c["title"]:
         lines.append(f"  Title: {c['title']}")
     lines.append(f"  Labels: {', '.join(c['labels']) or 'none recorded'}")
-    lines.append("  Open at the previous release: " + ("yes" if c["open_at_previous_release"] else "no (reported later)"))
+    lines.append("  Open when the forecast was made: yes (in the data set of the previous release)")
     for t in c["fix_titles"]:
         lines.append(f"  Fix on the release branch: {t}")
     if c["body"]:
@@ -188,6 +213,9 @@ def main(argv: list[str] | None = None, ask: Callable[[str], str] = input) -> in
     parser.add_argument("--out", type=Path, default=LABELS)
     args = parser.parse_args(argv)
     candidates = load_candidates()
+    others = left_out()
+    print(f"{len(candidates)} candidates were open when the forecast was made and are in the queue; "
+          f"{len(others)} were not and are left out (see {LEFT_OUT.relative_to(ROOT).as_posix()}). {NOTE}")
     if args.provisional:
         print(f"{write_provisional(candidates)} provisional labels written to {PROVISIONAL}. These are not a result.")
         return 0
