@@ -48,8 +48,7 @@ PROHIBITED_PRS: dict[str, set[int]] = {cid: REF.prohibited_prs(cid) for cid in G
 NOTES: dict[str, list[str]] = {cid: REF.notes(cid) for cid in GOLDEN_CASES}
 
 
-class LeakageError(AssertionError):
-    pass
+from atlas.cleaning import LeakageError, check_export_people, collect_people  # noqa: E402,F401  (shared rules)
 
 
 def _load(kind: str, key: str) -> dict[str, Any] | None:
@@ -301,42 +300,6 @@ def export(db: EvidenceDB, snapshot_id: str, kind: str, manifest: dict[str, Any]
     })
     (target / "snapshot.json").write_bytes((json.dumps(manifest, indent=1, sort_keys=True, default=str) + "\n").encode("utf-8"))
     return target
-
-
-def check_export_people(target: Path, people: People) -> list[str]:
-    """One pass over the export: tokenise once, then set lookups (no per-handle regex)."""
-    problems = []
-    text = (target / "records.jsonl").read_text(encoding="utf-8")
-    authors = {h.lower() for h in people.handles if len(h) >= 4}
-    mentioned = {h.lower() for h in people.mentioned}
-    for m in re.finditer(r"(?<![A-Za-z0-9_/.-])(@?)([A-Za-z0-9][A-Za-z0-9-]*)(?![A-Za-z0-9_-])", text):
-        token = m.group(2).lower()
-        if token in authors:
-            problems.append(f"{target.name}: author handle survived pseudonymisation")
-            break
-        if m.group(1) and token in mentioned:
-            problems.append(f"{target.name}: mentioned handle survived pseudonymisation")
-            break
-    if re.search(r"\b[A-Za-z0-9._%+-]+@(?!users\.noreply\.github\.com)[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b", text):
-        problems.append(f"{target.name}: email address survived pseudonymisation")
-    if re.search(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ", text):
-        problems.append(f"{target.name}: signed token survived")
-    return problems
-
-
-def collect_people(db: EvidenceDB, people: People) -> None:
-    def walk(v: Any, key: str | None = None) -> None:
-        if isinstance(v, dict):
-            for k, x in v.items():
-                walk(x, k)
-        elif isinstance(v, list):
-            for x in v:
-                walk(x, key)
-        elif isinstance(v, str) and key in ("author", "editor", "login"):
-            people.collect([v])
-
-    for rec in db.all_records():
-        walk(db.content(rec.record_id))
 
 
 def build_golden(root: Path = EXPORT) -> dict[str, Any]:
