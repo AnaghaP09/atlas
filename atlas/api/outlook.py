@@ -182,6 +182,10 @@ def _q1(request: Request, principal: Any, project_id: str, runs: list[dict[str, 
     closes = [r for r in runs if r.get("kind") == "release_close"]
     closes.sort(key=lambda r: str(r.get("started_at") or ""), reverse=True)
     verified = [r for r in closes if r.get("run_status") == "complete" and _artefact(s, r["run_id"])]
+    # The next release inherits from the LATEST release, not from the newest run: a re-run of an
+    # older release (a backtest) must not replace the current one. Newest run wins within a release.
+    verified.sort(key=lambda r: (str(_snapshot_as_of(s, r.get("snapshot_id")) or ""),
+                                 str(r.get("started_at") or "")), reverse=True)
     trigger = cat.BY_ID["release_close"]
     try:
         ok, reason = cat.availability(trigger, principal, mode=s.mode.get(), permits=s.containment.permits,
