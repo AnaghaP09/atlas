@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Callable, Mapping, Sequence
 
 from atlas.connectors.ci import job_record, job_view
-from atlas.connectors.dependency_scan import (ROOT_COMPONENT, findings_as_of, gate_scan_records, panel_items,
+from atlas.connectors.dependency_scan import (ROOT_COMPONENT, SECURITY_SCOPE, findings_as_of, gate_scan_records, panel_items,
                                              query_advisories)
 from atlas.connectors.github import GitHubError, GitHubReader
 from atlas.connectors.prow import JobListing
@@ -714,6 +714,14 @@ class ProjectPoller:
     def _blocking(f: Mapping[str, Any]) -> bool:
         return blocks(Finding(str(f.get("finding_id")), str(f.get("component", "")), f.get("severity"), f.get("fix_version")))
 
+    @staticmethod
+    def _restricted(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Finding rows are for the security role; the summary line stays open to everyone."""
+        for row in rows:
+            if "finding_id" in row:
+                row["required_scopes"] = [SECURITY_SCOPE]
+        return rows
+
     def _stored_scan(self) -> tuple[datetime, list[dict[str, Any]]] | None:
         """The newest dependency scan already in the live store (used after a restart)."""
         db = self.registry.live(self.project_id)
@@ -728,7 +736,7 @@ class ProjectPoller:
         findings = [db.content(r.record_id) or {} for r in db.search({"source": "security", "entity_type": "finding", "limit": 100_000})]
         findings = [f for f in findings if f.get("finding_id") in wanted]
         rows = panel_items(findings, modules=int(run.get("modules_scanned") or 0), at=newest.observed_at, blocking=self._blocking)
-        return newest.observed_at, rows
+        return newest.observed_at, self._restricted(rows)
 
     def _poll_security(self) -> list[dict[str, Any]]:
         """Scan the Go module list with OSV at most once every six hours; keep the last result between scans."""
@@ -759,11 +767,8 @@ class ProjectPoller:
             self._last_scan = None
             return self._security_items
         rows = panel_items([c for _, c, e in records if e == "finding"], modules=len(inventory), at=now, blocking=self._blocking)
-        for row in rows:
-            if "finding_id" in row:
-                row["required_scopes"] = ["security"]
-        self._last_scan, self._security_items = now, rows
-        return rows
+        self._last_scan, self._security_items = now, self._restricted(rows)
+        return self._security_items
 
 
 class PollLoop:

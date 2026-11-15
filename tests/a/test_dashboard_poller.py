@@ -158,7 +158,7 @@ def test_blocking_finding_is_shown_and_restricted_to_security(make):
     rows = panel(feed, "security")["items"]
     finding = rows[1]
     assert finding["module"] == "example.org/lib" and finding["blocking"] is True
-    assert finding["required_scopes"] == ["security"] and "required_scopes" not in rows[0]
+    assert finding["required_scopes"] == ["restricted:security"] and "required_scopes" not in rows[0]
 
 
 def test_scan_runs_on_a_six_hour_budget(make):

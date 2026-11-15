@@ -28,7 +28,7 @@
   "Kubernetes events in this snapshot are synthetic and were written by the team with knowledge of the case outcome; the case is scored with that limitation reported."
  ],
  "records": 1241,
- "records_sha256": "2ce9f1584aea132c24fcf5aa0fc39ac6d1541b7172df10ef0cb6be04a05f907a",
+ "records_sha256": "1bf6186048e172a9d6f022da0f5e0f690803071909446ed123dc24bd9c7985b0",
  "release_or_case": "G02",
  "snapshot_id": "case-g02"
 }

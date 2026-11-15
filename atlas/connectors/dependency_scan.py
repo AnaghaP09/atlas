@@ -20,6 +20,7 @@ from atlas.gateway import Gateway, GatewayRefused, RequestContext, SourceUnavail
 from atlas.store import AUTHORITATIVE_WRITERS
 
 ROOT_COMPONENT = "project-dependencies"
+SECURITY_SCOPE = "restricted:security"  # scanner detail is for the security role
 AS_OF_RULE = "only advisories published on or before the cut-off are counted"
 _SEVERITY_ORDER = {"CRITICAL": 4, "HIGH": 3, "MODERATE": 2, "MEDIUM": 2, "LOW": 1}
 
@@ -119,7 +120,7 @@ def _record(source_id: str, version: str, at: datetime, fetched_at: datetime | N
         record_id=f"security:{source_id}@{version}", source="security", source_id=source_id, revision=None,
         content_version_id=version, valid_from=at, observed_at=at, confirmed_through=at,
         writer=AUTHORITATIVE_WRITERS["security"], provenance=Provenance.OBSERVED, synthetic_ancestry=False,
-        access_scopes=frozenset({"security"}), lineage=lineage,
+        access_scopes=frozenset({SECURITY_SCOPE}), lineage=lineage,
         content_ref=f"db:security:{source_id}@{version}", fetched_at=fetched_at,
     )
 

@@ -26,7 +26,7 @@
   "Identifiers are aliased; provenance holds opaque references only."
  ],
  "records": 1306,
- "records_sha256": "6d58462aedbe983e6ec970976f1c4bb73e8239f21628dd00a02a3f9805c0fef5",
+ "records_sha256": "9592d5ea247769fa0212862fd427f6351f33090f0239cc0bf254f28233a67a05",
  "release_or_case": "aliased",
  "snapshot_id": "release-close-v1.6.0-aliased"
 }

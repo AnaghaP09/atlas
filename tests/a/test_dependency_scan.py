@@ -89,7 +89,7 @@ def test_scan_records_are_restricted_to_the_security_scope_and_stand_at_the_cuto
     records = gate_scan_records(scope_id="set-1", revision="abc", inventory=INVENTORY, complete=True, findings=[],
                                 at=CUTOFF, fetched_at=CUTOFF + timedelta(days=30), reconstructed=True)
     rec = records[0][0]
-    assert rec.access_scopes == frozenset({"security"})
+    assert rec.access_scopes == frozenset({"restricted:security"})
     assert rec.valid_from == rec.confirmed_through == CUTOFF and rec.fetched_at > CUTOFF
 
 

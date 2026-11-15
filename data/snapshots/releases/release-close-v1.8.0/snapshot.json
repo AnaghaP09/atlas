@@ -27,7 +27,7 @@
   "Open bug and flaky-test issues as they stood at the release tag; capacity is synthetic."
  ],
  "records": 1381,
- "records_sha256": "2f73a018b416ec9a7be095486a6d79fe28ffefb75914a56fb3cecc09fdaa16d7",
+ "records_sha256": "a07ff446aa5e6615448afa63bfd55724727f1cb6dfcab26b182e2592676af8a0",
  "release_or_case": "release close v1.8.0",
  "snapshot_id": "release-close-v1.8.0"
 }

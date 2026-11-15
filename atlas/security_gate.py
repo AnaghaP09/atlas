@@ -121,7 +121,8 @@ def evaluate(
     finding_view = tuple(
         {"finding_id": f.finding_id, "component": f.component, "severity": f.severity,
          "fix_version": f.fix_version, "record_id": f.record_id, "blocking": blocks(f),
-         "module": f.module, "version": f.version, "advisory": f.advisory, "summary": f.summary}
+         "module": f.module, "version": f.version, "advisory": f.advisory, "summary": f.summary,
+         "required_scopes": ["restricted:security"]}
         for f in in_scope
     )
     exc_by_finding = {e.finding_id: e for e in exceptions}
