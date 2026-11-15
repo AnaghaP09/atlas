@@ -89,7 +89,7 @@ function EventPicker({ snapshotId, value, onChange, preset }: { snapshotId: stri
   const others = shown.filter((e) => !e.failure);
   const option = (e: SnapshotEvent) => (
     <option key={e.event_id} value={e.event_id}>
-      {e.title} Â· #{e.event_id}{e.created_at ? ` Â· ${day(e.created_at)}` : ""}{e.state === "closed" ? " Â· closed" : ""}
+      {e.title} Ã‚Â· #{e.event_id}{e.created_at ? ` Ã‚Â· ${day(e.created_at)}` : ""}{e.state === "closed" ? " Ã‚Â· closed" : ""}
     </option>
   );
   const presetMissing = preset && !all.some((e) => e.event_id === preset);
@@ -109,7 +109,7 @@ function EventPicker({ snapshotId, value, onChange, preset }: { snapshotId: stri
             onChange(e.target.value, hit?.title ?? "");
           }}
         >
-          <option value="">{shown.length ? `Chooseâ€¦ (${shown.length} of ${all.length})` : "Nothing matches the search"}</option>
+          <option value="">{shown.length ? `ChooseÃ¢â‚¬Â¦ (${shown.length} of ${all.length})` : "Nothing matches the search"}</option>
           {failures.length ? <optgroup label="Failures and flaky tests">{failures.map(option)}</optgroup> : null}
           {others.length ? <optgroup label="Other issues">{others.map(option)}</optgroup> : null}
         </select>
@@ -127,7 +127,7 @@ function QuestionPicker({ value, onChange }: { value: string; onChange: (v: stri
       <label>
         Suggested questions
         <select value={suggested} aria-label="Suggested questions" onChange={(e) => onChange(e.target.value)}>
-          <option value="">Choose a suggestionâ€¦</option>
+          <option value="">Choose a suggestionÃ¢â‚¬Â¦</option>
           {SUGGESTED_QUESTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
       </label>
@@ -152,9 +152,9 @@ function RunPicker({ value, onChange }: { value: string; onChange: (v: string) =
     <label>
       Which run?
       <select value={value} aria-label="Which run?" onChange={(e) => onChange(e.target.value)}>
-        <option value="">Chooseâ€¦</option>
+        <option value="">ChooseÃ¢â‚¬Â¦</option>
         {done.map((r) => (
-          <option key={r.run_id} value={r.run_id}>{r.title ?? r.kind_label ?? "Run"}{r.started_at ? ` Â· ${day(r.started_at)}` : ""}</option>
+          <option key={r.run_id} value={r.run_id}>{r.title ?? r.kind_label ?? "Run"}{r.started_at ? ` Ã‚Â· ${day(r.started_at)}` : ""}</option>
         ))}
       </select>
     </label>
@@ -166,10 +166,9 @@ function TriggerForm({ trigger, snapshots, preset, presetIssue }: { trigger: Man
   const kind = trigger.trigger_id;
   const usesData = trigger.parameters.some((p) => p.name === "snapshot_id");
   const choices = useMemo(() => datasetsFor(kind, snapshots), [kind, snapshots]);
-  const [snapshotId, setSnapshotId] = useState(() => (preset && choices.some((s) => s.snapshot_id === preset) ? preset : ""));
-  useEffect(() => {
-    if (!snapshotId && usesData && choices[0]) setSnapshotId(preset && choices.some((s) => s.snapshot_id === preset) ? preset : choices[0].snapshot_id);
-  }, [choices, snapshotId, usesData, preset]);
+  const [picked, setSnapshotId] = useState("");
+  // Until a person chooses, the linked page's data set or the newest one is used.
+  const snapshotId = picked || (preset && choices.some((s) => s.snapshot_id === preset) ? preset : usesData ? choices[0]?.snapshot_id ?? "" : "");
   const [eventId, setEventId] = useState("");
   const [summary, setSummary] = useState("");
   const [question, setQuestion] = useState("");
@@ -228,7 +227,7 @@ function TriggerForm({ trigger, snapshots, preset, presetIssue }: { trigger: Man
         )
       ) : null}
       {kind === "release_close" && chosen ? (
-        <p className="fact-line">Release <strong>{release || "not known for this data set"}</strong> Â· {datasetLine(chosen)}</p>
+        <p className="fact-line">Release <strong>{release || "not known for this data set"}</strong> Ã‚Â· {datasetLine(chosen)}</p>
       ) : null}
       {kind === "investigate" ? <EventPicker snapshotId={snapshotId} value={eventId} onChange={onEvent} preset={presetIssue} /> : null}
       {kind === "question" ? <QuestionPicker value={question} onChange={setQuestion} /> : null}
