@@ -156,6 +156,18 @@ def test_planning_words_detected(text: str) -> None:
     assert public_check.scan_text(text, "f")
 
 
+def test_tool_co_author_trailer_is_not_personal_data() -> None:
+    trailer = j("Co-Authored-By: Claude Opus 5.5 <", "noreply", "@", "anthropic.com>")
+    message = "Show schedule state on the automatic runs screen\n\n" + trailer
+    assert public_check.scan_text(message, "c")  # the raw scan still sees an address
+    assert not public_check.scan_text(public_check.commit_message_text(message), "c")
+    # Only that exact trailer is skipped: another address, or the address in the body, still counts.
+    other = j("Co-Authored-By: Someone <someone", "@", "gmail.com>")
+    assert public_check.scan_text(public_check.commit_message_text("Fix\n\n" + other), "c")
+    body = j("mail noreply", "@", "anthropic.com about it")
+    assert public_check.scan_text(public_check.commit_message_text(body), "c")
+
+
 def test_planning_words_allowed_in_data_and_lock_files() -> None:
     assert not public_check.scan_text("the " + "can" + "vas", "data/x", data=True)
     assert not public_check.scan_text('"' + "can" + 'vas": "^3.0.0"', "package-lock.json", markers=False)

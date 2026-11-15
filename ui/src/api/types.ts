@@ -54,6 +54,11 @@ export interface Schedule {
   last_run?: string | null;
   last_event_id?: string | null;
   next_run?: string | null;
+  title?: string;
+  interval_seconds?: number | null;
+  spends_model_budget?: boolean;
+  external?: boolean;
+  project_id?: string | null;
 }
 
 export interface StartedBy {
@@ -212,8 +217,22 @@ export interface Gate {
   status: "passed" | "failed" | "unevaluated" | string;
   summary?: string;
   proxy_note?: string;
-  pooled?: { recall?: number; precision?: number };
-  per_close?: { close: string; recall?: number; precision?: number }[];
+  /** Who checked the gate's inputs by hand, for example "one person". */
+  checked_by?: string;
+  note?: string;
+  pooled?: CloseFigures;
+  per_close?: (CloseFigures & { close: string })[];
+}
+
+/** Forecast accuracy figures. A null recall or precision has an empty denominator. */
+export interface CloseFigures {
+  recall?: number | null;
+  precision?: number | null;
+  matched?: number;
+  blockers?: number;
+  named_blockers?: number;
+  predictions?: number;
+  note?: string;
 }
 
 export interface Evaluation extends Envelope {

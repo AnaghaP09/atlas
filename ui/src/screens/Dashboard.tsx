@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { DataMode } from "../api/types";
 import type { LiveEvent } from "../api/stream";
 import { useApi, useApp, useIdentity, useLiveStream } from "../app/context";
-import { BarList } from "../components/charts";
+import { BarList, Sparkline, type Point } from "../components/charts";
 import { DataModeBadge, Empty, ErrorView, KpiTile, Loading, Pagination, Section, Time, usePaged } from "../components/common";
 import { Link } from "../lib/router";
 import { EvidenceCard } from "./Reports";
@@ -14,6 +14,16 @@ export interface DashboardPanel {
   items: Record<string, unknown>[];
   updated_at: string | null;
   reason?: string;
+  /** The full count behind a panel that lists only its newest rows. */
+  total?: number;
+}
+
+/** Counts from one finished poll, kept across restarts. */
+export interface HistoryPoint {
+  at: string;
+  open_issues?: number;
+  failing_ci?: number;
+  security_findings?: number;
 }
 
 export interface DashboardData {
@@ -21,6 +31,7 @@ export interface DashboardData {
   dashboard_version: number;
   last_poll: string | null;
   interval_seconds: number;
+  history?: HistoryPoint[];
   panels: DashboardPanel[];
   data_mode: DataMode;
   data_source_note?: string;
@@ -117,9 +128,15 @@ export function Dashboard() {
   const release = panel("latest_release");
   const security = panel("security");
   const issueItems = (issues?.items ?? []).filter(isItem);
+  const issueTotal = panelTotal(issues, issueItems.length);
   const ciItems = (ci?.items ?? []).filter(isItem);
   const ciNote = (ci?.items ?? []).find((i) => !isItem(i));
-  const ciPolled = Boolean(ci && ci.status === "live" && !ciNote);
+  const ciNoteText = typeof ciNote?.note === "string" ? ciNote.note : null;
+  const ciPolled = ciIsPolled(ci);
+  const ciTotal = panelTotal(ci, ciItems.length);
+  const ciJobs = ciItems.filter((i) => typeof i.job === "string");
+  const ciRuns = ciItems.filter((i) => typeof i.job !== "string");
+  const history = board.history ?? [];
   const releaseItem = (release?.items ?? []).filter(isItem)[0];
   const projectName = projects.data?.projects.find((x) => x.id === project)?.name ?? project;
   return (
@@ -140,13 +157,25 @@ export function Dashboard() {
         </span>
       </div>
       <div className="kpis">
-        <KpiTile icon="list" label="Open bugs and flaky tests" value={issueItems.length} hint="stored from live polls" />
+        <KpiTile
+          icon="list"
+          label="Open bugs and flaky tests"
+          value={issues?.status === "live" ? issueTotal : <span className="pill pill-neutral" title={issues?.reason ?? "No poll has finished yet"}>Not yet</span>}
+          small={issues?.status !== "live"}
+          hint={issues?.status === "live" ? "all open issues stored from live polls" : undefined}
+          testId="kpi-open"
+        />
         <KpiTile
           icon="power"
-          tone={ciPolled && ciItems.length ? "critical" : "good"}
-          label="Failing CI runs"
-          value={ciPolled ? ciItems.length : <span className="pill pill-neutral" title={typeof ciNote?.note === "string" ? ciNote.note : "CI is not polled for this project"}>Not polled</span>}
+          tone={ciPolled && ciTotal ? "critical" : "good"}
+          label={ciJobs.length || /job/i.test(ciNoteText ?? "") ? "Failing CI jobs" : "Failing CI runs"}
+          value={
+            ciPolled ? ciTotal
+            : ci?.status !== "live" ? <span className="pill pill-neutral" title={ci?.reason ?? "No poll has finished yet"}>Not yet</span>
+            : <span className="pill pill-neutral" title={ciNoteText ?? "CI is not polled for this project"}>Not polled</span>
+          }
           small={!ciPolled}
+          testId="kpi-ci"
         />
         <KpiTile
           icon="database"
@@ -166,25 +195,46 @@ export function Dashboard() {
       </div>
       <div className="grid-2">
         <div>
-          <Section title="Open issues" icon="list" mode={issues?.status === "live" ? "REAL" : "STAGED"} end={<span className="muted num">{issueItems.length} shown</span>}>
+          <Section
+            title="Open issues"
+            icon="list"
+            mode={issues?.status === "live" ? "REAL" : "STAGED"}
+            end={<span className="muted num" data-testid="issues-shown">{issueTotal > issueItems.length ? `${issueItems.length} most recently changed of ${issueTotal}` : `${issueItems.length} shown`}</span>}
+          >
             {issueItems.length === 0 ? (
-              <Empty>No open issues stored yet. They appear after the next poll.</Empty>
+              <Empty>{issues?.status === "live" ? "No open issues with the watched labels." : "No open issues stored yet. They appear after the first poll."}</Empty>
             ) : (
               <IssueTable items={issueItems} project={project} canInvestigate={canInvestigate} />
             )}
           </Section>
+          {ciJobs.length ? (
+            <Section title="Failing CI jobs" icon="power" mode="REAL" end={<span className="muted num">{ciTotal > ciJobs.length ? `${ciJobs.length} of ${ciTotal}` : `${ciJobs.length} shown`}</span>}>
+              {ciNoteText ? <p className="muted" data-testid="ci-coverage">{ciNoteText}</p> : null}
+              <JobTable items={ciJobs} />
+            </Section>
+          ) : null}
         </div>
         <div>
+          <Section title="Trend" icon="chart">
+            <Trend history={history} />
+          </Section>
           <Section title="Open issues by area" icon="chart">
+            {issueTotal > issueItems.length && issueItems.length ? <p className="muted">From the {issueItems.length} most recently changed issues.</p> : null}
             <AreaBars items={issueItems} />
           </Section>
-          <Section title="Failing CI by workflow" icon="power">
-            {ciPolled ? (
-              <CiBars items={ciItems} />
-            ) : (
-              <p className="quiet-note"><span className="pill pill-neutral">Not polled</span> {typeof ciNote?.note === "string" ? shortNote(ciNote.note) : "CI is not polled for this project."}</p>
-            )}
-          </Section>
+          {ciJobs.length ? null : (
+            <Section title="Failing CI by workflow" icon="power">
+              {ci?.status !== "live" ? (
+                <p className="muted">No CI poll has finished yet.</p>
+              ) : !ciPolled ? (
+                <p className="quiet-note"><span className="pill pill-neutral">Not polled</span> {ciNoteText ? shortNote(ciNoteText) : "CI is not polled for this project."}</p>
+              ) : ciRuns.length ? (
+                <CiBars items={ciRuns} />
+              ) : (
+                <p className="quiet-note" data-testid="ci-clear"><span className="pill pill-good">No failures</span> {ciNoteText ?? "No failing runs in the latest poll."}</p>
+              )}
+            </Section>
+          )}
           <Section title="Activity" icon="pulse">
             {activity.length === 0 ? <p className="muted">No activity yet.</p> : null}
             <ul className="feed" data-testid="activity">
@@ -272,6 +322,80 @@ function IssueTable({ items, project, canInvestigate }: { items: Record<string, 
   );
 }
 
+
+/** The panel's full count when the server sends one, else the rows it shows. */
+export function panelTotal(panel: DashboardPanel | undefined, shown: number): number {
+  return typeof panel?.total === "number" ? panel.total : shown;
+}
+
+/** CI counts are real only when the panel is live and its note does not say CI is unpolled. */
+export function ciIsPolled(panel: DashboardPanel | undefined): boolean {
+  if (!panel || panel.status !== "live") return false;
+  const note = panel.items.find((i) => !isItem(i))?.note;
+  return !(typeof note === "string" && /not (polled|listed)/i.test(note));
+}
+
+/** Readings per poll for one count, oldest first. */
+export function historySeries(history: HistoryPoint[], key: "open_issues" | "failing_ci" | "security_findings"): Point[] {
+  return history
+    .filter((h) => typeof h[key] === "number")
+    .map((h) => ({ label: new Date(h.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), value: h[key] as number }));
+}
+
+function Trend({ history }: { history: HistoryPoint[] }) {
+  const open = historySeries(history, "open_issues");
+  const failing = historySeries(history, "failing_ci");
+  if (open.length < 2)
+    return <p className="muted" data-testid="trend-empty">The trend appears after two finished polls{open.length === 1 ? "; one so far" : ""}.</p>;
+  return (
+    <div data-testid="trend">
+      <p className="muted">Open issues, last {open.length} polls</p>
+      <Sparkline points={open} unit="open issues" />
+      {failing.length >= 2 ? (
+        <>
+          <p className="muted">Failing CI, last {failing.length} polls</p>
+          <Sparkline points={failing} unit="failing" />
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function resultTone(result: unknown): string {
+  return String(result).toUpperCase() === "FAILURE" ? "pill-critical" : "pill-warn";
+}
+
+function JobTable({ items }: { items: Record<string, unknown>[] }) {
+  const paged = usePaged(items, 10);
+  return (
+    <>
+      <div className="table-wrap">
+        <table className="table-items" data-testid="ci-jobs">
+          <thead>
+            <tr><th>Job</th><th>Result</th><th>Finished</th></tr>
+          </thead>
+          <tbody>
+            {paged.slice.map((item, i) => {
+              const job = String(item.job);
+              const result = item.result ? String(item.result) : "Unknown";
+              return (
+                <tr key={`${job}-${String(item.build_id ?? i)}`}>
+                  <td>
+                    <span className="row-title" title={job}>{job}</span>
+                    {item.build_id ? <span className="row-sub num">build {String(item.build_id)}{item.kind ? ` · ${String(item.kind)}` : ""}</span> : null}
+                  </td>
+                  <td><span className={`pill ${resultTone(item.result)}`}>{result.charAt(0) + result.slice(1).toLowerCase()}</span></td>
+                  <td>{typeof item.finished_at === "string" ? <Time iso={item.finished_at} short /> : <span className="muted">Not recorded</span>}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <Pagination page={paged.page} pages={paged.pages} setPage={paged.setPage} total={items.length} />
+    </>
+  );
+}
 
 /** A panel row is a real item unless it is only a note from the server. */
 function isItem(item: Record<string, unknown>): boolean {
