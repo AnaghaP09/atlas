@@ -34,6 +34,7 @@ import { Schedules } from "./screens/Schedules";
 import { Scorecard } from "./screens/Scorecard";
 import { TaskDetail, TaskList } from "./screens/Tasks";
 import { Help } from "./screens/Help";
+import { RequestsPage } from "./screens/Requests";
 import { Toaster } from "./lib/toast";
 import { BetaPill, OutlookStrip } from "./components/OutlookStrip";
 import { ShipReadiness } from "./screens/ShipReadiness";
@@ -57,6 +58,7 @@ const PAGES: Record<string, Page> = {
   "/reports/:id": { title: "Report", sub: "A verified report. Every claim links to the records it cites." },
   "/evidence/:id": { title: "Evidence", sub: "A cited record, shown as plain text." },
   "/queue": { title: "Needs a person", sub: "Items ATLAS will not decide on its own." },
+  "/requests": { title: "Requests", sub: "Requests and hand-offs from the product manager." },
   "/approvals": { title: "Approvals", sub: "Approval A lets a task be prepared. Approval B publishes the exact change shown." },
   "/tasks": { title: "Tasks", sub: "Bounded changes handed to the sandboxed coding agent, from proposal to acceptance." },
   "/tasks/:id": { title: "Task", sub: "Lifecycle, checks, CI results and the human judgement for one task." },
@@ -101,6 +103,7 @@ export function Route({ path, search, nav }: { path: string; search: URLSearchPa
     ["/reports/:id", (p) => <ReportDetail reportId={p.id ?? ""} />],
     ["/evidence/:id", (p) => <EvidenceView recordId={p.id ?? ""} runId={search.get("run") ?? ""} />],
     ["/queue", () => <Queue />],
+    ["/requests", () => <RequestsPage />],
     ["/approvals", () => <Approvals />],
     ["/tasks", () => <TaskList />],
     ["/tasks/:id", (p) => <TaskDetail taskId={p.id ?? ""} />],

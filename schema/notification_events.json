@@ -421,6 +421,63 @@
       ],
       "backup_roles": [],
       "dynamic_roles": true
+    },
+    "handoff.created": {
+      "severity": "info",
+      "kind": "decision",
+      "roles": [
+        "em",
+        "architect"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "handoff.answered": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "pm",
+        "em",
+        "architect"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "request.created": {
+      "severity": "info",
+      "kind": "decision",
+      "roles": [
+        "em",
+        "architect"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "request.shared": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "em",
+        "architect"
+      ],
+      "backup_roles": [],
+      "dynamic_roles": true
+    },
+    "request.answered": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "pm"
+      ],
+      "backup_roles": []
+    },
+    "story.agent_update": {
+      "severity": "info",
+      "kind": "alert",
+      "roles": [
+        "em"
+      ],
+      "backup_roles": []
     }
   }
 }

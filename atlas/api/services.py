@@ -28,6 +28,7 @@ from atlas.projection import AuthorizationProjection, principal_for
 from atlas.reports import EventProducer
 from atlas.scheduler import AdmissionStore, Dispatcher, Scheduler
 from atlas.services.disposition import FeedbackStore
+from atlas.story.store import StoryStore
 from eval.store import EvaluationStore
 from atlas.sqlite_util import connect as safe_connect
 
@@ -157,6 +158,7 @@ class Services:
     projects_file: Path | None = None
     add_project_prefill: str = ""  # ATLAS_ADD_PROJECT: the repository link the Add project screen starts with
     data_copies: Any = None
+    story: Any = None  # hand-offs, product requests, work splits and the coding agent's timeline
 
     @property
     def is_scenario(self) -> bool:
@@ -203,5 +205,6 @@ def build_core(*, environment: str = "normal", host: str = "127.0.0.1", port: in
         scenario=ScenarioState() if environment == "scenario" else None,
         candidates_dir=(data_dir / "candidates") if data_dir else None,
         access=AccessRequestStore(db("access")),
+        story=StoryStore(db("story")),
     )
     return services

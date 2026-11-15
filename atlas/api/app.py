@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from atlas.api import (metrics, navigation, outlook, routes_access, routes_eval, routes_onboarding, routes_ops,
-                       routes_projects, routes_runs, routes_tasks)
+                       routes_projects, routes_runs, routes_story, routes_tasks)
 from atlas.api.guard import HostOriginGuard
 from atlas.api.identity import IdentityError
 from atlas.api.idempotency import IdempotencyError
@@ -90,6 +90,7 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
                   redoc_url=None)
     app.state.services = services
     metrics.install(services)
+    routes_story.install(services)
     outlook.install(services)
     app.state.identity = services.identity
     services.dispatcher = Dispatcher(services.admissions, _start_run_factory(services), _work_allowed(services))
@@ -103,6 +104,7 @@ def create_app(services: Services, *, site: Any = None, sessions: Any = None,
     api.include_router(routes_projects.router)
     api.include_router(navigation.router)
     api.include_router(metrics.router)
+    api.include_router(routes_story.router)
     api.include_router(outlook.router)
     api.include_router(routes_access.router)
     if services.is_scenario:

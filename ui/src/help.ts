@@ -16,6 +16,7 @@ export const HELP_SLUG: Record<string, string> = {
   runs: "runs",
   queue: "needs-a-person",
   approvals: "approvals",
+  requests: "requests",
   tasks: "tasks",
   notifications: "notifications",
   containment: "kill-switches",
