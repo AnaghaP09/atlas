@@ -35,7 +35,7 @@ Security engineers, on-call engineers and component owners also get reports and 
 2. **ATLAS collects evidence.** Connectors read the issue tracker, the Git history, the test
    system, a security scanner and a map of the system's parts. A connector is a small program
    that reads one source. In the demo, cluster events, error rates and staffing data are made-up
-   data. Each run reads one frozen copy of the data, called a snapshot. You can repeat a run and
+   data. Each run reads one frozen copy of the data. The interface shows it as "Data as of" a date. You can repeat a run and
    get the same inputs.
 3. **Two AI agents do the reasoning.** An agent is a program that uses an AI model to decide
    its next step. Scout and Sentinel are software agents, not people.
@@ -53,7 +53,7 @@ Security engineers, on-call engineers and component owners also get reports and 
    before a coding agent's change goes anywhere. The first approval lets the agent prepare the
    change. The second approval covers the exact change. The coding agent works inside a
    container with no network access and no secrets. A container is an isolated space on the
-   computer. ATLAS then opens a draft pull request on a separate repository,
+   computer. ATLAS is then meant to open a draft pull request on a separate repository (this last step is not connected yet),
    [atlas-sandbox-target](https://github.com/AnaghaP09/atlas-sandbox-target). A pull request
    is a proposed change that a person reviews. ATLAS never merges a change.
 6. **ATLAS tells people what happened.** Every error, approval request and safety event creates
