@@ -53,7 +53,7 @@ def _r(*roles: str) -> frozenset[str]:
 # The single sensitivity and ownership table. Keys are ``object_type`` or ``object_type:subtype``.
 KINDS: dict[str, KindRule] = {
     "run": KindRule("Run", ALL_ROLES, "em"),
-    "report:forecast": KindRule("Forecast report", _r("pm"), "pm"),
+    "report:forecast": KindRule("Forecast report", ALL_ROLES, "pm"),  # every role reads the forecast
     "report:allocation": KindRule("Allocation report", _r("em"), "em"),
     "report:architecture": KindRule("Architecture report", _r("architect"), "architect"),
     "report:investigation": KindRule("Investigation report", _r("oncall", "em", "security"), "em"),

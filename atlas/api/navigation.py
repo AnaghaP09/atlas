@@ -84,8 +84,8 @@ ROLE_PAGES: dict[str, tuple[str, ...]] = {
            "notifications", "access_requests", "scorecard"),
     "architect": ("home", "dashboard", "report_architecture", "runs", "notifications", "access_requests", "graph",
                   "feedback"),
-    "security": ("home", "dashboard", "report_security", "queue", "notifications", "containment", "access_requests"),
-    "oncall": ("home", "dashboard", "report_investigation", "run_now", "runs", "notifications", "access_requests"),
+    "security": ("home", "dashboard", "report_forecast", "report_security", "queue", "notifications", "containment", "access_requests"),
+    "oncall": ("home", "dashboard", "report_forecast", "report_investigation", "run_now", "runs", "notifications", "access_requests"),
     "audit": tuple(p.page_id for p in PAGES),
 }
 
